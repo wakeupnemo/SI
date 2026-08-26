@@ -1,0 +1,100 @@
+name: SIQuester cross-platform
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "Directory.Build.props"
+      - "SIQuester.CrossPlatform.sln"
+      - "src/Common/**"
+      - "src/SIQuester/**"
+      - "test/Common/SIPackages.Tests/**"
+      - "test/SIQuester/**"
+      - ".github/workflows/siquester-cross-platform.yml"
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - "Directory.Build.props"
+      - "SIQuester.CrossPlatform.sln"
+      - "src/Common/**"
+      - "src/SIQuester/**"
+      - "test/Common/SIPackages.Tests/**"
+      - "test/SIQuester/**"
+      - ".github/workflows/siquester-cross-platform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore SIQuester.CrossPlatform.sln -p:Configuration=Release
+
+      - name: Build
+        run: dotnet build SIQuester.CrossPlatform.sln --configuration Release --no-restore -m:1
+
+      - name: Test SIPackages
+        run: dotnet test test/Common/SIPackages.Tests/SIPackages.Tests.csproj --configuration Release --no-build --no-restore -m:1 --logger "console;verbosity=normal"
+
+      - name: Test platform-neutral SIQuester view models
+        run: dotnet test test/SIQuester/SIQuester.ViewModel.Tests/SIQuester.ViewModel.Tests.csproj --configuration Release --no-build --no-restore -m:1 --logger "console;verbosity=normal"
+
+      - name: Test Avalonia UI headlessly
+        run: dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csproj --configuration Release --no-build --no-restore -m:1 --logger "console;verbosity=normal"
+
+      - name: Native Linux startup smoke
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/siquester-smoke/config
+          XDG_DATA_HOME: ${{ runner.temp }}/siquester-smoke/data
+          XDG_CACHE_HOME: ${{ runner.temp }}/siquester-smoke/cache
+          XDG_STATE_HOME: ${{ runner.temp }}/siquester-smoke/state
+        run: |
+          set +e
+          timeout --signal=INT 12s xvfb-run -a dotnet \
+            bin/AnyCPU.Release/SIQuester.Desktop/net10.0/SIQuester.Desktop.dll \
+            bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -ne 124 ]; then
+            echo "SIQuester exited before the 12-second startup window (exit code $exit_code)."
+            exit "$exit_code"
+          fi
+          test -s "$XDG_STATE_HOME/SIQuester/logs/siquester.log"
+          ! grep -E "Unhandled exception|FATAL" "$XDG_STATE_HOME/SIQuester/logs/siquester.log"
+          grep -F "Document has been successfully opened." "$XDG_STATE_HOME/SIQuester/logs/siquester.log"
+
+      - name: Upload Linux startup log
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-linux-startup-log
+          path: ${{ runner.temp }}/siquester-smoke/state/SIQuester/logs/
+          if-no-files-found: warn
+
+      - name: Upload compatibility receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-compatibility-${{ runner.os }}
+          path: bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/
+          if-no-files-found: error
