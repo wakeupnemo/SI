@@ -1,5 +1,8 @@
 using Avalonia.Headless.NUnit;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -8,6 +11,7 @@ using NSubstitute;
 using NUnit.Framework;
 using SIPackages;
 using SIQuester.Avalonia.Localization;
+using SIQuester.Avalonia.Services;
 using SIQuester.Avalonia.Views;
 using SIQuester.ViewModel;
 using SIQuester.Model;
@@ -188,6 +192,130 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task AvaloniaClipboardService_RoundTripsTypedFormats()
+    {
+        var window = new Window();
+        window.Show();
+        var service = new AvaloniaClipboardService(() => window);
+        var customFormat = new ClipboardCustomFormat(
+            "SIQuester.Tests.v1",
+            ClipboardCustomDataKind.Binary);
+        var imagePng = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        var filePath = Path.Combine(Path.GetTempPath(), $"SIQuester clipboard тест {Guid.NewGuid():N}.txt");
+
+        try
+        {
+            await File.WriteAllTextAsync(filePath, "clipboard file");
+            await service.WriteAsync(new ClipboardWriteRequest
+            {
+                Text = "Буфер обмена",
+                FilePaths = [filePath],
+                ImagePng = imagePng,
+                CustomData = [new ClipboardCustomData(customFormat, new byte[] { 7, 8, 9 })],
+            });
+
+            var text = await service.ReadTextAsync();
+            var filePaths = await service.ReadFilePathsAsync();
+            var roundTrippedImagePng = await service.ReadImagePngAsync();
+            var customData = await service.ReadCustomDataAsync(customFormat);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(text, Is.EqualTo("Буфер обмена"));
+                Assert.That(filePaths, Does.Contain(filePath));
+                Assert.That(roundTrippedImagePng, Is.EqualTo(imagePng));
+                Assert.That(customData, Is.EqualTo(new byte[] { 7, 8, 9 }));
+            });
+        }
+        finally
+        {
+            await service.ClearAsync();
+            window.Close();
+            File.Delete(filePath);
+        }
+    }
+
+    [AvaloniaTest]
+    public async Task CtrlC_WithDocumentFocus_InvokesDocumentCopy()
+    {
+        var clipboardService = Substitute.For<IClipboardService>();
+        clipboardService
+            .WriteAsync(Arg.Any<ClipboardWriteRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.CompletedTask);
+        using var serviceProvider = CreateServiceProvider(clipboardService);
+        using var document = SIDocument.Create("Shortcut test", "Test author");
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Shortcut test");
+        using var mainViewModel = CreateMainViewModel(serviceProvider);
+        var window = new MainWindow { DataContext = mainViewModel };
+
+        try
+        {
+            window.Show();
+            mainViewModel.DocList.Add(documentViewModel);
+            window.UpdateLayout();
+
+            var tree = window.GetVisualDescendants().OfType<TreeView>().Single();
+            tree.Focus();
+            window.KeyPress(Key.C, RawInputModifiers.Control, PhysicalKey.C, "c");
+            await Dispatcher.UIThread.InvokeAsync(() => { });
+
+            await clipboardService.Received(1).WriteAsync(
+                Arg.Is<ClipboardWriteRequest>(request => request.CustomData.Count > 0),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            window.DataContext = null;
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
+    public async Task CtrlC_WithFocusedTextBox_DoesNotInvokeDocumentCopy()
+    {
+        var clipboardService = Substitute.For<IClipboardService>();
+        clipboardService
+            .WriteAsync(Arg.Any<ClipboardWriteRequest>(), Arg.Any<CancellationToken>())
+            .Returns(ValueTask.CompletedTask);
+        using var serviceProvider = CreateServiceProvider(clipboardService);
+        using var document = SIDocument.Create("Text shortcut test", "Test author");
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Text shortcut test");
+        using var mainViewModel = CreateMainViewModel(serviceProvider);
+        var window = new MainWindow { DataContext = mainViewModel };
+
+        try
+        {
+            window.Show();
+            mainViewModel.DocList.Add(documentViewModel);
+            window.UpdateLayout();
+
+            var textBox = window.GetVisualDescendants().OfType<TextBox>().First();
+            textBox.Text = "Selected text";
+            textBox.SelectionStart = 0;
+            textBox.SelectionEnd = textBox.Text.Length;
+            textBox.Focus();
+            window.KeyPress(Key.C, RawInputModifiers.Control, PhysicalKey.C, "c");
+            await Dispatcher.UIThread.InvokeAsync(() => { });
+
+            await clipboardService.DidNotReceive().WriteAsync(
+                Arg.Any<ClipboardWriteRequest>(),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            window.DataContext = null;
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void CoreViews_InstantiateWithoutNativeServices()
     {
         Assert.Multiple(() =>
@@ -227,13 +355,13 @@ internal sealed class ViewSmokeTests
         }
     }
 
-    private static ServiceProvider CreateServiceProvider()
+    private static ServiceProvider CreateServiceProvider(IClipboardService? clipboardService = null)
     {
         AppSettings.Default = new AppSettings();
         var services = new ServiceCollection();
         services.AddSIQuester();
         services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
-        services.AddSingleton(Substitute.For<IClipboardService>());
+        services.AddSingleton(clipboardService ?? Substitute.For<IClipboardService>());
         services.AddSingleton(Substitute.For<IFilePickerService>());
         services.AddSingleton(Substitute.For<IDialogService>());
         services.AddSingleton(Substitute.For<IApplicationLifetimeService>());

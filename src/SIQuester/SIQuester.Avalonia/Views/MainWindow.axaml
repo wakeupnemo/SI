@@ -37,9 +37,6 @@
     <KeyBinding Gesture="Ctrl+O" Command="{Binding Open}" />
     <KeyBinding Gesture="Ctrl+S" Command="{Binding ActiveDocument.Save}" />
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding ActiveDocument.SaveAs}" />
-    <KeyBinding Gesture="Ctrl+Z" Command="{Binding ActiveDocument.OperationsManager.Undo}" />
-    <KeyBinding Gesture="Ctrl+Y" Command="{Binding ActiveDocument.OperationsManager.Redo}" />
-    <KeyBinding Gesture="Delete" Command="{Binding ActiveDocument.Delete}" />
     <KeyBinding Gesture="Ctrl+Q" Command="{Binding Close}" />
   </Window.KeyBindings>
 
@@ -58,6 +55,10 @@
       <MenuItem Header="{x:Static loc:UiStrings.Edit}">
         <MenuItem Header="{x:Static loc:UiStrings.Undo}" Command="{Binding ActiveDocument.OperationsManager.Undo}" InputGesture="Ctrl+Z" />
         <MenuItem Header="{x:Static loc:UiStrings.Redo}" Command="{Binding ActiveDocument.OperationsManager.Redo}" InputGesture="Ctrl+Y" />
+        <Separator />
+        <MenuItem Header="{x:Static loc:UiStrings.Cut}" Command="{Binding ActiveDocument.Cut}" InputGesture="Ctrl+X" />
+        <MenuItem Header="{x:Static loc:UiStrings.Copy}" Command="{Binding ActiveDocument.Copy}" InputGesture="Ctrl+C" />
+        <MenuItem Header="{x:Static loc:UiStrings.Paste}" Command="{Binding ActiveDocument.Paste}" InputGesture="Ctrl+V" />
       </MenuItem>
       <MenuItem Header="{x:Static loc:UiStrings.View}">
         <MenuItem Header="{x:Static loc:UiStrings.Options}" Command="{Binding SetSettings}" />

@@ -11,7 +11,7 @@ namespace SIQuester.ViewModel;
 /// </summary>
 public sealed class SpardTemplateViewModel : ModelViewBase
 {
-    private static readonly string UnicodeDataFormat = "UnicodeText";
+    private readonly Action<Exception> _clipboardErrorHandler;
 
     public string Name { get; private set; }
 
@@ -74,34 +74,59 @@ public sealed class SpardTemplateViewModel : ModelViewBase
 
     public event Action? OptionalInserted;
 
-    public SpardTemplateViewModel(string name, IClipboardService clipboardService)
+    public SpardTemplateViewModel(
+        string name,
+        IClipboardService clipboardService,
+        Action<Exception> clipboardErrorHandler)
     {
         Name = name;
+        _clipboardErrorHandler = clipboardErrorHandler ?? throw new ArgumentNullException(nameof(clipboardErrorHandler));
         Aliases = [];
 
-        Cut = new SimpleCommand(
-            arg =>
+        Cut = new AsyncCommand(
+            async arg =>
             {
                 if (_transform != null)
                 {
-                    clipboardService.SetData(UnicodeDataFormat, _transform);
-                    Transform = "";
+                    try
+                    {
+                        await clipboardService.WriteAsync(new ClipboardWriteRequest { Text = _transform });
+                        Transform = "";
+                    }
+                    catch (Exception exception)
+                    {
+                        _clipboardErrorHandler(exception);
+                    }
                 }
             });
 
-        Copy = new SimpleCommand(
-            arg =>
+        Copy = new AsyncCommand(
+            async arg =>
             {
                 if (_transform != null)
                 {
-                    clipboardService.SetData(UnicodeDataFormat, _transform);
+                    try
+                    {
+                        await clipboardService.WriteAsync(new ClipboardWriteRequest { Text = _transform });
+                    }
+                    catch (Exception exception)
+                    {
+                        _clipboardErrorHandler(exception);
+                    }
                 }
             });
 
-        Paste = new SimpleCommand(
-            arg =>
+        Paste = new AsyncCommand(
+            async arg =>
             {
-                Transform = (string?)clipboardService.GetData(UnicodeDataFormat) ?? "";
+                try
+                {
+                    Transform = await clipboardService.ReadTextAsync() ?? "";
+                }
+                catch (Exception exception)
+                {
+                    _clipboardErrorHandler(exception);
+                }
             });
 
         InsertAlias = new SimpleCommand(

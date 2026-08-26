@@ -283,6 +283,7 @@
         <CommandBinding Command="ApplicationCommands.Help" Executed="Help_Executed" />
         <CommandBinding Command="ApplicationCommands.Close" Executed="Close_Executed" />
         <CommandBinding Command="ApplicationCommands.SaveAs" Executed="SaveAs_Executed" />
+        <CommandBinding Command="ApplicationCommands.Cut" Executed="Cut_Executed" />
         <CommandBinding Command="ApplicationCommands.Copy" Executed="Copy_Executed" />
         <CommandBinding Command="ApplicationCommands.Paste" Executed="Paste_Executed" />
     </Window.CommandBindings>

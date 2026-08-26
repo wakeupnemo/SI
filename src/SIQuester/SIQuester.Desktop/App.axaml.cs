@@ -12,6 +12,7 @@ using NLog.Config;
 using NLog.Extensions.Logging;
 using NLog.Targets;
 using SIQuester.Avalonia.Localization;
+using SIQuester.Avalonia.Services;
 using SIQuester.Avalonia.Views;
 using SIQuester.Desktop.Services;
 using SIQuester.Model;
@@ -87,7 +88,8 @@ public partial class App : Application
             services.AddSIStatisticsServiceClient(configuration);
             services.AddSIStorageServiceClient(configuration);
             services.AddChgkServiceClient(configuration);
-            services.AddSingleton<IClipboardService, InMemoryClipboardService>();
+            services.AddSingleton<IClipboardService>(_ =>
+                new AvaloniaClipboardService(() => desktopLifetime.MainWindow));
             services.AddSingleton<IAppPaths>(paths);
             services.AddSingleton<ISettingsStore, JsonSettingsStore>();
             services.AddSingleton(serviceProvider => new DesktopPlatformServices(

@@ -386,24 +386,24 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
         var trashAlias = new EditAlias(Resources.Trash, "#FFD3D3D3");
 
-        _packageTemplate = new SpardTemplateViewModel(Resources.Package, clipboardService);
+        _packageTemplate = new SpardTemplateViewModel(Resources.Package, clipboardService, exception => OnError(exception));
         _packageTemplate.Aliases["PName"] = new EditAlias(Resources.Package, "#FFDA70D6");
         _packageTemplate.Aliases["Some"] = trashAlias;
         Templates.Add(_packageTemplate);
 
-        _roundTemplate = new SpardTemplateViewModel(Resources.Round, clipboardService);
+        _roundTemplate = new SpardTemplateViewModel(Resources.Round, clipboardService, exception => OnError(exception));
         _roundTemplate.Aliases["RName"] = new EditAlias(Resources.Round, "#FFFFFFE0");
         _roundTemplate.Aliases["Some"] = trashAlias;
         Templates.Add(_roundTemplate);
 
-        _themeTemplate = new SpardTemplateViewModel(Resources.Theme, clipboardService);
+        _themeTemplate = new SpardTemplateViewModel(Resources.Theme, clipboardService, exception => OnError(exception));
         _themeTemplate.Aliases["TName"] = new EditAlias(Resources.Theme, "#FFF5DEB3");
         _themeTemplate.Aliases["TAuthor"] = new EditAlias(Resources.Author, "#FF800000");
         _themeTemplate.Aliases["TComment"] = new EditAlias(Resources.Comment, "#FFFFA07A");
         _themeTemplate.Aliases["Some"] = trashAlias;
         Templates.Add(_themeTemplate);
 
-        _questTemplate = new SpardTemplateViewModel(Resources.Question, clipboardService);
+        _questTemplate = new SpardTemplateViewModel(Resources.Question, clipboardService, exception => OnError(exception));
         _questTemplate.Aliases["Number"] = new EditAlias(Resources.Number, "#FF87CEEB");
         _questTemplate.Aliases["QText"] = new EditAlias(Resources.Question, "#FF98FB98");
         _questTemplate.Aliases["Answer"] = new EditAlias(Resources.Answer, "#FFFFFF00");
@@ -413,10 +413,10 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         _questTemplate.Aliases["Some"] = trashAlias;
         Templates.Add(_questTemplate);
 
-        _separatorTemplate = new SpardTemplateViewModel(Resources.Separator, clipboardService) { NonStandartOnly = true };
+        _separatorTemplate = new SpardTemplateViewModel(Resources.Separator, clipboardService, exception => OnError(exception)) { NonStandartOnly = true };
         _separatorTemplate.Aliases["Some"] = trashAlias;            
 
-        _answerTemplate = new SpardTemplateViewModel(Resources.Answer, clipboardService) { NonStandartOnly = true };
+        _answerTemplate = new SpardTemplateViewModel(Resources.Answer, clipboardService, exception => OnError(exception)) { NonStandartOnly = true };
 
         foreach (var item in _questTemplate.Aliases)
         {

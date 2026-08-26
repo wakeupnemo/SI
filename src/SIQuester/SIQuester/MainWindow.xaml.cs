@@ -217,6 +217,8 @@ public partial class MainWindow : MetroWindow
 
     private void Copy_Executed(object sender, ExecutedRoutedEventArgs e) => ((MainViewModel)DataContext).ActiveDocument?.Copy.Execute(null);
 
+    private void Cut_Executed(object sender, ExecutedRoutedEventArgs e) => ((MainViewModel)DataContext).ActiveDocument?.Cut.Execute(null);
+
     private void Paste_Executed(object sender, ExecutedRoutedEventArgs e)
     {
         var doc = ((MainViewModel)DataContext).ActiveDocument;

@@ -40,8 +40,6 @@ namespace SIQuester.ViewModel;
 public sealed class QDocument : WorkspaceViewModel
 {
     private static readonly HttpClient HttpClient = new() { DefaultRequestVersion = HttpVersion.Version20 };
-    private const string ClipboardKey = "siqdata";
-
     private const string SIExtension = "siq";
 
     /// <summary>
@@ -81,6 +79,11 @@ public sealed class QDocument : WorkspaceViewModel
     /// Copies document item.
     /// </summary>
     public ICommand Copy { get; private set; }
+
+    /// <summary>
+    /// Copies and then removes a document item after the clipboard write succeeds.
+    /// </summary>
+    public ICommand Cut { get; private set; }
 
     /// <summary>
     /// Pastes document item.
@@ -1237,6 +1240,7 @@ public sealed class QDocument : WorkspaceViewModel
 
 
     private readonly IClipboardService _clipboardService;
+    internal IClipboardService ClipboardService => _clipboardService;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISIStatisticsServiceClient _statisticsClient;
 
@@ -1472,8 +1476,9 @@ public sealed class QDocument : WorkspaceViewModel
 
         Delete = new SimpleCommand(Delete_Executed);
 
-        Copy = new SimpleCommand(Copy_Executed);
-        Paste = new SimpleCommand(Paste_Executed);
+        Copy = new AsyncCommand(Copy_ExecutedAsync);
+        Cut = new AsyncCommand(Cut_ExecutedAsync);
+        Paste = new AsyncCommand(Paste_ExecutedAsync);
 
         NextSearchResult = new SimpleCommand(NextSearchResult_Executed) { CanBeExecuted = false };
         PreviousSearchResult = new SimpleCommand(PreviousSearchResult_Executed) { CanBeExecuted = false };
@@ -1780,67 +1785,101 @@ public sealed class QDocument : WorkspaceViewModel
         }
     }
 
-    internal void Copy_Executed(object? arg)
+    internal async Task Copy_ExecutedAsync(object? arg)
     {
-        if (_activeNode == null)
+        var activeNode = _activeNode;
+
+        if (activeNode == null)
         {
             return;
         }
 
+        await TryCopyNodeAsync(activeNode);
+    }
+
+    private async Task Cut_ExecutedAsync(object? arg)
+    {
+        var activeNode = _activeNode;
+
+        if (activeNode != null && await TryCopyNodeAsync(activeNode))
+        {
+            activeNode.Remove?.Execute(null);
+        }
+    }
+
+    private async Task<bool> TryCopyNodeAsync(IItemViewModel activeNode)
+    {
         try
         {
-            var itemData = new InfoOwnerData(this, _activeNode);
-            _clipboardService.SetData(ClipboardKey, JsonSerializer.Serialize(itemData));
+            var itemData = new InfoOwnerData(this, activeNode);
+            await _clipboardService.WriteAsync(new ClipboardWriteRequest
+            {
+                CustomData =
+                [
+                    new ClipboardCustomData(
+                        SIQuesterClipboardSerializer.ItemFormat,
+                        SIQuesterClipboardSerializer.SerializeItem(itemData)),
+                    ClipboardCustomData.FromText(
+                        SIQuesterClipboardSerializer.LegacyItemFormat,
+                        SIQuesterClipboardSerializer.SerializeLegacyItem(itemData)),
+                ],
+            });
+            return true;
         }
         catch (Exception exc)
         {
             OnError(exc);
+            return false;
         }
     }
 
-    internal void Paste_Executed(object? arg)
+    internal async Task Paste_ExecutedAsync(object? arg)
     {
-        if (_activeNode == null)
-        {
-            return;
-        }
+        var targetNode = _activeNode;
 
-        if (!_clipboardService.ContainsData(ClipboardKey))
+        if (targetNode == null)
         {
             return;
         }
 
         try
         {
-            using var change = OperationsManager.BeginComplexChange();
+            var clipboardData = await _clipboardService.ReadCustomDataAsync(
+                SIQuesterClipboardSerializer.ItemFormat);
+            InfoOwnerData? itemData = null;
 
-            var clipboardData = _clipboardService.GetData(ClipboardKey);
-
-            InfoOwnerData? itemData = clipboardData switch
+            if (clipboardData == null
+                || !SIQuesterClipboardSerializer.TryDeserializeItem(clipboardData, out itemData))
             {
-                InfoOwnerData data => data,
-                string json => JsonSerializer.Deserialize<InfoOwnerData>(json),
-                _ => null,
-            };
+                clipboardData = await _clipboardService.ReadCustomDataAsync(
+                    SIQuesterClipboardSerializer.LegacyItemFormat);
+
+                if (clipboardData == null
+                    || !SIQuesterClipboardSerializer.TryDeserializeLegacyItem(clipboardData, out itemData))
+                {
+                    return;
+                }
+            }
 
             if (itemData == null)
             {
                 return;
             }
 
+            using var change = OperationsManager.BeginComplexChange();
             var level = itemData.ItemLevel;
 
             if (level == InfoOwnerData.Level.Round)
             {
                 var round = (Round)itemData.GetItem();
 
-                if (_activeNode is PackageViewModel myPackage)
+                if (targetNode is PackageViewModel myPackage)
                 {
                     myPackage.Rounds.Add(new RoundViewModel(round));
                 }
                 else
                 {
-                    if (_activeNode is RoundViewModel myRound && myRound.OwnerPackage != null)
+                    if (targetNode is RoundViewModel myRound && myRound.OwnerPackage != null)
                     {
                         myRound.OwnerPackage.Rounds.Insert(myRound.OwnerPackage.Rounds.IndexOf(myRound), new RoundViewModel(round));
                     }
@@ -1854,13 +1893,13 @@ public sealed class QDocument : WorkspaceViewModel
             {
                 var theme = (Theme)itemData.GetItem();
 
-                if (_activeNode is RoundViewModel myRound)
+                if (targetNode is RoundViewModel myRound)
                 {
                     myRound.Themes.Add(new ThemeViewModel(theme));
                 }
                 else
                 {
-                    if (_activeNode is ThemeViewModel myTheme && myTheme.OwnerRound != null)
+                    if (targetNode is ThemeViewModel myTheme && myTheme.OwnerRound != null)
                     {
                         myTheme.OwnerRound.Themes.Insert(
                             myTheme.OwnerRound.Themes.IndexOf(myTheme),
@@ -1876,13 +1915,13 @@ public sealed class QDocument : WorkspaceViewModel
             {
                 var question = (Question)itemData.GetItem();
 
-                if (_activeNode is ThemeViewModel myTheme)
+                if (targetNode is ThemeViewModel myTheme)
                 {
                     myTheme.Questions.Add(new QuestionViewModel(question));
                 }
                 else
                 {
-                    if (_activeNode is QuestionViewModel myQuestion && myQuestion.OwnerTheme != null)
+                    if (targetNode is QuestionViewModel myQuestion && myQuestion.OwnerTheme != null)
                     {
                         myQuestion.OwnerTheme.Questions.Insert(
                             myQuestion.OwnerTheme.Questions.IndexOf(myQuestion),

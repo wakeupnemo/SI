@@ -2,6 +2,7 @@
 using SIPackages.Core;
 using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
+using SIQuester.ViewModel.Contracts.Host;
 using SIQuester.ViewModel.Helpers;
 using SIQuester.ViewModel.PlatformSpecific;
 using SIQuester.ViewModel.Properties;
@@ -9,6 +10,8 @@ using SIQuester.ViewModel.Services;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Text;
+using System.Text.Json;
 using System.Windows.Input;
 using Utils.Commands;
 
@@ -137,8 +140,8 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         SelectLogo = new SimpleCommand(SelectLogo_Executed);
         RemoveLogo = new SimpleCommand(RemoveLogo_Executed);
         
-        CopyInfo = new SimpleCommand(CopyInfo_Executed);
-        PasteInfo = new SimpleCommand(PasteInfo_Executed);
+        CopyInfo = new AsyncCommand(CopyInfo_ExecutedAsync);
+        PasteInfo = new AsyncCommand(PasteInfo_ExecutedAsync);
         
         GenerateThemes = new SimpleCommand(GenerateThemes_Executed);
     }
@@ -155,11 +158,11 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         }
     }
 
-    private void CopyInfo_Executed(object? arg)
+    private async Task CopyInfo_ExecutedAsync(object? arg)
     {
         try
         {
-            PlatformManager.Instance.CopyInfo(new
+            var packageInfo = new
             {
                 Model.Info.Authors,
                 Model.Info.Sources,
@@ -171,19 +174,44 @@ public sealed class PackageViewModel : ItemViewModel<Package>
                 Model.ContactUri,
                 Model.Date,
                 Model.Publisher
+            };
+            var legacyJson = JsonSerializer.Serialize(packageInfo);
+            await Document.ClipboardService.WriteAsync(new ClipboardWriteRequest
+            {
+                Text = legacyJson,
+                CustomData =
+                [
+                    new ClipboardCustomData(
+                        SIQuesterClipboardSerializer.PackageInfoFormat,
+                        SIQuesterClipboardSerializer.SerializePackageInfo(packageInfo)),
+                ],
             });
         }
         catch (Exception exc)
         {
-            PlatformManager.Instance.ShowErrorMessage(exc.Message);
+            Document.OnError(exc);
         }
     }
 
-    private void PasteInfo_Executed(object? arg)
+    private async Task PasteInfo_ExecutedAsync(object? arg)
     {
         try
         {
-            var info = PlatformManager.Instance.PasteInfo();
+            var clipboardData = await Document.ClipboardService.ReadCustomDataAsync(
+                SIQuesterClipboardSerializer.PackageInfoFormat);
+            Dictionary<string, JsonElement>? info = null;
+
+            if (clipboardData == null
+                || !SIQuesterClipboardSerializer.TryDeserializePackageInfo(clipboardData, out info))
+            {
+                var legacyText = await Document.ClipboardService.ReadTextAsync();
+
+                if (legacyText != null)
+                {
+                    info = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+                        Encoding.UTF8.GetBytes(legacyText));
+                }
+            }
 
             if (info == null)
             {
@@ -304,7 +332,7 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         }
         catch (Exception exc)
         {
-            PlatformManager.Instance.ShowErrorMessage(exc.Message);
+            Document.OnError(exc);
         }
     }
 

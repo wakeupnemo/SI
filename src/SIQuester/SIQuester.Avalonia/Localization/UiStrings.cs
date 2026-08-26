@@ -23,6 +23,9 @@ public static class UiStrings
     public static string Undo => Get(nameof(Undo));
     public static string Redo => Get(nameof(Redo));
     public static string Close => Get(nameof(Close));
+    public static string Cut => Get(nameof(Cut));
+    public static string Copy => Get(nameof(Copy));
+    public static string Paste => Get(nameof(Paste));
     public static string Exit => Get(nameof(Exit));
     public static string Create => Get(nameof(Create));
     public static string Cancel => Get(nameof(Cancel));
