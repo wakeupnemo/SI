@@ -20,7 +20,7 @@ The existing `SIQuester` WPF project remains a sibling frontend. It references t
 
 ## Composition and ownership
 
-- `SIQuester.Desktop` creates and owns the service provider, application lifetime, top-level window, logs, and native adapters. It is the composition boundary for the versioned settings store that remains to be implemented.
+- `SIQuester.Desktop` creates and owns the service provider, application lifetime, top-level window, logs, native adapters, versioned settings store, and autosave timer.
 - Views receive view models through construction/composition. They do not resolve services or reach through `Application.Current` to a window data context.
 - `QDocument` remains the document workspace. The port binds to its item view models rather than building a second package-editing model.
 - Framework-specific behavior is limited to views/controls and desktop adapters.
@@ -30,6 +30,8 @@ The existing `SIQuester` WPF project remains a sibling frontend. It references t
 The save transaction is: create a unique temporary file in the destination directory; serialize package XML and staged media; flush; load with `SIDocument.Load`; release the old package container; atomically replace when supported; otherwise preserve a backup and use same-filesystem renames with rollback; reload the committed path; only then clear staged media and the dirty flag.
 
 ZIP byte equality is not a compatibility oracle. Tests compare model semantics, media names, and media hashes.
+
+Recovery uses a separate non-mutating snapshot path. Each document has a random recovery ID under the platform state directory. A complete SIQ generation is flushed, loaded, and hashed before schema-versioned metadata atomically points to it; the previous generation remains authoritative until that pointer commit. Autosave, canonical save, and close cleanup share the per-document lock. See ADR 0008.
 
 ## Platform contracts
 

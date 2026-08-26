@@ -9,13 +9,13 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Runtime | Avalonia Windows startup | NOT_STARTED | WPF remains the production Windows editor |
 | Documents | New package | IMPLEMENTED_NOT_VERIFIED | Existing `NewViewModel` is hosted by Avalonia; end-to-end UI receipt pending |
 | Documents | Open SIQ | VERIFIED | Command-line open of compatibility artifact plus startup log and visual receipt |
-| Documents | Recent files / reopen | NOT_STARTED | Existing WPF behavior inventoried |
+| Documents | Recent files / reopen | IMPLEMENTED_NOT_VERIFIED | Localized empty-state list, full-path tooltip, and `OpenRecent` command identity are headless-tested; real picker/reopen click receipt pending |
 | Documents | Save | VERIFIED | `SaveDocument_*` tests and `SIDocument.Load` compatibility artifact |
 | Documents | Save As | IMPLEMENTED_NOT_VERIFIED | Neutral picker and safe transaction are wired; UI picker receipt pending |
 | Documents | Save All | IMPLEMENTED_NOT_VERIFIED | Async neutral flow implemented; multi-document UI test pending |
 | Documents | Close save/discard/cancel | IN_PROGRESS | Typed dialog and lifetime seams implemented; empty-document close/reentrancy is headless-tested, dirty multi-document state matrix pending |
 | Documents | Templates | NOT_STARTED | Existing built-in/custom templates inventoried |
-| Documents | Autosave and recovery | NOT_STARTED | Existing XML/media-change autosave inventoried |
+| Documents | Autosave and recovery | IN_PROGRESS | Nine tests verify complete SIQ generations, all media, unsaved/same-name identity, cancellation, startup restore, corrupt-canonical handling, and save/close serialization; per-entry preview/reveal/discard UI and retention policy remain |
 | Data | SIDocument semantic round trip | VERIFIED | `SaveDocument_WithComplexStructure_ShouldPreserveAllData` and compatibility artifact |
 | Data | Media-byte round trip | VERIFIED | all-four-collection Unicode test plus artifact image hash comparison |
 | Data | Unicode/long/space paths | IN_PROGRESS | Unicode/space/non-ASCII media names verified; generated long-path stress fixture pending |
