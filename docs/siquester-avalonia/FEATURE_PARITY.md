@@ -4,8 +4,8 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 
 | Area | Feature | Status | Evidence / boundary |
 |---|---|---:|---|
-| Runtime | Native Linux startup | VERIFIED | 12-second Release Xvfb smoke plus visible 1200x760 window, command-line SIQ open, application-owned Ctrl+Q shutdown, exit 0, and clean log |
-| Runtime | Native macOS startup | NOT_STARTED | Requires macOS CI/runtime receipt |
+| Runtime | Native Linux startup | VERIFIED | Self-contained tar and DEB payload exposed a 1200x760 window, opened a real SIQ, exited through Ctrl+Q, and committed clean settings/log receipts |
+| Runtime | Native macOS startup | IMPLEMENTED_NOT_VERIFIED | x64/ARM64 Mach-O app bundles and SIQ plist metadata cross-build; native codesign/launch receipt requires macOS |
 | Runtime | Avalonia Windows startup | NOT_STARTED | WPF remains the production Windows editor |
 | Documents | New package | IMPLEMENTED_NOT_VERIFIED | Existing `NewViewModel` is hosted by Avalonia; end-to-end UI receipt pending |
 | Documents | Open SIQ | VERIFIED | Command-line open of compatibility artifact plus startup log and visual receipt |
@@ -70,9 +70,10 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Optional | Secure GPT secret storage | NOT_STARTED | No plaintext downgrade permitted |
 | Optional | Steam capability | NOT_STARTED | Must not load native Steam library at startup |
 | Optional | Safe update checking | NOT_STARTED | Download-and-execute behavior will not be ported |
-| Release | Linux x64/arm64 tarballs | NOT_STARTED | Packaging scripts pending |
-| Release | Debian package / SIQ MIME | NOT_STARTED | Packaging scripts pending |
-| Release | macOS arm64/x64 app bundles | NOT_STARTED | Packaging scripts pending |
-| Release | Cross-platform CI | IMPLEMENTED_NOT_VERIFIED | Linux/macOS/Windows matrix and graceful Linux open/exit/settings smoke added and locally reproduced; hosted run pending |
+| Release | Linux x64 tarball | VERIFIED | Self-contained artifact checksum, byte-reproducibility `cmp`, x86-64 ELF inspection, and native open/exit smoke pass |
+| Release | Linux arm64 tarball | IMPLEMENTED_NOT_VERIFIED | Checksum passes and host/Skia payloads are AArch64 ELF; native ARM64 launch receipt pending |
+| Release | Debian package / SIQ MIME | IMPLEMENTED_NOT_VERIFIED | amd64 payload launch, apt install simulation, dependency metadata, desktop/MIME/icon paths, checksums, and reproducibility pass; installed file-association receipt pending |
+| Release | macOS arm64/x64 app bundles | IMPLEMENTED_NOT_VERIFIED | Both architecture hosts, app topology, licenses, checksums, and SIQ document declarations pass structural checks; native ICNS/codesign/launch pending |
+| Release | Cross-platform CI | IMPLEMENTED_NOT_VERIFIED | Build/test matrix plus five-RID artifact matrix and packaged Linux smoke are locally validated; hosted run pending |
 | Legacy | Existing WPF application retained | VERIFIED | Existing project unchanged in role and contains no Avalonia dependency |
 | Legacy | Existing WPF build remains green | IMPLEMENTED_NOT_VERIFIED | Cross-compile passed with 0 errors; native Windows CI receipt pending |

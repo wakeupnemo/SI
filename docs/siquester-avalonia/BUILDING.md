@@ -28,6 +28,8 @@ dotnet test test/SIQuester/SIQuester.ViewModel.Tests/SIQuester.ViewModel.Tests.c
 
 Do not use `SIQuester.sln` as the Linux/macOS build boundary because it intentionally includes WPF and WiX projects.
 
+Self-contained Linux tar/DEB and macOS app-bundle commands, runtime dependencies, checksums, signing, and notarization are documented in [PACKAGING.md](PACKAGING.md).
+
 ## Settings locations
 
 The Avalonia host stores versioned `settings.json` under platform conventions:
