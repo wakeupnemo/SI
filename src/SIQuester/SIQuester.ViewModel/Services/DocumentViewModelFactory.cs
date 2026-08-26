@@ -17,6 +17,7 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
     private readonly IDocumentPersistenceService _documentPersistenceService;
+    private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IMediaMaterializationService _mediaMaterializationService;
 
     public DocumentViewModelFactory(
@@ -28,6 +29,7 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         IFilePickerService filePickerService,
         IDialogService dialogService,
         IDocumentPersistenceService documentPersistenceService,
+        IDocumentRecoveryService documentRecoveryService,
         IMediaMaterializationService mediaMaterializationService)
     {
         _storageContextViewModel = storageContextViewModel;
@@ -38,6 +40,7 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         _filePickerService = filePickerService;
         _dialogService = dialogService;
         _documentPersistenceService = documentPersistenceService;
+        _documentRecoveryService = documentRecoveryService;
         _mediaMaterializationService = mediaMaterializationService;
     }
 
@@ -52,6 +55,7 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         _filePickerService,
         _dialogService,
         _documentPersistenceService,
+        _documentRecoveryService,
         _mediaMaterializationService)
     {
         FileName = fileName ?? document.Package.Name

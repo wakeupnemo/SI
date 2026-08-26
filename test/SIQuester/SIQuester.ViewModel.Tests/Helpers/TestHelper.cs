@@ -31,6 +31,7 @@ internal static class TestHelper
         services.AddSIQuester();
         
         services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+        services.AddSingleton<IAppPaths, TestAppPaths>();
         services.AddSingleton<IClipboardService, ClipboardServiceMock>();
         services.AddSingleton<IPackageTemplatesRepository, PackageTemplatesRepositoryMock>();
         services.AddSingleton<IFilePickerService>(platformManager);

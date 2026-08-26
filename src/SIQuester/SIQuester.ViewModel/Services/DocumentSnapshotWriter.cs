@@ -1,0 +1,40 @@
+using SIPackages;
+
+namespace SIQuester.ViewModel.Services;
+
+/// <summary>
+/// Writes a complete package snapshot without changing the live document container.
+/// </summary>
+internal static class DocumentSnapshotWriter
+{
+    internal static async ValueTask WriteNewAsync(
+        QDocument document,
+        string destinationPath,
+        CancellationToken cancellationToken)
+    {
+        await using (var stream = new FileStream(
+            destinationPath,
+            FileMode.CreateNew,
+            FileAccess.ReadWrite,
+            FileShare.None,
+            81920,
+            FileOptions.Asynchronous | FileOptions.WriteThrough))
+        {
+            using var temporaryDocument = document.Document.SaveAs(stream, false);
+            await document.ApplyPendingMediaChangesAsync(temporaryDocument, cancellationToken);
+        }
+
+        // Disposing the package finalizes the ZIP. Reopen and issue an explicit durable flush.
+        using var flushStream = new FileStream(
+            destinationPath,
+            FileMode.Open,
+            FileAccess.ReadWrite,
+            FileShare.Read,
+            1,
+            FileOptions.WriteThrough);
+        flushStream.Flush(flushToDisk: true);
+
+        using var validationStream = File.OpenRead(destinationPath);
+        using var validationDocument = SIDocument.Load(validationStream);
+    }
+}

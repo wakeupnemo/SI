@@ -564,44 +564,26 @@ public sealed class QDocument : WorkspaceViewModel
 
     protected internal override async ValueTask SaveToTempAsync(CancellationToken cancellationToken = default)
     {
-        if (!_changed || _lastChangedTime <= _lastSavedTime || _path.Length == 0)
+        if (_isDisposed || !_changed || _changeVersion <= _lastRecoveryVersion)
         {
             return;
         }
 
         await Lock.WithLockAsync(async () =>
         {
-            // Autosave document to temp path
-            var path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                AppSettings.ProductName,
-                AppSettings.AutoSaveSimpleFolderName,
-                PathHelper.EncodePath(_path));
-
-            Directory.CreateDirectory(path);
-
-            var contentFileName = System.IO.Path.Combine(path, ContentFileName);
-
-            using (var stream = File.Create(contentFileName))
-            using (var writer = XmlWriter.Create(stream))
+            if (_isDisposed || !_changed || _changeVersion <= _lastRecoveryVersion)
             {
-                Document.Package.WriteXml(writer);
+                return;
             }
 
-            var changes = new MediaChanges
-            {
-                ImagesChanges = Images.GetChanges(),
-                AudioChanges = Audio.GetChanges(),
-                VideoChanges = Video.GetChanges(),
-                HtmlChanges = Html.GetChanges(),
-            };
-
-            var changesFileName = System.IO.Path.Combine(path, ChangesFileName);
-            await File.WriteAllTextAsync(changesFileName, JsonSerializer.Serialize(changes), cancellationToken);
-
-            _logger.LogInformation("Document has been autosaved to {path}", contentFileName);
-
-            _lastSavedTime = DateTime.Now;
+            var recoveredVersion = _changeVersion;
+            await _documentRecoveryService.SaveAsync(
+                this,
+                _recoveryId,
+                string.IsNullOrWhiteSpace(_path) ? null : _path,
+                FileName,
+                cancellationToken);
+            _lastRecoveryVersion = recoveredVersion;
         },
         cancellationToken);
     }
@@ -639,14 +621,14 @@ public sealed class QDocument : WorkspaceViewModel
 
             if (_changed)
             {
-                _lastChangedTime = DateTime.Now;
+                _changeVersion++;
             }
         }
     }
 
-    private DateTime _lastChangedTime = DateTime.MinValue;
+    private long _changeVersion;
 
-    private DateTime _lastSavedTime = DateTime.MinValue;
+    private long _lastRecoveryVersion = -1;
 
     public override string Header => $"{FileName}{(NeedSave() ? "*" : "")}";
 
@@ -1410,7 +1392,22 @@ public sealed class QDocument : WorkspaceViewModel
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
     private readonly IDocumentPersistenceService _documentPersistenceService;
+    private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IMediaMaterializationService _mediaMaterializationService;
+    private string _recoveryId = Guid.NewGuid().ToString("N");
+
+    internal string RecoveryId => _recoveryId;
+
+    internal void AdoptRecoveryId(string recoveryId)
+    {
+        if (!Guid.TryParseExact(recoveryId, "N", out _)
+            || recoveryId.Any(character => character is >= 'A' and <= 'F'))
+        {
+            throw new ArgumentException("Recovery IDs must be 32 lowercase hexadecimal characters.", nameof(recoveryId));
+        }
+
+        _recoveryId = recoveryId;
+    }
 
     public QDocument(
         SIDocument document,
@@ -1423,6 +1420,7 @@ public sealed class QDocument : WorkspaceViewModel
         IFilePickerService filePickerService,
         IDialogService dialogService,
         IDocumentPersistenceService documentPersistenceService,
+        IDocumentRecoveryService documentRecoveryService,
         IMediaMaterializationService mediaMaterializationService)
     {
         Lock = new Lock(document.Package.Name);
@@ -1438,6 +1436,7 @@ public sealed class QDocument : WorkspaceViewModel
         _filePickerService = filePickerService;
         _dialogService = dialogService;
         _documentPersistenceService = documentPersistenceService;
+        _documentRecoveryService = documentRecoveryService;
         _mediaMaterializationService = mediaMaterializationService;
         _logger = loggerFactory.CreateLogger<QDocument>();
 
@@ -2581,7 +2580,7 @@ public sealed class QDocument : WorkspaceViewModel
         {
             await _documentPersistenceService.SaveAsync(this, _path, cancellationToken);
             Changed = false;
-            ClearTempFolder();
+            await ClearRecoveryCoreAsync();
             CheckFileSize();
         }, cancellationToken);
 
@@ -2594,7 +2593,7 @@ public sealed class QDocument : WorkspaceViewModel
             Path = fullPath;
             FileName = System.IO.Path.GetFileNameWithoutExtension(fullPath);
             Changed = false;
-            ClearTempFolder();
+            await ClearRecoveryCoreAsync();
             CheckFileSize();
 
             _logger.LogInformation("Document has been safely saved as {path}", fullPath);
@@ -2652,7 +2651,28 @@ public sealed class QDocument : WorkspaceViewModel
         return null;
     }
 
-    private void ClearTempFolder()
+    private ValueTask ClearRecoveryAsync(CancellationToken cancellationToken = default) =>
+        Lock.WithLockAsync(
+            () => ClearRecoveryCoreAsync().AsTask(),
+            cancellationToken);
+
+    private async ValueTask ClearRecoveryCoreAsync()
+    {
+        try
+        {
+            // A canonical save or user-approved close has already completed at this point.
+            // Recovery cleanup must not be abandoned by a late cancellation signal.
+            await _documentRecoveryService.DiscardAsync(_recoveryId, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(exception, "Document recovery entry {RecoveryId} could not be cleared", _recoveryId);
+        }
+
+        ClearLegacyTempFolder();
+    }
+
+    private void ClearLegacyTempFolder()
     {
         var tempPath = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
@@ -2668,7 +2688,7 @@ public sealed class QDocument : WorkspaceViewModel
         try
         {
             Directory.Delete(tempPath, true);
-            _logger.LogInformation("Temporary folder deleted. Folder path: {path}", tempPath);
+            _logger.LogInformation("Legacy temporary recovery folder deleted. Folder path: {path}", tempPath);
         }
         catch (Exception exc)
         {
@@ -2810,6 +2830,7 @@ public sealed class QDocument : WorkspaceViewModel
                 }
             }
 
+            await ClearRecoveryAsync();
             OnClosed();
         }
         catch (Exception exc)
@@ -3598,8 +3619,6 @@ public sealed class QDocument : WorkspaceViewModel
         Document.Dispose();
 
         _logger.LogInformation("Document closed: {path}", _path);
-
-        ClearTempFolder();
 
         _isDisposed = true;
 

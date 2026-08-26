@@ -1,5 +1,6 @@
 <Window
     x:Class="SIQuester.Avalonia.Views.MainWindow"
+    x:Name="MainRoot"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
@@ -108,6 +109,24 @@
               <Button Classes="command accent" Content="{x:Static loc:UiStrings.New}" Command="{Binding New}" />
               <Button Classes="command" Content="{x:Static loc:UiStrings.Open}" Command="{Binding Open}" />
             </StackPanel>
+            <Separator />
+            <TextBlock Text="{x:Static loc:UiStrings.RecentFiles}" FontSize="{StaticResource TypographyBodyLarge}" FontWeight="SemiBold" />
+            <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding Settings.History.Files}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Button
+                        Classes="command"
+                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).OpenRecent}"
+                        CommandParameter="{Binding}"
+                        HorizontalContentAlignment="Left"
+                        ToolTip.Tip="{Binding}">
+                      <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
           </StackPanel>
         </Border>
       </Grid>

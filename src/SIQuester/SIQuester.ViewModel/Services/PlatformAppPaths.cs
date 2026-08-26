@@ -1,9 +1,12 @@
 using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
 
-namespace SIQuester.Desktop.Services;
+namespace SIQuester.ViewModel.Services;
 
-internal sealed class DesktopAppPaths : IAppPaths
+/// <summary>
+/// Resolves platform-conventional SIQuester application directories.
+/// </summary>
+public sealed class PlatformAppPaths : IAppPaths
 {
     public string ConfigurationDirectory { get; }
     public string DataDirectory { get; }
@@ -15,7 +18,7 @@ internal sealed class DesktopAppPaths : IAppPaths
     public string TemplatesDirectory { get; }
     public string? LegacySettingsFilePath { get; }
 
-    public DesktopAppPaths()
+    public PlatformAppPaths()
     {
         const string applicationName = "SIQuester";
         string? platformLogDirectory = null;

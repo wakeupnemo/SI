@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Services;
 using SIStorageService.ViewModel;
@@ -19,7 +20,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPackageTemplatesRepository, PackageTemplatesRepository>();
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<StorageContextViewModel>();
+        services.TryAddSingleton<IAppPaths, PlatformAppPaths>();
         services.AddSingleton<IDocumentPersistenceService, SafeDocumentPersistenceService>();
+        services.AddSingleton<IDocumentRecoveryService, DocumentRecoveryService>();
         services.AddSingleton<IDocumentViewModelFactory, DocumentViewModelFactory>();
 
         return services;

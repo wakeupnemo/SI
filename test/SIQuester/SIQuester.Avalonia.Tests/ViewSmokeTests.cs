@@ -166,6 +166,36 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void EmptyState_RendersRecentFilesWithOpenCommand()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var recentPath = Path.Combine(Path.GetTempPath(), "Папка с пробелами", "пакет 例.siq");
+        AppSettings.Default.History.Add(recentPath);
+        using var mainViewModel = CreateMainViewModel(serviceProvider);
+        var window = new MainWindow { DataContext = mainViewModel };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var recentButton = window.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => Equals(button.CommandParameter, recentPath));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(recentButton.Command, Is.SameAs(mainViewModel.OpenRecent));
+                Assert.That(ToolTip.GetTip(recentButton), Is.EqualTo(recentPath));
+            });
+        }
+        finally
+        {
+            window.DataContext = null;
+            window.Close();
+        }
+    }
+
+    [AvaloniaTest]
     public void SettingsView_UpdatesThemeAndLanguageThroughCompiledBindings()
     {
         AppSettings.Default = AppSettings.Create();
@@ -361,6 +391,9 @@ internal sealed class ViewSmokeTests
         var services = new ServiceCollection();
         services.AddSIQuester();
         services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+        var appPaths = Substitute.For<IAppPaths>();
+        appPaths.RecoveryDirectory.Returns(Path.Combine(Path.GetTempPath(), "SIQuester.Avalonia.Tests", Guid.NewGuid().ToString("N")));
+        services.AddSingleton(appPaths);
         services.AddSingleton(clipboardService ?? Substitute.For<IClipboardService>());
         services.AddSingleton(Substitute.For<IFilePickerService>());
         services.AddSingleton(Substitute.For<IDialogService>());
@@ -391,5 +424,6 @@ internal sealed class ViewSmokeTests
         serviceProvider.GetRequiredService<ILoggerFactory>(),
         serviceProvider.GetRequiredService<IFilePickerService>(),
         serviceProvider.GetRequiredService<IDialogService>(),
-        serviceProvider.GetRequiredService<IApplicationLifetimeService>());
+        serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
+        serviceProvider.GetRequiredService<IDocumentRecoveryService>());
 }

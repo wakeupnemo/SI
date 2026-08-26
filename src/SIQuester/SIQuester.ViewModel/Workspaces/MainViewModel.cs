@@ -32,6 +32,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private const int MaxMessageLength = 1000;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<MainViewModel> _logger;
+    private readonly SemaphoreSlim _autoSaveGate = new(1, 1);
 
     public ILogger Logger => _logger;
 
@@ -165,6 +166,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
     private readonly IApplicationLifetimeService _applicationLifetimeService;
+    private readonly IDocumentRecoveryService _documentRecoveryService;
 
     public AppOptions AppOptions => _appOptions;
 
@@ -178,7 +180,8 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         ILoggerFactory loggerFactory,
         IFilePickerService filePickerService,
         IDialogService dialogService,
-        IApplicationLifetimeService applicationLifetimeService)
+        IApplicationLifetimeService applicationLifetimeService,
+        IDocumentRecoveryService documentRecoveryService)
     {
         _loggerFactory = loggerFactory;
         _clipboardService = clipboardService;
@@ -187,6 +190,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         _filePickerService = filePickerService;
         _dialogService = dialogService;
         _applicationLifetimeService = applicationLifetimeService;
+        _documentRecoveryService = documentRecoveryService;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
         _appOptions = appOptions;
 
@@ -224,7 +228,9 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
     public async Task InitializeAsync()
     {
-        if (_args.Length > 0)
+        await RestoreRecoveryEntriesAsync();
+
+        if (_args.Length > 0 && !IsDocumentPathOpen(_args[0]))
         {
             await OpenFileAsync(_args[0]);
         }
@@ -275,6 +281,70 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         {
             ReportError(exc);
         }
+    }
+
+    private async Task RestoreRecoveryEntriesAsync()
+    {
+        var entries = await _documentRecoveryService.ListAsync();
+        var recoverableEntries = entries.Where(entry => !entry.IsStale).ToArray();
+
+        foreach (var staleEntry in entries.Where(entry => entry.IsStale))
+        {
+            _logger.LogInformation(
+                "Stale recovery entry {RecoveryId} was retained because its canonical file is newer",
+                staleEntry.RecoveryId);
+        }
+
+        if (recoverableEntries.Length == 0)
+        {
+            return;
+        }
+
+        _logger.LogInformation("{RecoveryCount} recoverable document snapshots were found", recoverableEntries.Length);
+
+        if (!await _dialogService.ConfirmAsync(Resources.RestoreConfirmation))
+        {
+            foreach (var entry in recoverableEntries)
+            {
+                await _documentRecoveryService.DiscardAsync(entry.RecoveryId);
+            }
+
+            return;
+        }
+
+        foreach (var entry in recoverableEntries)
+        {
+            SIDocument? document = null;
+
+            try
+            {
+                document = await _documentRecoveryService.LoadAsync(entry);
+                var viewModel = _documentViewModelFactory.CreateViewModelFor(document, entry.DisplayName);
+                document = null;
+                viewModel.Path = entry.OriginalPath ?? string.Empty;
+                viewModel.AdoptRecoveryId(entry.RecoveryId);
+                viewModel.Changed = true;
+                DocList.Add(viewModel);
+                _logger.LogInformation("Recovery entry {RecoveryId} was opened", entry.RecoveryId);
+            }
+            catch (Exception exception)
+            {
+                document?.Dispose();
+                await ReportErrorAsync(exception, null);
+            }
+        }
+    }
+
+    private bool IsDocumentPathOpen(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return DocList
+            .OfType<QDocument>()
+            .Any(document => !string.IsNullOrWhiteSpace(document.Path)
+                && string.Equals(Path.GetFullPath(document.Path), fullPath, comparison));
     }
 
     private void SearchFolder_Executed(object? arg) => DocList.Add(new SearchFolderViewModel(this));
@@ -710,18 +780,34 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         await importViewModel.OpenAsync();
     }
 
-    public async void AutoSave(CancellationToken cancellationToken = default)
+    public async Task AutoSaveAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var item in DocList.ToArray())
+        if (!await _autoSaveGate.WaitAsync(0, cancellationToken))
         {
-            try
+            return;
+        }
+
+        try
+        {
+            foreach (var item in DocList.ToArray())
             {
-                await item.SaveToTempAsync(cancellationToken);
+                try
+                {
+                    await item.SaveToTempAsync(cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exc)
+                {
+                    await ReportErrorAsync(exc, null);
+                }
             }
-            catch (Exception exc)
-            {
-                ReportError(exc);
-            }
+        }
+        finally
+        {
+            _autoSaveGate.Release();
         }
     }
 

@@ -26,6 +26,7 @@ public static class UiStrings
     public static string Cut => Get(nameof(Cut));
     public static string Copy => Get(nameof(Copy));
     public static string Paste => Get(nameof(Paste));
+    public static string RecentFiles => Get(nameof(RecentFiles));
     public static string Exit => Get(nameof(Exit));
     public static string Create => Get(nameof(Create));
     public static string Cancel => Get(nameof(Cancel));

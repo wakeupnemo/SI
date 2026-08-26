@@ -51,7 +51,7 @@ internal sealed class SafeDocumentPersistenceService : IDocumentPersistenceServi
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await WriteTemporaryDocumentAsync(document, temporaryPath, cancellationToken);
+            await DocumentSnapshotWriter.WriteNewAsync(document, temporaryPath, cancellationToken);
             _validateDocument(temporaryPath);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -117,34 +117,6 @@ internal sealed class SafeDocumentPersistenceService : IDocumentPersistenceServi
 
             TryDeleteFile(temporaryPath, "temporary save file");
         }
-    }
-
-    private static async ValueTask WriteTemporaryDocumentAsync(
-        QDocument document,
-        string temporaryPath,
-        CancellationToken cancellationToken)
-    {
-        await using (var stream = new FileStream(
-            temporaryPath,
-            FileMode.CreateNew,
-            FileAccess.ReadWrite,
-            FileShare.None,
-            81920,
-            FileOptions.Asynchronous | FileOptions.WriteThrough))
-        {
-            using var temporaryDocument = document.Document.SaveAs(stream, false);
-            await document.ApplyPendingMediaChangesAsync(temporaryDocument, cancellationToken);
-        }
-
-        // Disposing the package finalizes the ZIP. Reopen and issue an explicit durable flush.
-        using var flushStream = new FileStream(
-            temporaryPath,
-            FileMode.Open,
-            FileAccess.ReadWrite,
-            FileShare.Read,
-            1,
-            FileOptions.WriteThrough);
-        flushStream.Flush(flushToDisk: true);
     }
 
     private static void ValidateDocument(string path)

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,9 @@ public partial class App : Application
     private ISettingsStore? _settingsStore;
     private bool _settingsNeedSave;
     private bool _settingsReadOnly;
+    private MainViewModel? _mainViewModel;
+    private DispatcherTimer? _autoSaveTimer;
+    private readonly CancellationTokenSource _applicationCancellation = new();
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -60,7 +64,7 @@ public partial class App : Application
     {
         try
         {
-            var paths = new DesktopAppPaths();
+            var paths = new PlatformAppPaths();
             paths.EnsureDirectories();
             ConfigureLogging(paths.LogDirectory);
 
@@ -136,7 +140,9 @@ public partial class App : Application
                 _serviceProvider.GetRequiredService<ILoggerFactory>(),
                 _serviceProvider.GetRequiredService<IFilePickerService>(),
                 _serviceProvider.GetRequiredService<IDialogService>(),
-                _serviceProvider.GetRequiredService<IApplicationLifetimeService>());
+                _serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
+                _serviceProvider.GetRequiredService<IDocumentRecoveryService>());
+            _mainViewModel = mainViewModel;
 
             var mainWindow = new MainWindow(PersistSettingsBeforeCloseAsync) { DataContext = mainViewModel };
             desktopLifetime.MainWindow = mainWindow;
@@ -144,16 +150,51 @@ public partial class App : Application
             mainWindow.Opened += async (_, _) => await InitializeMainViewModelAsync(mainViewModel, logger);
             desktopLifetime.Exit += (_, _) =>
             {
+                _autoSaveTimer?.Stop();
+                if (_autoSaveTimer != null)
+                {
+                    _autoSaveTimer.Tick -= AutoSaveTimer_Tick;
+                }
+                _applicationCancellation.Cancel();
                 _settings.PropertyChanged -= Settings_PropertyChanged;
                 mainViewModel.Dispose();
                 _serviceProvider.Dispose();
+                _applicationCancellation.Dispose();
             };
             mainWindow.Show();
+
+            if (_settings.AutoSave)
+            {
+                _autoSaveTimer = new DispatcherTimer { Interval = AppSettings.AutoSaveInterval };
+                _autoSaveTimer.Tick += AutoSaveTimer_Tick;
+                _autoSaveTimer.Start();
+            }
         }
         catch (Exception exception)
         {
             LogManager.GetCurrentClassLogger().Fatal(exception, "SIQuester desktop initialization failed");
             desktopLifetime.Shutdown(1);
+        }
+    }
+
+    private async void AutoSaveTimer_Tick(object? sender, EventArgs eventArgs)
+    {
+        if (_mainViewModel == null || _applicationCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            await _mainViewModel.AutoSaveAsync(_applicationCancellation.Token);
+        }
+        catch (OperationCanceledException) when (_applicationCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _serviceProvider?.GetRequiredService<ILogger<App>>()
+                .LogError(exception, "Automatic recovery snapshot failed");
         }
     }
 

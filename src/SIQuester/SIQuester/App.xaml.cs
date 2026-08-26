@@ -161,7 +161,8 @@ public partial class App : Application
                 loggerFactory,
                 filePickerService,
                 dialogService,
-                applicationLifetimeService);
+                applicationLifetimeService,
+                _host.Services.GetRequiredService<IDocumentRecoveryService>());
             DocumentCollectionController.AttachTo(_mainViewModel);
 
             var storageContextViewModel = _host.Services.GetRequiredService<StorageContextViewModel>();
@@ -187,7 +188,13 @@ public partial class App : Application
         }
     }
 
-    private void AutoSave(object? sender, EventArgs args) => _mainViewModel?.AutoSave();
+    private async void AutoSave(object? sender, EventArgs args)
+    {
+        if (_mainViewModel != null)
+        {
+            await _mainViewModel.AutoSaveAsync();
+        }
+    }
 
     private void Default_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
