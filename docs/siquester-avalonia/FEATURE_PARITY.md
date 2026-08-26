@@ -34,7 +34,7 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Editor | Search/navigation | NOT_STARTED | Existing cancellable `async void` search requires extraction |
 | Editor | Tree mode | VERIFIED | Data-bound hierarchy, expansion, selection/inspector tests, and Linux visual receipt |
 | Editor | Flat mode | NOT_STARTED | WPF geometry and drag/drop cannot be translated directly |
-| Editor | Clipboard copy/cut/paste | IN_PROGRESS | Host currently has session-only in-memory adapter; native/versioned payload pending |
+| Editor | Clipboard copy/cut/paste | IN_PROGRESS | Versioned item/package payloads, legacy fallback, native Avalonia/WPF adapters, cross-document copy/paste, failure-safe Cut, typed text/file/PNG/custom formats, and shortcut isolation are tested; stable embedded-media lifetime and media-rich cross-process receipt remain |
 | Editor | Internal/external drag/drop | NOT_STARTED | Data-level controller pending |
 | Editor | Validation/statistics | NOT_STARTED | Existing commands/sidebar inventoried |
 | Media | Image add/preview/remove | IN_PROGRESS | Save preservation/count wired; native preview and edit UI pending |
@@ -65,7 +65,7 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | UX | System/light/dark themes | IMPLEMENTED_NOT_VERIFIED | Live host mapping, settings UI and persistence implemented; deterministic light/dark visual receipts pending |
 | UX | Russian/English localization | IMPLEMENTED_NOT_VERIFIED | Both RESX sets, Russian resource/converter test, persisted choice and restart notice exist; runtime restart receipt pending |
 | UX | Persisted pane sizes | IN_PROGRESS | Two-way navigator/inspector GridLength bindings and JSON round trip pass; splitter interaction receipt pending |
-| UX | Core keyboard workflow | IN_PROGRESS | primary gestures declared; Ctrl+Q runtime route verified, remaining routing/text-editor conflict tests pending |
+| UX | Core keyboard workflow | IN_PROGRESS | Ctrl+Q runtime route verified; document Ctrl+C and focused-text isolation are headless-tested; routed edit commands support Control/Command and Shift+Z redo, but the complete shortcut matrix and macOS runtime receipt remain |
 | UX | Accessibility / 200% scaling | NOT_STARTED | Runtime and visual receipts pending |
 | Optional | Secure GPT secret storage | NOT_STARTED | No plaintext downgrade permitted |
 | Optional | Steam capability | NOT_STARTED | Must not load native Steam library at startup |
