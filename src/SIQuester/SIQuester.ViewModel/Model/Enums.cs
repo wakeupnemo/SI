@@ -92,3 +92,13 @@ public enum ThemeOption
     [Description("ThemeOptionDarkGray")]
     DarkGray
 }
+
+/// <summary>
+/// Cross-platform desktop theme preference.
+/// </summary>
+public enum DesktopThemePreference
+{
+    System,
+    Light,
+    Dark,
+}

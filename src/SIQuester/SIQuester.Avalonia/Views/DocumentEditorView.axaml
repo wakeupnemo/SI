@@ -6,7 +6,14 @@
     xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:QDocument">
-  <Grid ColumnDefinitions="280,5,*,5,300" RowDefinitions="*,Auto">
+  <Grid RowDefinitions="*,Auto">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{Binding Settings.NavigatorPaneWidth, Mode=TwoWay}" MinWidth="180" MaxWidth="600" />
+      <ColumnDefinition Width="5" />
+      <ColumnDefinition Width="*" MinWidth="320" />
+      <ColumnDefinition Width="5" />
+      <ColumnDefinition Width="{Binding Settings.InspectorPaneWidth, Mode=TwoWay}" MinWidth="220" MaxWidth="600" />
+    </Grid.ColumnDefinitions>
     <Border Grid.Column="0" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
       <Grid RowDefinitions="Auto,*">
         <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Navigator}" />

@@ -27,6 +27,9 @@
         </StackPanel>
       </Grid>
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+      <views:SettingsView />
+    </DataTemplate>
   </Window.DataTemplates>
 
   <Window.KeyBindings>
@@ -37,6 +40,7 @@
     <KeyBinding Gesture="Ctrl+Z" Command="{Binding ActiveDocument.OperationsManager.Undo}" />
     <KeyBinding Gesture="Ctrl+Y" Command="{Binding ActiveDocument.OperationsManager.Redo}" />
     <KeyBinding Gesture="Delete" Command="{Binding ActiveDocument.Delete}" />
+    <KeyBinding Gesture="Ctrl+Q" Command="{Binding Close}" />
   </Window.KeyBindings>
 
   <Grid RowDefinitions="Auto,Auto,*,Auto">
@@ -49,10 +53,14 @@
         <MenuItem Header="{x:Static loc:UiStrings.SaveAs}" Command="{Binding ActiveDocument.SaveAs}" InputGesture="Ctrl+Shift+S" />
         <Separator />
         <MenuItem Header="{x:Static loc:UiStrings.Close}" Command="{Binding ActiveWorkspace.Close}" />
+        <MenuItem Header="{x:Static loc:UiStrings.Exit}" Command="{Binding Close}" InputGesture="Ctrl+Q" />
       </MenuItem>
       <MenuItem Header="{x:Static loc:UiStrings.Edit}">
         <MenuItem Header="{x:Static loc:UiStrings.Undo}" Command="{Binding ActiveDocument.OperationsManager.Undo}" InputGesture="Ctrl+Z" />
         <MenuItem Header="{x:Static loc:UiStrings.Redo}" Command="{Binding ActiveDocument.OperationsManager.Redo}" InputGesture="Ctrl+Y" />
+      </MenuItem>
+      <MenuItem Header="{x:Static loc:UiStrings.View}">
+        <MenuItem Header="{x:Static loc:UiStrings.Options}" Command="{Binding SetSettings}" />
       </MenuItem>
     </Menu>
 

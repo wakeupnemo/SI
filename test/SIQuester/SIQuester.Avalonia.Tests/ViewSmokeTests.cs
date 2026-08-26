@@ -137,12 +137,64 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void MainWindow_CloseWithNoDocuments_RunsSettingsPersistenceOnce()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var mainViewModel = CreateMainViewModel(serviceProvider);
+        var persistenceCalls = 0;
+        var window = new MainWindow(_ =>
+        {
+            persistenceCalls++;
+            return ValueTask.CompletedTask;
+        })
+        {
+            DataContext = mainViewModel,
+        };
+
+        window.Show();
+        window.Close();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.IsVisible, Is.False);
+            Assert.That(persistenceCalls, Is.EqualTo(1));
+        });
+    }
+
+    [AvaloniaTest]
+    public void SettingsView_UpdatesThemeAndLanguageThroughCompiledBindings()
+    {
+        AppSettings.Default = AppSettings.Create();
+        var viewModel = new SettingsViewModel(Substitute.For<IPlatformService>());
+        var view = new SettingsView { DataContext = viewModel };
+        var window = new Window { Content = view };
+
+        window.Show();
+        view.UpdateLayout();
+
+        var selectors = view.GetVisualDescendants().OfType<ComboBox>().ToArray();
+        Assert.That(selectors, Has.Length.EqualTo(2));
+
+        selectors[0].SelectedItem = DesktopThemePreference.Dark;
+        selectors[1].SelectedItem = "ru-RU";
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(AppSettings.Default.DesktopTheme, Is.EqualTo(DesktopThemePreference.Dark));
+            Assert.That(AppSettings.Default.Language, Is.EqualTo("ru-RU"));
+        });
+
+        window.Close();
+    }
+
+    [AvaloniaTest]
     public void CoreViews_InstantiateWithoutNativeServices()
     {
         Assert.Multiple(() =>
         {
             Assert.That(new NewPackageView(), Is.Not.Null);
             Assert.That(new DocumentEditorView(), Is.Not.Null);
+            Assert.That(new SettingsView(), Is.Not.Null);
             Assert.That(new MessageDialogWindow(), Is.Not.Null);
             Assert.That(
                 new OptionDialogWindow("Recovery", [new DialogOption("close", "Close")]),
@@ -160,6 +212,14 @@ internal sealed class ViewSmokeTests
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru-RU");
             Assert.That(UiStrings.New, Is.EqualTo("Создать"));
             Assert.That(UiStrings.Save, Is.EqualTo("Сохранить"));
+            Assert.That(UiStrings.Options, Is.EqualTo("Настройки"));
+            Assert.That(
+                new DesktopThemeLabelConverter().Convert(
+                    DesktopThemePreference.System,
+                    typeof(string),
+                    null,
+                    CultureInfo.CurrentUICulture),
+                Is.EqualTo("Системная тема"));
         }
         finally
         {

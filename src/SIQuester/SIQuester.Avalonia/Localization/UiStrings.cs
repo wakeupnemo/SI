@@ -23,6 +23,7 @@ public static class UiStrings
     public static string Undo => Get(nameof(Undo));
     public static string Redo => Get(nameof(Redo));
     public static string Close => Get(nameof(Close));
+    public static string Exit => Get(nameof(Exit));
     public static string Create => Get(nameof(Create));
     public static string Cancel => Get(nameof(Cancel));
     public static string Discard => Get(nameof(Discard));
@@ -64,4 +65,13 @@ public static class UiStrings
     public static string NoSelection => Get(nameof(NoSelection));
     public static string Saving => Get(nameof(Saving));
     public static string Loading => Get(nameof(Loading));
+    public static string Options => Get(nameof(Options));
+    public static string ThemeMode => Get(nameof(ThemeMode));
+    public static string ThemeSystem => Get(nameof(ThemeSystem));
+    public static string ThemeLight => Get(nameof(ThemeLight));
+    public static string ThemeDark => Get(nameof(ThemeDark));
+    public static string Language => Get(nameof(Language));
+    public static string LanguageRestart => Get(nameof(LanguageRestart));
+    public static string SettingsSavingError => Get(nameof(SettingsSavingError));
+    public static string Reset => Get(nameof(Reset));
 }

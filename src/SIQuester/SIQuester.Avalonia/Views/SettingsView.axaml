@@ -1,0 +1,49 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.SettingsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:model="using:SIQuester.Model"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:SettingsViewModel">
+  <UserControl.Resources>
+    <views:DesktopThemeLabelConverter x:Key="DesktopThemeLabelConverter" />
+  </UserControl.Resources>
+  <ScrollViewer>
+    <Border Classes="card" Margin="{StaticResource Space32Thickness}" MaxWidth="720" HorizontalAlignment="Center">
+      <StackPanel>
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Options}" />
+
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ThemeMode}" />
+        <ComboBox
+            ItemsSource="{Binding DesktopThemeOptions}"
+            SelectedItem="{Binding Model.DesktopTheme, Mode=TwoWay}"
+            Margin="{StaticResource FieldMargin}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="model:DesktopThemePreference">
+              <TextBlock Text="{Binding ., Converter={StaticResource DesktopThemeLabelConverter}}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Language}" />
+        <ComboBox
+            ItemsSource="{Binding Languages}"
+            SelectedItem="{Binding Model.Language, Mode=TwoWay}"
+            Margin="{StaticResource FieldMargin}" />
+        <TextBlock
+            Text="{x:Static loc:UiStrings.LanguageRestart}"
+            TextWrapping="Wrap"
+            Opacity="0.72"
+            Margin="{StaticResource FieldMargin}" />
+
+        <Button
+            Classes="command"
+            HorizontalAlignment="Right"
+            Content="{x:Static loc:UiStrings.Reset}"
+            Command="{Binding Reset}" />
+      </StackPanel>
+    </Border>
+  </ScrollViewer>
+</UserControl>

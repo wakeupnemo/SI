@@ -8,9 +8,13 @@ public partial class MainWindow : Window
 {
     private bool _closeApproved;
     private bool _closeInProgress;
+    private readonly Func<CancellationToken, ValueTask> _beforeClose;
 
-    public MainWindow()
+    public MainWindow() : this(_ => ValueTask.CompletedTask) { }
+
+    public MainWindow(Func<CancellationToken, ValueTask> beforeClose)
     {
+        _beforeClose = beforeClose;
         InitializeComponent();
         Closing += MainWindow_Closing;
     }
@@ -35,6 +39,7 @@ public partial class MainWindow : Window
         {
             if (await viewModel.TryCloseAsync())
             {
+                await _beforeClose(CancellationToken.None);
                 _closeApproved = true;
                 Close();
             }

@@ -1,3 +1,4 @@
+using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
 
 namespace SIQuester.Desktop.Services;
@@ -12,6 +13,7 @@ internal sealed class DesktopAppPaths : IAppPaths
     public string RecoveryDirectory { get; }
     public string TemporaryMediaDirectory { get; }
     public string TemplatesDirectory { get; }
+    public string? LegacySettingsFilePath { get; }
 
     public DesktopAppPaths()
     {
@@ -26,6 +28,12 @@ internal sealed class DesktopAppPaths : IAppPaths
             DataDirectory = Path.Combine(root, "data");
             CacheDirectory = Path.Combine(root, "cache");
             StateDirectory = Path.Combine(root, "state");
+            LegacySettingsFilePath = Path.Combine(
+                local,
+                AppSettings.ManufacturerName,
+                AppSettings.ProductName,
+                "Settings",
+                "usersettings.json");
         }
         else if (OperatingSystem.IsMacOS())
         {

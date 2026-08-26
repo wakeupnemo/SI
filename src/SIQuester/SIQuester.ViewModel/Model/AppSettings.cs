@@ -58,6 +58,9 @@ public sealed class AppSettings : INotifyPropertyChanged
     private const string DefaultGPTModel = "gpt-4o-mini-2024-07-18";
     private const string DefaultGPTPrompt = "";
     private const ThemeOption DefaultTheme = ThemeOption.Light;
+    private const DesktopThemePreference DefaultDesktopTheme = DesktopThemePreference.System;
+    private const double DefaultNavigatorPaneWidth = 280;
+    private const double DefaultInspectorPaneWidth = 300;
 
     /// <summary>
     /// Auto-save interval.
@@ -102,6 +105,25 @@ public sealed class AppSettings : INotifyPropertyChanged
             if (_theme != value)
             {
                 _theme = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    private DesktopThemePreference _desktopTheme = DefaultDesktopTheme;
+
+    /// <summary>
+    /// Theme preference used by the cross-platform desktop host.
+    /// </summary>
+    [DefaultValue(DefaultDesktopTheme)]
+    public DesktopThemePreference DesktopTheme
+    {
+        get => _desktopTheme;
+        set
+        {
+            if (_desktopTheme != value && Enum.IsDefined(value))
+            {
+                _desktopTheme = value;
                 OnPropertyChanged();
             }
         }
@@ -524,6 +546,38 @@ public sealed class AppSettings : INotifyPropertyChanged
         }
     }
 
+    private double _navigatorPaneWidth = DefaultNavigatorPaneWidth;
+
+    [DefaultValue(DefaultNavigatorPaneWidth)]
+    public double NavigatorPaneWidth
+    {
+        get => _navigatorPaneWidth;
+        set
+        {
+            if (value is >= 180 and <= 600 && Math.Abs(_navigatorPaneWidth - value) > 0.1)
+            {
+                _navigatorPaneWidth = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    private double _inspectorPaneWidth = DefaultInspectorPaneWidth;
+
+    [DefaultValue(DefaultInspectorPaneWidth)]
+    public double InspectorPaneWidth
+    {
+        get => _inspectorPaneWidth;
+        set
+        {
+            if (value is >= 220 and <= 600 && Math.Abs(_inspectorPaneWidth - value) > 0.1)
+            {
+                _inspectorPaneWidth = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     private int _selectOptionCount = DefaultSelectOptionCount;
 
     /// <summary>
@@ -741,5 +795,8 @@ public sealed class AppSettings : INotifyPropertyChanged
         UseImageDuration = defaultSettings.UseImageDuration;
         ImageDurationSeconds = defaultSettings.ImageDurationSeconds;
         Theme = defaultSettings.Theme;
+        DesktopTheme = defaultSettings.DesktopTheme;
+        NavigatorPaneWidth = defaultSettings.NavigatorPaneWidth;
+        InspectorPaneWidth = defaultSettings.InspectorPaneWidth;
     }
 }

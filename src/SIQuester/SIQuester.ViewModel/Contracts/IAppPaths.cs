@@ -13,4 +13,5 @@ public interface IAppPaths
     string RecoveryDirectory { get; }
     string TemporaryMediaDirectory { get; }
     string TemplatesDirectory { get; }
+    string? LegacySettingsFilePath { get; }
 }

@@ -27,6 +27,8 @@ public sealed class SettingsViewModel : WorkspaceViewModel
 
     public ThemeOption[] ThemeOptions { get; } = Enum.GetValues<ThemeOption>();
 
+    public DesktopThemePreference[] DesktopThemeOptions { get; } = Enum.GetValues<DesktopThemePreference>();
+
     public AppSettings Model => AppSettings.Default;
 
     public string GPTPrompt => string.IsNullOrEmpty(Model.GPTPrompt)

@@ -114,7 +114,17 @@ internal sealed class DesktopPlatformServices :
         return await dialog.ShowOptionAsync(GetOwner());
     }
 
-    public void RequestExit() => _lifetime.Shutdown();
+    public void RequestExit()
+    {
+        if (_lifetime.MainWindow != null)
+        {
+            _lifetime.MainWindow.Close();
+        }
+        else
+        {
+            _lifetime.Shutdown();
+        }
+    }
 
     public void ReleaseMaterializedMedia(IEnumerable<string> mediaNames)
     {
