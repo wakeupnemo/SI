@@ -19,6 +19,7 @@ Updated: 2026-08-27
 - Retargeted view-model tests to `net10.0`; added semantic/media/Unicode/cancellation compatibility coverage and Avalonia headless selection/lifecycle coverage.
 - Fixed a discovered `Package.ReadXml` defect that skipped the first package section after `<global>`; a regression fixture covers metadata, tags, and rounds.
 - Added XDG/macOS/Windows application paths, bounded file logging, startup diagnostics, WPF adapters, third-party notices, and a Linux/macOS/Windows CI build/test matrix with a Linux launch smoke.
+- Added versioned atomic JSON settings with same-directory staging and validation, future-schema protection, legacy WPF migration, unknown-field preservation, secret stripping, recoverable corrupt-file backup, and serialized writes. System/light/dark choice, restart-applied language choice, and navigator/inspector widths are wired to the Avalonia UI.
 
 ## Current verified commands and results
 
@@ -34,18 +35,19 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Cross-platform Release build: passed, 0 errors, 130 existing source/dependency warnings. Every portable project emitted to `bin/AnyCPU.Release`; adding the complete dependency graph fixed an adversarially discovered mixed Debug/Release evaluation.
 - `SIPackages.Tests`: 86 passed, 5 skipped, 0 failed.
-- `SIQuester.ViewModel.Tests`: 45 passed, 0 failed.
-- `SIQuester.Avalonia.Tests`: 8 passed, 0 failed.
+- `SIQuester.ViewModel.Tests`: 54 passed, 0 failed. Nine named `SettingsStoreTests` cover missing/current/legacy/corrupt/invalid/future-schema/cancelled/replacement paths.
+- `SIQuester.Avalonia.Tests`: 10 passed, 0 failed, including settings compiled bindings and single-execution close persistence.
 - Existing WPF project cross-compiled on Linux with `-p:EnableWindowsTargeting=true`: passed, 0 errors and 0 warnings in the final incremental compatibility build. Native WPF execution remains a Windows-only verification.
-- Native Linux Release smoke: process stayed alive for the full 12-second Xvfb window (expected timeout 124); `/tmp/siquester-m1-final.Gz1Odr/state/SIQuester/logs/siquester.log` contained no fatal/unhandled exception.
-- Native Linux open receipt: `avalonia-core-roundtrip.siq` opened successfully from the command line; an untouched-startup screenshot verified the expanded hierarchy, selected package, typed inspector, and image count.
+- Native Linux Release smoke: process stayed alive for a 12-second Xvfb window (expected timeout 124), then a second run exposed a visible `SIQuester` window at 1200x760, opened the compatibility package, and exited normally with code 0 through the application-owned `Ctrl+Q` path.
+- Settings runtime receipt: `/tmp/siquester-settings-smoke.1LErfv/config/SIQuester/settings.json`, 1,492 bytes, SHA-256 `eb7dcd4289dbc07260886ddb6672cc02e8aec831b348d209345854340f651b9b`; the log records document close and `Application settings were committed successfully` with no fatal/unhandled exception.
+- `tools/smoke-siquester-linux.sh` reproduces that graceful window/open/exit/settings/log receipt and passed locally under Xvfb; cross-platform CI invokes it after installing `xvfb` and `xdotool`.
 
 ## Compatibility artifact
 
 - Test: `CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia`.
 - Release output: `bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq`.
 - Receipt: adjacent `avalonia-core-roundtrip.receipt.json`.
-- Current artifact: 1,078 bytes; SHA-256 `8ec69c72689e7afa39ae8c7c9eb3d1ded37bf0a2b612dc861df6823f378fa07e`.
+- Current artifact: 1,078 bytes; SHA-256 `ef79d8e74c14df033ac398272e4eadb8681039f3f6095d2b7e444b6f5ea4264b`. ZIP metadata can change this hash between generated runs; semantic and media receipts remain authoritative.
 - Verified through `SIDocument.Load`: one round, one theme, one question, and one image with semantic and byte comparison.
 - Existing Windows SIQuester/SIGame runtime acceptance is not yet verified and must not be inferred from the loader receipt.
 
@@ -57,19 +59,20 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 ## Next independent tasks
 
-1. Implement versioned atomic JSON settings, persisted theme/language/pane state, and tests for missing/corrupt/older files.
-2. Replace the temporary in-memory Avalonia clipboard adapter with typed native MIME payloads and versioned SIQuester serialization.
-3. Add recent files plus serialized autosave/recovery and save/close race tests.
-4. Expand typed inspectors to all metadata, scenarios, parameters, answers, and media operations.
-5. Add self-contained publish/package scripts and Linux tarball/`.deb` receipts.
+1. Replace the temporary in-memory Avalonia clipboard adapter with typed native MIME payloads and versioned SIQuester serialization.
+2. Add recent-file UI plus serialized autosave/recovery and save/close race tests.
+3. Expand typed inspectors to all metadata, scenarios, parameters, answers, and media operations.
+4. Add self-contained publish/package scripts and Linux tarball/`.deb` receipts.
+5. Extract cancellable search scheduling from `QDocument` and cover rapid switching/close races.
 
 ## Known limitations
 
-- This is a verified first vertical slice, not Milestone 2 completion. Theme/language selection, settings persistence, recent files, recovery, native clipboard, full metadata/media editing, flat mode, preview, SPARD, advanced import/export, and packaging remain incomplete.
+- This is a verified first vertical slice plus its settings foundation, not Milestone 2 completion. Recent-file UI, recovery, native clipboard, full metadata/media editing, flat mode, preview, SPARD, advanced import/export, and packaging remain incomplete.
+- Language changes intentionally apply after restart and communicate that boundary. System/light/dark selection is live and persisted, but visual theme snapshots and macOS Command-key mapping remain pending.
 - WebView and audio/video backends have architectural decisions but no implementation receipt.
 - No performance baseline has been measured yet.
 - CI workflow syntax and commands are locally mirrored, but hosted Linux/macOS/Windows acceptance awaits an actual GitHub Actions run.
 
 ## Review state
 
-- Latest reviewed source state: `48cd9a74` (`c30ab886` foundation plus native vertical slice). This status/CI update records the verified receipts for those commits.
+- Latest reviewed implementation commit: `5e934ff6` (`c30ab886` foundation, `48cd9a74` native vertical slice, and atomic settings). The later durable-state/CI smoke commit contains no application code.

@@ -28,6 +28,16 @@ dotnet test test/SIQuester/SIQuester.ViewModel.Tests/SIQuester.ViewModel.Tests.c
 
 Do not use `SIQuester.sln` as the Linux/macOS build boundary because it intentionally includes WPF and WiX projects.
 
+## Settings locations
+
+The Avalonia host stores versioned `settings.json` under platform conventions:
+
+- Linux: `$XDG_CONFIG_HOME/SIQuester`, or `~/.config/SIQuester` when XDG is unset or relative;
+- macOS: `~/Library/Application Support/SIQuester/Config`;
+- Windows: `%LocalAppData%/SIQuester/config`.
+
+Writes are staged and validated in the destination directory before replacement. A damaged existing file is retained as `settings.json.bak` (or a numbered variant) when defaults are committed. GPT/OpenAI keys are excluded; no plaintext fallback is implemented.
+
 ## Current local environment note
 
 During the 2026-08-26/27 baseline session the host had no system `dotnet`; SDK 10.0.400 was installed under `/tmp/dotnet10`. This path is not a repository requirement. Commands in that session used:

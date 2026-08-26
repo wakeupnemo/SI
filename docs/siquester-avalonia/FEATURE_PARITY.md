@@ -4,7 +4,7 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 
 | Area | Feature | Status | Evidence / boundary |
 |---|---|---:|---|
-| Runtime | Native Linux startup | VERIFIED | 12-second Release Xvfb smoke; clean startup log; command-line SIQ open and visual receipt |
+| Runtime | Native Linux startup | VERIFIED | 12-second Release Xvfb smoke plus visible 1200x760 window, command-line SIQ open, application-owned Ctrl+Q shutdown, exit 0, and clean log |
 | Runtime | Native macOS startup | NOT_STARTED | Requires macOS CI/runtime receipt |
 | Runtime | Avalonia Windows startup | NOT_STARTED | WPF remains the production Windows editor |
 | Documents | New package | IMPLEMENTED_NOT_VERIFIED | Existing `NewViewModel` is hosted by Avalonia; end-to-end UI receipt pending |
@@ -20,6 +20,7 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Data | Media-byte round trip | VERIFIED | all-four-collection Unicode test plus artifact image hash comparison |
 | Data | Unicode/long/space paths | IN_PROGRESS | Unicode/space/non-ASCII media names verified; generated long-path stress fixture pending |
 | Data | Save failure preserves destination | VERIFIED | cancellation-before-write and injected post-commit validation-failure byte-rollback tests |
+| Data | Versioned settings persistence | VERIFIED | Nine `SettingsStoreTests`: legacy/current/corrupt/invalid/future/cancel/replacement; graceful Linux exit produced validated XDG JSON |
 | Security | ZIP traversal / malformed packages | NOT_STARTED | SIPackages container audit pending |
 | Editor | Package fields and metadata | IN_PROGRESS | Name/comments inspector works; complete metadata pending |
 | Editor | Round fields and metadata | IN_PROGRESS | Name/comments inspector and add/delete commands implemented |
@@ -61,9 +62,10 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Transform | Theme selection/subpackage | NOT_STARTED | Existing dialog inventoried |
 | UX | Tabs/dirty indicator/path tooltip | IN_PROGRESS | Tabs, close buttons, path tooltip implemented; dirty indicator verification pending |
 | UX | Empty state | IMPLEMENTED_NOT_VERIFIED | New/Open surface implemented; headless content assertion pending |
-| UX | System/light/dark themes | IN_PROGRESS | Fluent semantic tokens exist; persisted selection pending |
-| UX | Russian/English localization | IN_PROGRESS | Both RESX sets and Russian resource test exist; runtime switching pending |
-| UX | Core keyboard workflow | IN_PROGRESS | primary gestures declared; routing and text-editor conflict tests pending |
+| UX | System/light/dark themes | IMPLEMENTED_NOT_VERIFIED | Live host mapping, settings UI and persistence implemented; deterministic light/dark visual receipts pending |
+| UX | Russian/English localization | IMPLEMENTED_NOT_VERIFIED | Both RESX sets, Russian resource/converter test, persisted choice and restart notice exist; runtime restart receipt pending |
+| UX | Persisted pane sizes | IN_PROGRESS | Two-way navigator/inspector GridLength bindings and JSON round trip pass; splitter interaction receipt pending |
+| UX | Core keyboard workflow | IN_PROGRESS | primary gestures declared; Ctrl+Q runtime route verified, remaining routing/text-editor conflict tests pending |
 | UX | Accessibility / 200% scaling | NOT_STARTED | Runtime and visual receipts pending |
 | Optional | Secure GPT secret storage | NOT_STARTED | No plaintext downgrade permitted |
 | Optional | Steam capability | NOT_STARTED | Must not load native Steam library at startup |
@@ -71,6 +73,6 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Release | Linux x64/arm64 tarballs | NOT_STARTED | Packaging scripts pending |
 | Release | Debian package / SIQ MIME | NOT_STARTED | Packaging scripts pending |
 | Release | macOS arm64/x64 app bundles | NOT_STARTED | Packaging scripts pending |
-| Release | Cross-platform CI | IMPLEMENTED_NOT_VERIFIED | Linux/macOS/Windows matrix and Linux open-artifact smoke added; hosted run pending |
+| Release | Cross-platform CI | IMPLEMENTED_NOT_VERIFIED | Linux/macOS/Windows matrix and graceful Linux open/exit/settings smoke added and locally reproduced; hosted run pending |
 | Legacy | Existing WPF application retained | VERIFIED | Existing project unchanged in role and contains no Avalonia dependency |
 | Legacy | Existing WPF build remains green | IMPLEMENTED_NOT_VERIFIED | Cross-compile passed with 0 errors; native Windows CI receipt pending |

@@ -60,6 +60,12 @@ jobs:
       - name: Test Avalonia UI headlessly
         run: dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csproj --configuration Release --no-build --no-restore -m:1 --logger "console;verbosity=normal"
 
+      - name: Install Linux smoke dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes xvfb xdotool
+
       - name: Native Linux startup smoke
         if: runner.os == 'Linux'
         shell: bash
@@ -69,19 +75,9 @@ jobs:
           XDG_CACHE_HOME: ${{ runner.temp }}/siquester-smoke/cache
           XDG_STATE_HOME: ${{ runner.temp }}/siquester-smoke/state
         run: |
-          set +e
-          timeout --signal=INT 12s xvfb-run -a dotnet \
+          xvfb-run -a tools/smoke-siquester-linux.sh \
             bin/AnyCPU.Release/SIQuester.Desktop/net10.0/SIQuester.Desktop.dll \
             bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq
-          exit_code=$?
-          set -e
-          if [ "$exit_code" -ne 124 ]; then
-            echo "SIQuester exited before the 12-second startup window (exit code $exit_code)."
-            exit "$exit_code"
-          fi
-          test -s "$XDG_STATE_HOME/SIQuester/logs/siquester.log"
-          ! grep -E "Unhandled exception|FATAL" "$XDG_STATE_HOME/SIQuester/logs/siquester.log"
-          grep -F "Document has been successfully opened." "$XDG_STATE_HOME/SIQuester/logs/siquester.log"
 
       - name: Upload Linux startup log
         if: always() && runner.os == 'Linux'
@@ -89,6 +85,14 @@ jobs:
         with:
           name: siquester-linux-startup-log
           path: ${{ runner.temp }}/siquester-smoke/state/SIQuester/logs/
+          if-no-files-found: warn
+
+      - name: Upload Linux settings smoke receipt
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-linux-settings-smoke
+          path: ${{ runner.temp }}/siquester-smoke/config/SIQuester/settings.json
           if-no-files-found: warn
 
       - name: Upload compatibility receipt
