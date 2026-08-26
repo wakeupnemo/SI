@@ -9,7 +9,11 @@
 	</PropertyGroup>
 	
 	<PropertyGroup>
-		<BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)\obj\$(Platform).$(Configuration)\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-		<OutputPath>$(MSBuildThisFileDirectory)\bin\$(Platform).$(Configuration)\$(MSBuildProjectName)</OutputPath>
+		<SIOutputPlatform Condition="'$(Platform)' == ''">AnyCPU</SIOutputPlatform>
+		<SIOutputPlatform Condition="'$(Platform)' != ''">$(Platform)</SIOutputPlatform>
+		<SIOutputConfiguration Condition="'$(Configuration)' == ''">Debug</SIOutputConfiguration>
+		<SIOutputConfiguration Condition="'$(Configuration)' != ''">$(Configuration)</SIOutputConfiguration>
+		<BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj/$(SIOutputPlatform).$(SIOutputConfiguration)/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+		<OutputPath>$(MSBuildThisFileDirectory)bin/$(SIOutputPlatform).$(SIOutputConfiguration)/$(MSBuildProjectName)/</OutputPath>
 	</PropertyGroup>
 </Project>

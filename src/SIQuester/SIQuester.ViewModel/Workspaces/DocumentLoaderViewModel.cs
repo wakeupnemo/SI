@@ -2,8 +2,6 @@
 
 namespace SIQuester.ViewModel;
 
-// TODO: show load progress
-
 /// <summary>
 /// Defines a view model that displays document load process.
 /// </summary>
@@ -21,7 +19,6 @@ public sealed class DocumentLoaderViewModel : WorkspaceViewModel
     protected override void Dispose(bool disposing)
     {
         _cancellationTokenSource.Cancel();
-        // TODO: await _loadTask if not null
         _cancellationTokenSource.Dispose();
 
         base.Dispose(disposing);

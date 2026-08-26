@@ -85,7 +85,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     /// <summary>
     /// Saves all changed workspaces.
     /// </summary>
-    public SimpleCommand SaveAll { get; private set; }
+    public IAsyncCommand SaveAll { get; private set; }
 
     public ICommand About { get; private set; }
 
@@ -114,7 +114,29 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     /// </summary>
     public ObservableCollection<WorkspaceViewModel> DocList { get; } = new();
 
+    public bool HasWorkspaces => DocList.Count > 0;
+
     private QDocument? _activeDocument = null;
+    private WorkspaceViewModel? _activeWorkspace;
+
+    /// <summary>
+    /// Gets or sets the selected workspace independently of a UI collection-view implementation.
+    /// </summary>
+    public WorkspaceViewModel? ActiveWorkspace
+    {
+        get => _activeWorkspace;
+        set
+        {
+            if (_activeWorkspace == value)
+            {
+                return;
+            }
+
+            _activeWorkspace = value;
+            OnPropertyChanged();
+            ActiveDocument = value as QDocument;
+        }
+    }
 
     /// <summary>
     /// Currently opened document.
@@ -140,6 +162,9 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private readonly IPlatformService _platformService;
     private readonly IDocumentViewModelFactory _documentViewModelFactory;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IFilePickerService _filePickerService;
+    private readonly IDialogService _dialogService;
+    private readonly IApplicationLifetimeService _applicationLifetimeService;
 
     public AppOptions AppOptions => _appOptions;
 
@@ -150,19 +175,25 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         IServiceProvider serviceProvider,
         IPlatformService platformService,
         IDocumentViewModelFactory documentViewModelFactory,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IFilePickerService filePickerService,
+        IDialogService dialogService,
+        IApplicationLifetimeService applicationLifetimeService)
     {
         _loggerFactory = loggerFactory;
         _clipboardService = clipboardService;
         _platformService = platformService;
         _documentViewModelFactory = documentViewModelFactory;
+        _filePickerService = filePickerService;
+        _dialogService = dialogService;
+        _applicationLifetimeService = applicationLifetimeService;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
         _appOptions = appOptions;
 
         DocList.CollectionChanged += DocList_CollectionChanged;
 
-        Open = new SimpleCommand(Open_Executed);
-        OpenRecent = new SimpleCommand(OpenRecent_Executed);
+        Open = new AsyncCommand(Open_ExecutedAsync);
+        OpenRecent = new AsyncCommand(OpenRecent_ExecutedAsync);
         RemoveRecent = new SimpleCommand(RemoveRecent_Executed);
 
         ImportTxt = new SimpleCommand(ImportTxt_Executed);
@@ -171,7 +202,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         ImportBase = new SimpleCommand(ImportBase_Executed);
         ImportFromSIStore = new SimpleCommand(ImportFromSIStore_Executed);
 
-        SaveAll = new SimpleCommand(SaveAll_Executed) { CanBeExecuted = false };
+        SaveAll = new AsyncCommand(SaveAll_ExecutedAsync) { CanBeExecuted = false };
 
         About = new SimpleCommand(About_Executed);
         Feedback = new SimpleCommand(Feedback_Executed);
@@ -221,7 +252,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         {
             _logger.LogInformation("Unsaved files found");
 
-            if (PlatformManager.Instance.Confirm(Resources.RestoreConfirmation))
+            if (await _dialogService.ConfirmAsync(Resources.RestoreConfirmation))
             {
                 foreach (var folder in folders)
                 {
@@ -242,7 +273,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         }
         catch (Exception exc)
         {
-            ShowError(exc);
+            ReportError(exc);
         }
     }
 
@@ -259,7 +290,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         if (await TryCloseAsync())
         {
             _logger.LogInformation("Close_Executed complete");
-            PlatformManager.Instance.Exit();
+            _applicationLifetimeService.RequestExit();
         }
     }
 
@@ -286,7 +317,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
     private void Donate_Executed(object? arg) => OpenUri(DonateUrl);
 
-    private static void OpenUri(string uri)
+    private void OpenUri(string uri)
     {
         try
         {
@@ -294,7 +325,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         }
         catch (Exception exc)
         {
-            ShowError(exc);
+            ReportError(exc);
         }
     }
 
@@ -307,12 +338,14 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             case NotifyCollectionChangedAction.Add:
                 foreach (WorkspaceViewModel item in e.NewItems ?? Array.Empty<WorkspaceViewModel>())
                 {
-                    item.Error += ShowError;
+                    item.Error += ReportError;
                     item.NewItem += Item_NewDoc;
                     item.Closed += Item_Closed;
+                    ActiveWorkspace = item;
                 }
 
                 CheckSaveAllCanBeExecuted(this, EventArgs.Empty);
+                OnPropertyChanged(nameof(HasWorkspaces));
                 break;
 
             case NotifyCollectionChangedAction.Move:
@@ -321,12 +354,18 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             case NotifyCollectionChangedAction.Remove:
                 foreach (WorkspaceViewModel item in e.OldItems ?? Array.Empty<WorkspaceViewModel>())
                 {
-                    item.Error -= ShowError;
+                    item.Error -= ReportError;
                     item.NewItem -= Item_NewDoc;
                     item.Closed -= Item_Closed;
+
+                    if (ActiveWorkspace == item)
+                    {
+                        ActiveWorkspace = DocList.LastOrDefault();
+                    }
                 }
 
                 CheckSaveAllCanBeExecuted(this, EventArgs.Empty);
+                OnPropertyChanged(nameof(HasWorkspaces));
                 break;
 
             default:
@@ -363,7 +402,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     /// <summary>
     /// Открыть существующий пакет
     /// </summary>
-    private async void Open_Executed(object? arg)
+    private async Task Open_ExecutedAsync(object? arg)
     {
         if (arg is string filename)
         {
@@ -371,14 +410,19 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             return;
         }
 
-        var files = PlatformManager.Instance.ShowOpenUI();
+        var files = await _filePickerService.PickOpenFilesAsync(new OpenFilePickerRequest(
+            null,
+            new[] { new FileTypeFilter(Resources.SIQuestions, new[] { AppSettings.SiqExtension }) }));
 
-        if (files != null)
+        foreach (var file in files)
         {
-            foreach (var file in files)
+            if (file.LocalPath == null)
             {
-                await OpenFileAsync(file);
+                await _dialogService.ShowErrorAsync(Resources.FileOpenError);
+                continue;
             }
+
+            await OpenFileAsync(file.LocalPath);
         }
     }
 
@@ -386,7 +430,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     /// Opens recently opened file.
     /// </summary>
     /// <param name="arg">Path to the file.</param>
-    private async void OpenRecent_Executed(object? arg)
+    private async Task OpenRecent_ExecutedAsync(object? arg)
     {
         var filePath = arg?.ToString();
 
@@ -414,18 +458,6 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         AppSettings.Default.History.Remove(filePath);
     }
 
-    private static void OpenFolder(string path)
-    {
-        try
-        {
-            Browser.Open(path);
-        }
-        catch (Exception exc)
-        {
-            PlatformManager.Instance.ShowErrorMessage(exc.Message);
-        }
-    }
-
     /// <summary>
     /// Opens the existing file.
     /// </summary>
@@ -435,25 +467,32 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         Task<QDocument> loader(CancellationToken cancellationToken) => Task.Run(() =>
         {
             FileStream? stream = null;
+            SIDocument? document = null;
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 stream = File.OpenRead(path);
 
                 // Loads in read only mode to keep file LastUpdate time unmodified
-                var doc = SIDocument.Load(stream);
+                document = SIDocument.Load(stream);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 _logger.LogInformation("Document has been successfully opened. Path: {path}", path);
 
-                var docViewModel = _documentViewModelFactory.CreateViewModelFor(doc, Path.GetFileNameWithoutExtension(path));
+                var docViewModel = _documentViewModelFactory.CreateViewModelFor(
+                    document,
+                    Path.GetFileNameWithoutExtension(path));
                 docViewModel.Path = path;
 
                 docViewModel.CheckFileSize();
 
+                document = null; // Ownership has moved to the returned view model.
                 return docViewModel;
             }
             catch (Exception exc)
             {
+                document?.Dispose();
                 stream?.Dispose();
 
                 if (exc is UnauthorizedAccessException && (new FileInfo(path).Attributes & FileAttributes.ReadOnly) > 0)
@@ -463,7 +502,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
                 throw;
             }
-        });
+        }, cancellationToken);
 
         var loaderViewModel = new DocumentLoaderViewModel(path);
         DocList.Add(loaderViewModel);
@@ -477,7 +516,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         catch (InvalidDataException exc)
         {
             _logger.LogError(exc, "File {path} open error: {error}", path, exc.Message);
-            ShowCorruptedPackageError(path);
+            await ShowCorruptedPackageErrorAsync(path);
             return null;
         }
         catch (Exception exc)
@@ -488,13 +527,16 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             }
 
             _logger.LogError(exc, "File {path} open error: {error}", path, exc.Message);
-            ShowError(exc, Resources.FileOpenError);
+            ReportError(exc, Resources.FileOpenError);
             return null;
         }
     }
 
-    private static void ShowCorruptedPackageError(string path)
+    private async Task ShowCorruptedPackageErrorAsync(string path)
     {
+        const string openAutosave = "open-autosave";
+        const string openLogs = "open-logs";
+
         var autoSavePath = Path.Combine(
             Path.GetTempPath(),
             AppSettings.ProductName,
@@ -502,25 +544,44 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             PathHelper.EncodePath(path));
 
         var logsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log");
-
         var title = new StringBuilder(Resources.PackageCorruptedHint);
-        var options = new List<UserOption>();
+        var options = new List<DialogOption>();
 
         if (Directory.Exists(autoSavePath))
         {
             title.Append(Resources.PackageCorruptedHintAutoSave);
-            options.Add(new UserOption(Resources.OpenAutosaveFolder, "", () => OpenFolder(autoSavePath)));
+            options.Add(new DialogOption(openAutosave, Resources.OpenAutosaveFolder));
         }
 
         if (Directory.Exists(logsPath))
         {
             title.Append(". ").Append(Resources.PackageCorruptedHintLogs);
-            options.Add(new UserOption(Resources.OpenLogsFolder, "", () => OpenFolder(logsPath)));
+            options.Add(new DialogOption(openLogs, Resources.OpenLogsFolder));
         }
 
-        options.Add(new UserOption(Resources.Close, "", () => { }));
+        options.Add(new DialogOption("close", Resources.Close));
+        var selectedOption = await _dialogService.SelectOptionAsync(title.ToString(), options);
 
-        PlatformManager.Instance.ShowSelectOptionDialog(title.ToString(), options.ToArray());
+        if (selectedOption == openAutosave)
+        {
+            OpenFolder(autoSavePath);
+        }
+        else if (selectedOption == openLogs)
+        {
+            OpenFolder(logsPath);
+        }
+    }
+
+    private void OpenFolder(string path)
+    {
+        try
+        {
+            Browser.Open(path);
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+        }
     }
 
     /// <summary>
@@ -548,7 +609,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         }
         catch (Exception exc)
         {
-            ShowError(exc);
+            ReportError(exc);
         }
     }
 
@@ -582,7 +643,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         }
         catch (Exception exc)
         {
-            ShowError(exc);
+            ReportError(exc);
         }
     }
 
@@ -621,7 +682,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         }
         catch (Exception exc)
         {
-            ShowError(exc);
+            ReportError(exc);
         }
     }
 
@@ -659,12 +720,12 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             }
             catch (Exception exc)
             {
-                ShowError(exc);
+                ReportError(exc);
             }
         }
     }
 
-    private async void SaveAll_Executed(object? arg)
+    private async Task SaveAll_ExecutedAsync(object? arg)
     {
         foreach (var item in DocList.ToArray())
         {
@@ -674,27 +735,45 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             }
             catch (Exception exc)
             {
-                ShowError(exc);
+                ReportError(exc);
             }
         }
-    }        
+    }
+
+    private void ReportError(Exception exception, string? message = null) =>
+        _ = ReportErrorAsync(exception, message);
+
+    private async Task ReportErrorAsync(Exception exception, string? message)
+    {
+        try
+        {
+            await _dialogService.ShowErrorAsync(BuildErrorMessage(exception, message));
+        }
+        catch (Exception dialogException)
+        {
+            _logger.LogError(dialogException, "Error dialog failed while reporting {Error}", exception.Message);
+        }
+    }
+
+    private static string BuildErrorMessage(Exception exception, string? message)
+    {
+        if (exception is UnsupportedPackageVersionException unsupportedVersionException)
+        {
+            return string.Format(
+                Resources.UnsupportedVersion,
+                unsupportedVersionException.ActualVersion,
+                unsupportedVersionException.MaximumSupportedVersion);
+        }
+
+        var fullMessage = message != null ? $"{message}: {exception.Message}" : exception.Message;
+        return fullMessage.Length > MaxMessageLength
+            ? string.Concat(fullMessage.AsSpan(0, MaxMessageLength), "…")
+            : fullMessage;
+    }
 
     public static void ShowError(Exception exc, string? message = null)
     {
-        if (exc is UnsupportedPackageVersionException ex)
-        {
-            PlatformManager.Instance.ShowExclamationMessage(string.Format(Resources.UnsupportedVersion, ex.ActualVersion, ex.MaximumSupportedVersion));
-            return;
-        }
-
-        var fullMessage = message != null ? $"{message}: {exc.Message}" : exc.Message;
-
-        if (fullMessage.Length > MaxMessageLength)
-        {
-            fullMessage = string.Concat(fullMessage.AsSpan(0, MaxMessageLength), "…");
-        }
-
-        PlatformManager.Instance.ShowExclamationMessage(fullMessage);
+        PlatformManager.Instance.ShowExclamationMessage(BuildErrorMessage(exc, message));
     }
 
     protected override void Dispose(bool disposing)

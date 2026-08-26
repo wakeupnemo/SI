@@ -25,13 +25,18 @@ internal static class TestHelper
     public static IServiceProvider CreateServiceProvider()
     {
         // Ensure PlatformManager.Instance is initialized before creating documents.
-        EnsurePlatformManager();
+        var platformManager = EnsurePlatformManager();
 
         var services = new ServiceCollection();
+        services.AddSIQuester();
         
         services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
         services.AddSingleton<IClipboardService, ClipboardServiceMock>();
         services.AddSingleton<IPackageTemplatesRepository, PackageTemplatesRepositoryMock>();
+        services.AddSingleton<IFilePickerService>(platformManager);
+        services.AddSingleton<IDialogService>(platformManager);
+        services.AddSingleton<IApplicationLifetimeService>(platformManager);
+        services.AddSingleton<IMediaMaterializationService>(platformManager);
         services.AddSingleton(Substitute.For<ISIStatisticsServiceClient>());
         services.AddSingleton<StorageContextViewModel>(sp => CreateStorageContextViewModel(sp));
         services.AddSingleton<IDocumentViewModelFactory, TestDocumentViewModelFactory>();
@@ -42,13 +47,13 @@ internal static class TestHelper
     /// <summary>
     /// Initializes PlatformManager.Instance and AppSettings.Default if they have not been set yet.
     /// </summary>
-    public static void EnsurePlatformManager()
+    public static PlatformManagerMock EnsurePlatformManager()
     {
-        if (PlatformManager.Instance == null)
+        if (PlatformManager.Instance is not PlatformManagerMock)
         {
             lock (_platformManagerLock)
             {
-                if (PlatformManager.Instance == null)
+                if (PlatformManager.Instance is not PlatformManagerMock)
                 {
                     _ = new PlatformManagerMock();
                 }
@@ -56,6 +61,7 @@ internal static class TestHelper
         }
 
         AppSettings.Default ??= new AppSettings();
+        return (PlatformManagerMock)PlatformManager.Instance;
     }
 
     private static readonly object _platformManagerLock = new();

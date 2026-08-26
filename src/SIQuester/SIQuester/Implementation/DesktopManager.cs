@@ -33,7 +33,14 @@ namespace SIQuester.Implementation;
 /// <summary>
 /// Implements SIQuester desktop framework logic.
 /// </summary>
-internal sealed class DesktopManager : PlatformManager, IPlatformService, IDisposable
+internal sealed class DesktopManager :
+    PlatformManager,
+    IPlatformService,
+    IFilePickerService,
+    IDialogService,
+    IApplicationLifetimeService,
+    IMediaMaterializationService,
+    IDisposable
 {
     internal const string STR_Definition = "{0}: {1}";
     internal const string STR_ExtendedDefinition = "{0}: {1} ({2})";
@@ -416,6 +423,8 @@ internal sealed class DesktopManager : PlatformManager, IPlatformService, IDispo
             }
         }
     }
+
+    void IMediaMaterializationService.ReleaseMaterializedMedia(IEnumerable<string> mediaNames) => ClearMedia(mediaNames);
 
     public override string? AskText(string title, bool multiline = false)
     {
@@ -1028,6 +1037,106 @@ internal sealed class DesktopManager : PlatformManager, IPlatformService, IDispo
     }
 
     public override void Exit() => Application.Current.MainWindow?.Close();
+
+    public ValueTask<IReadOnlyList<PickedFile>> PickOpenFilesAsync(
+        OpenFilePickerRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var dialog = new OpenFileDialog
+        {
+            Title = request.Title,
+            Multiselect = request.AllowMultiple,
+            Filter = BuildFilePickerFilter(request.FileTypes)
+        };
+
+        var result = dialog.ShowDialog();
+        IReadOnlyList<PickedFile> files = result == true
+            ? dialog.FileNames.Select(path => PickedFile.FromLocalPath(path)).ToArray()
+            : Array.Empty<PickedFile>();
+
+        return ValueTask.FromResult(files);
+    }
+
+    public ValueTask<PickedFile?> PickSaveFileAsync(
+        SaveFilePickerRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        string? fileName = request.SuggestedFileName;
+        var filter = request.FileTypes.ToDictionary(
+            fileType => fileType.Name,
+            fileType => string.Join(';', fileType.Extensions));
+
+        var selected = ShowSaveUI(request.Title, request.DefaultExtension, filter, ref fileName);
+        PickedFile? pickedFile = selected && !string.IsNullOrWhiteSpace(fileName)
+            ? PickedFile.FromLocalPath(fileName, writable: true)
+            : null;
+        return ValueTask.FromResult(pickedFile);
+    }
+
+    public ValueTask<SaveChangesDecision> ConfirmSaveChangesAsync(
+        string message,
+        bool allowCancel,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = allowCancel ? ConfirmWithCancel(message) : Confirm(message);
+
+        return ValueTask.FromResult(result switch
+        {
+            true => SaveChangesDecision.Save,
+            false => SaveChangesDecision.Discard,
+            null => SaveChangesDecision.Cancel,
+        });
+    }
+
+    ValueTask<bool> IDialogService.ConfirmAsync(string message, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(Confirm(message));
+    }
+
+    public ValueTask ShowMessageAsync(string message, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Inform(message);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask ShowErrorAsync(string message, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ShowErrorMessage(message);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<string?> SelectOptionAsync(
+        string message,
+        IReadOnlyList<DialogOption> options,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        string? selectedOption = null;
+        ShowSelectOptionDialog(
+            message,
+            options.Select(option => new UserOption(
+                option.Label,
+                option.Description ?? string.Empty,
+                () => selectedOption = option.Id)).ToArray());
+        return ValueTask.FromResult(selectedOption);
+    }
+
+    public void RequestExit() => Exit();
+
+    private static string BuildFilePickerFilter(IReadOnlyList<FileTypeFilter> fileTypes) => string.Join(
+        '|',
+        fileTypes.SelectMany(fileType => new[]
+        {
+            fileType.Name,
+            string.Join(';', fileType.Extensions.Select(extension => $"*.{extension.TrimStart('.')}"))
+        }));
 
     public override void CopyInfo(object info) => Clipboard.SetText(JsonSerializer.Serialize(info));
 

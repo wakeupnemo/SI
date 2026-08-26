@@ -1,9 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Notions;
-using Polly;
-using Polly.Retry;
 using SIPackages;
-using SIPackages.Containers;
 using SIPackages.Core;
 using SIPackages.Models;
 using SIQuester.Model;
@@ -1406,6 +1403,10 @@ public sealed class QDocument : WorkspaceViewModel
 
     private readonly IPackageTemplatesRepository _packageTemplatesRepository;
     private readonly IDocumentViewModelFactory _documentViewModelFactory;
+    private readonly IFilePickerService _filePickerService;
+    private readonly IDialogService _dialogService;
+    private readonly IDocumentPersistenceService _documentPersistenceService;
+    private readonly IMediaMaterializationService _mediaMaterializationService;
 
     public QDocument(
         SIDocument document,
@@ -1414,7 +1415,11 @@ public sealed class QDocument : WorkspaceViewModel
         IDocumentViewModelFactory documentViewModelFactory,
         IClipboardService clipboardService,
         ILoggerFactory loggerFactory,
-        ISIStatisticsServiceClient statisticsClient)
+        ISIStatisticsServiceClient statisticsClient,
+        IFilePickerService filePickerService,
+        IDialogService dialogService,
+        IDocumentPersistenceService documentPersistenceService,
+        IMediaMaterializationService mediaMaterializationService)
     {
         Lock = new Lock(document.Package.Name);
 
@@ -1426,6 +1431,10 @@ public sealed class QDocument : WorkspaceViewModel
         _clipboardService = clipboardService;
         _loggerFactory = loggerFactory;
         _statisticsClient = statisticsClient;
+        _filePickerService = filePickerService;
+        _dialogService = dialogService;
+        _documentPersistenceService = documentPersistenceService;
+        _mediaMaterializationService = mediaMaterializationService;
         _logger = loggerFactory.CreateLogger<QDocument>();
 
         StorageContext = storageContextViewModel;
@@ -2528,161 +2537,62 @@ public sealed class QDocument : WorkspaceViewModel
         ActiveNode = infoOwner;
     }
 
-    private static readonly RetryPolicy Retry = Policy
-        .Handle<IOException>(ex => ex.Message.Contains("The process cannot access the file because it is being used by another process"))
-        .WaitAndRetry(3, retryAttempt => TimeSpan.FromMilliseconds(500 * retryAttempt));
-
-    internal ValueTask SaveInternalAsync() =>
-         Lock.WithLockAsync(async () =>
-         {
-             // 1. Saving at temporary path to validate saved file first
-             var tempPath = FileHelper.GenerateUniqueFilePath(System.IO.Path.ChangeExtension(_path, "tmp"));
-
-             FileStream tempStream;
-
-             try
-             {
-                 tempStream = File.Open(tempPath, FileMode.Create, FileAccess.ReadWrite);
-             }
-             catch (FileNotFoundException ex)
-             {
-                 throw new Exception(Resources.CannotCreateTemporaryFile, ex);
-             }
-
-             using (var tempDoc = Document.SaveAs(tempStream, false))
-             {
-                 if (Images.HasPendingChanges)
-                 {
-                     await Images.CommitAsync(tempDoc.Images);
-                 }
-
-                 if (Audio.HasPendingChanges)
-                 {
-                     await Audio.CommitAsync(tempDoc.Audio);
-                 }
-
-                 if (Video.HasPendingChanges)
-                 {
-                     await Video.CommitAsync(tempDoc.Video);
-                 }
-
-                 if (Html.HasPendingChanges)
-                 {
-                     await Html.CommitAsync(tempDoc.Html);
-                 }
-             }
-
-             File.SetAttributes(tempPath, File.GetAttributes(tempPath) | FileAttributes.Hidden);
-
-             _logger.LogInformation("SaveInternalAsync: document has been saved to temp path: {path}", tempPath);
-
-             // 2. Checking saved document
-             var testStream = File.OpenRead(tempPath);
-             using (SIDocument.Load(testStream)) { }
-
-             // 3. Test ok, overwriting current file and switching to it. Underlying _path stream is closed
-             Document.UpdateContainer(EmptySIPackageContainer.Instance); // reset source temporarily
-
-             _logger.LogInformation("SaveInternalAsync: document is ready to be copied to final path: {path}", _path);
-
-             try
-             {
-                 try
-                 {
-                     Retry.Execute(() => File.Replace(tempPath, _path, null)); // It is possible to provide backup file on save here
-                 }
-                 catch (IOException exc) when (exc.Message.Contains("The process cannot access the file because it is being used by another process"))
-                 {
-                     _logger.LogWarning(exc, "SaveInternalAsync error. Switching to old saving method: {error}", exc.Message);
-
-                     // Fallback to old unsafe method
-                     File.Copy(tempPath, _path, true); // File.Copy is not atomic and could corrupt target file
-                     File.Delete(tempPath);
-                 }
-                 catch (UnauthorizedAccessException exc)
-                 {
-                     _logger.LogWarning(exc, "SaveInternalAsync error. Switching to old saving method: {error}", exc.Message);
-
-                     // Fallback to old unsafe method
-                     File.Copy(tempPath, _path, true); // File.Copy is not atomic and could corrupt target file
-                     File.Delete(tempPath);
-                 }
-
-                 _logger.LogInformation("SaveInternalAsync: document has been validated and saved to final path: {path}", _path);
-
-                 Changed = false;
-                 ClearTempFolder();
-                 CheckFileSize();
-             }
-             finally
-             {
-                 // 4. Opening new file
-                 var stream = File.OpenRead(_path);
-                 Document.ResetTo(stream);
-
-                 _logger.LogInformation("SaveInternalAsync: document has been reopened: {path}", _path);
-             }
-         });
-
-    internal ValueTask SaveAsInternalAsync(string path) =>
+    internal ValueTask SaveInternalAsync(CancellationToken cancellationToken = default) =>
         Lock.WithLockAsync(async () =>
         {
-            FileStream? stream = null;
+            await _documentPersistenceService.SaveAsync(this, _path, cancellationToken);
+            Changed = false;
+            ClearTempFolder();
+            CheckFileSize();
+        }, cancellationToken);
 
-            try
-            {
-                stream = File.Open(path, FileMode.Create, FileAccess.ReadWrite);
+    internal ValueTask SaveAsInternalAsync(string path, CancellationToken cancellationToken = default) =>
+        Lock.WithLockAsync(async () =>
+        {
+            var fullPath = System.IO.Path.GetFullPath(path);
+            await _documentPersistenceService.SaveAsync(this, fullPath, cancellationToken);
 
-                using (var tempDoc = Document.SaveAs(stream, false))
-                {
-                    if (Images.HasPendingChanges)
-                    {
-                        await Images.CommitAsync(tempDoc.Images);
-                    }
+            Path = fullPath;
+            FileName = System.IO.Path.GetFileNameWithoutExtension(fullPath);
+            Changed = false;
+            ClearTempFolder();
+            CheckFileSize();
 
-                    if (Audio.HasPendingChanges)
-                    {
-                        await Audio.CommitAsync(tempDoc.Audio);
-                    }
+            _logger.LogInformation("Document has been safely saved as {path}", fullPath);
+        }, cancellationToken);
 
-                    if (Video.HasPendingChanges)
-                    {
-                        await Video.CommitAsync(tempDoc.Video);
-                    }
+    internal async ValueTask ApplyPendingMediaChangesAsync(
+        SIDocument targetDocument,
+        CancellationToken cancellationToken)
+    {
+        if (Images.HasPendingChanges)
+        {
+            await Images.ApplyToAsync(targetDocument.Images, cancellationToken: cancellationToken);
+        }
 
-                    if (Html.HasPendingChanges)
-                    {
-                        await Html.CommitAsync(tempDoc.Html);
-                    }
-                }
+        if (Audio.HasPendingChanges)
+        {
+            await Audio.ApplyToAsync(targetDocument.Audio, cancellationToken: cancellationToken);
+        }
 
-                _logger.LogInformation("SaveAsInternalAsync: document has been saved as {path}", path);
-                ClearTempFolder();
+        if (Video.HasPendingChanges)
+        {
+            await Video.ApplyToAsync(targetDocument.Video, cancellationToken: cancellationToken);
+        }
 
-                Path = path;
-                Changed = false;
+        if (Html.HasPendingChanges)
+        {
+            await Html.ApplyToAsync(targetDocument.Html, cancellationToken: cancellationToken);
+        }
+    }
 
-                FileName = System.IO.Path.GetFileNameWithoutExtension(_path);
-
-                var newStream = File.OpenRead(_path);
-
-                try
-                {
-                    Document.ResetTo(newStream);
-                    CheckFileSize();
-                }
-                catch (Exception)
-                {
-                    newStream.Dispose();
-                    throw;
-                }
-            }
-            catch (Exception)
-            {
-                stream?.Dispose();
-                throw;
-            }
-        });
+    internal void AcceptPendingMediaChanges()
+    {
+        Images.AcceptPendingChanges();
+        Audio.AcceptPendingChanges();
+        Video.AcceptPendingChanges();
+        Html.AcceptPendingChanges();
+    }
 
     public void CheckFileSize() => ErrorMessage = GetFileSizeErrorMessage();
 
@@ -2733,17 +2643,19 @@ public sealed class QDocument : WorkspaceViewModel
     {
         try
         {
-            string? filename = Document.Package.Name;
+            var pickedFile = await _filePickerService.PickSaveFileAsync(new SaveFilePickerRequest(
+                null,
+                Document.Package.Name,
+                SIExtension,
+                new[] { new FileTypeFilter(Resources.SIQuestions, new[] { SIExtension }) }));
 
-            var filter = new Dictionary<string, string>
+            if (pickedFile != null)
             {
-                [Resources.SIQuestions] = SIExtension
-            };
+                var localPath = pickedFile.LocalPath
+                    ?? throw new NotSupportedException(Resources.CannotCreateTemporaryFile);
 
-            if (PlatformManager.Instance.ShowSaveUI(null, SIExtension, filter, ref filename))
-            {
-                await SaveAsInternalAsync(filename);
-                AppSettings.Default.History.Add(filename);
+                await SaveAsInternalAsync(localPath);
+                AppSettings.Default.History.Add(localPath);
             }
         }
         catch (Exception exc)
@@ -2828,16 +2740,14 @@ public sealed class QDocument : WorkspaceViewModel
             {
                 var message = string.Format(Resources.DoYouWantToSave, FileName);
 
-                var result = arg == null ?
-                    PlatformManager.Instance.ConfirmWithCancel(message)
-                    : PlatformManager.Instance.Confirm(message);
+                var decision = await _dialogService.ConfirmSaveChangesAsync(message, allowCancel: arg == null);
 
-                if (!result.HasValue)
+                if (decision == SaveChangesDecision.Cancel)
                 {
                     return;
                 }
 
-                if (result.Value)
+                if (decision == SaveChangesDecision.Save)
                 {
                     try
                     {
@@ -3637,12 +3547,16 @@ public sealed class QDocument : WorkspaceViewModel
             return;
         }
 
-        Document.Dispose();
+        _mediaMaterializationService.ReleaseMaterializedMedia(Document.Images);
+        _mediaMaterializationService.ReleaseMaterializedMedia(Document.Audio);
+        _mediaMaterializationService.ReleaseMaterializedMedia(Document.Video);
+        _mediaMaterializationService.ReleaseMaterializedMedia(Document.Html);
 
-        PlatformManager.Instance.ClearMedia(Document.Images);
-        PlatformManager.Instance.ClearMedia(Document.Audio);
-        PlatformManager.Instance.ClearMedia(Document.Video);
-        PlatformManager.Instance.ClearMedia(Document.Html);
+        Images.Dispose();
+        Audio.Dispose();
+        Video.Dispose();
+        Html.Dispose();
+        Document.Dispose();
 
         _logger.LogInformation("Document closed: {path}", _path);
 

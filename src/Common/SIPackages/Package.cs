@@ -323,6 +323,10 @@ public sealed class Package : InfoOwner, IEquatable<Package>
                         case "global":
                             Global = new GlobalData();
                             Global.ReadXml(reader, limits);
+                            // GlobalData leaves the reader positioned on the next node.
+                            // Process that node before advancing again or the following
+                            // package section (info/files/rounds) is silently skipped.
+                            read = false;
                             break;
 
                         case "files":

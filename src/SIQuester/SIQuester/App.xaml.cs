@@ -147,8 +147,21 @@ public partial class App : Application
             var documentViewModelFactory = _host.Services.GetRequiredService<IDocumentViewModelFactory>();
             var loggerFactory = _host.Services.GetRequiredService<ILoggerFactory>();
             var platformService = _host.Services.GetRequiredService<IPlatformService>();
+            var filePickerService = _host.Services.GetRequiredService<IFilePickerService>();
+            var dialogService = _host.Services.GetRequiredService<IDialogService>();
+            var applicationLifetimeService = _host.Services.GetRequiredService<IApplicationLifetimeService>();
 
-            _mainViewModel = new MainViewModel(e.Args, options.Value, clipboardService, _host.Services, platformService, documentViewModelFactory, loggerFactory);
+            _mainViewModel = new MainViewModel(
+                e.Args,
+                options.Value,
+                clipboardService,
+                _host.Services,
+                platformService,
+                documentViewModelFactory,
+                loggerFactory,
+                filePickerService,
+                dialogService,
+                applicationLifetimeService);
             DocumentCollectionController.AttachTo(_mainViewModel);
 
             var storageContextViewModel = _host.Services.GetRequiredService<StorageContextViewModel>();
@@ -226,7 +239,11 @@ public partial class App : Application
         services.Configure<AppOptions>(ctx.Configuration.GetSection(AppOptions.ConfigurationSectionName));
 
         services.AddSingleton<IClipboardService, ClipboardService>();
-        services.AddSingleton<IPlatformService, DesktopManager>();
+        services.AddSingleton<IPlatformService>(_manager);
+        services.AddSingleton<IFilePickerService>(_manager);
+        services.AddSingleton<IDialogService>(_manager);
+        services.AddSingleton<IApplicationLifetimeService>(_manager);
+        services.AddSingleton<IMediaMaterializationService>(_manager);
 
         services.AddSIQuester();
     }

@@ -23,6 +23,61 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
     public AnswersViewModel Wrong { get; private set; }
 
+    /// <summary>
+    /// Gets or sets the first plain question text item without replacing other scenario content.
+    /// </summary>
+    public string QuestionText
+    {
+        get => GetPrimaryQuestionTextItem()?.Value ?? string.Empty;
+        set
+        {
+            if (Model.Script != null)
+            {
+                SetScriptQuestionText(value);
+                return;
+            }
+
+            var textItem = GetPrimaryQuestionTextItem();
+
+            if (textItem == null)
+            {
+                using var change = OwnerTheme?.OwnerRound?.OwnerPackage?.Document?.OperationsManager.BeginComplexChange();
+                var content = EnsureLegacyQuestionContent();
+                content.Add(new ContentItemViewModel(new ContentItem
+                {
+                    Type = ContentTypes.Text,
+                    Value = value,
+                    Placement = ContentPlacements.Screen,
+                }) { Owner = content });
+                change?.Commit();
+            }
+            else if (textItem.Value != value)
+            {
+                textItem.Value = value;
+            }
+
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the first right answer while preserving additional answers.
+    /// </summary>
+    public string PrimaryRightAnswer
+    {
+        get => Right.FirstOrDefault() ?? string.Empty;
+        set => SetPrimaryAnswer(Right, value, nameof(PrimaryRightAnswer));
+    }
+
+    /// <summary>
+    /// Gets or sets the first wrong answer while preserving additional answers.
+    /// </summary>
+    public string PrimaryWrongAnswer
+    {
+        get => Wrong.FirstOrDefault() ?? string.Empty;
+        set => SetPrimaryAnswer(Wrong, value, nameof(PrimaryWrongAnswer));
+    }
+
     public event Action<QuestionViewModel, string>? TypeNameChanged;
 
     public string TypeName
@@ -272,8 +327,221 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         SwitchEmpty = new SimpleCommand(SwitchEmpty_Executed);
         SetAnswerTime = new SimpleCommand(SetAnswerTime_Executed);
 
+        Right.CollectionChanged += Right_CollectionChanged;
         Wrong.CollectionChanged += Wrong_CollectionChanged;
     }
+
+    private ContentItem? GetPrimaryQuestionTextItem()
+    {
+        if (Model.Script != null)
+        {
+            foreach (var step in Model.Script.Steps)
+            {
+                if (step.Type == StepTypes.AskAnswer)
+                {
+                    break;
+                }
+
+                if (step.Type == StepTypes.ShowContent
+                    && step.Parameters.TryGetValue(StepParameterNames.Content, out var content)
+                    && content.ContentValue != null)
+                {
+                    var textItem = content.ContentValue.FirstOrDefault(item => item.Type == ContentTypes.Text);
+
+                    if (textItem != null)
+                    {
+                        return textItem;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        if (!Parameters.TryGetValue(QuestionParameterNames.Question, out var questionParameter)
+            || questionParameter.ContentValue == null)
+        {
+            return null;
+        }
+
+        return questionParameter.ContentValue
+            .Select(item => item.Model)
+            .FirstOrDefault(item => item.Type == ContentTypes.Text);
+    }
+
+    private ContentItemsViewModel EnsureLegacyQuestionContent()
+    {
+        if (!Parameters.TryGetValue(QuestionParameterNames.Question, out var questionParameter)
+            || questionParameter.ContentValue == null)
+        {
+            questionParameter = new StepParameterViewModel(this, new StepParameter
+            {
+                Type = StepParameterTypes.Content,
+                ContentValue = new List<ContentItem>(),
+            });
+            Parameters.AddParameter(QuestionParameterNames.Question, questionParameter);
+        }
+
+        return questionParameter.ContentValue!;
+    }
+
+    private void SetScriptQuestionText(string value)
+    {
+        var textItem = GetPrimaryQuestionTextItem();
+
+        if (textItem != null)
+        {
+            if (textItem.Value == value)
+            {
+                return;
+            }
+
+            var oldValue = textItem.Value;
+            textItem.Value = value;
+            RecordQuestionTextChange(new QuestionTextValueChange(this, textItem, oldValue));
+            OnPropertyChanged(nameof(QuestionText));
+            return;
+        }
+
+        var script = Model.Script!;
+        var step = script.Steps.FirstOrDefault(item => item.Type == StepTypes.ShowContent);
+        var stepCreated = step == null;
+        var stepIndex = stepCreated ? 0 : script.Steps.IndexOf(step!);
+        step ??= new Step { Type = StepTypes.ShowContent };
+
+        if (stepCreated)
+        {
+            script.Steps.Insert(stepIndex, step);
+        }
+
+        step.Parameters.TryGetValue(StepParameterNames.Content, out var oldParameter);
+        var contentParameter = oldParameter;
+        var parameterReplaced = contentParameter?.ContentValue == null;
+
+        if (parameterReplaced)
+        {
+            contentParameter = new StepParameter
+            {
+                Type = StepParameterTypes.Content,
+                ContentValue = new List<ContentItem>(),
+            };
+            step.Parameters[StepParameterNames.Content] = contentParameter;
+        }
+
+        var content = contentParameter!.ContentValue!;
+        var addedItem = new ContentItem
+        {
+            Type = ContentTypes.Text,
+            Value = value,
+            Placement = ContentPlacements.Screen,
+        };
+        var itemIndex = content.Count;
+        content.Add(addedItem);
+
+        RecordQuestionTextChange(new QuestionTextAdditionChange(
+            this,
+            script,
+            step,
+            stepIndex,
+            stepCreated,
+            oldParameter,
+            parameterReplaced ? contentParameter : null,
+            content,
+            addedItem,
+            itemIndex));
+        OnPropertyChanged(nameof(QuestionText));
+    }
+
+    private void RecordQuestionTextChange(IChange change) =>
+        OwnerTheme?.OwnerRound?.OwnerPackage?.Document?.OperationsManager.AddChange(change);
+
+    private void NotifyQuestionTextChanged() => OnPropertyChanged(nameof(QuestionText));
+
+    private sealed class QuestionTextValueChange(
+        QuestionViewModel owner,
+        ContentItem item,
+        string value) : IChange
+    {
+        private string _value = value;
+
+        public void Undo()
+        {
+            (_value, item.Value) = (item.Value, _value);
+            owner.NotifyQuestionTextChanged();
+        }
+
+        public void Redo() => Undo();
+    }
+
+    private sealed class QuestionTextAdditionChange(
+        QuestionViewModel owner,
+        Script script,
+        Step step,
+        int stepIndex,
+        bool stepCreated,
+        StepParameter? oldParameter,
+        StepParameter? newParameter,
+        IList<ContentItem> content,
+        ContentItem item,
+        int itemIndex) : IChange
+    {
+        public void Undo()
+        {
+            content.Remove(item);
+
+            if (newParameter != null)
+            {
+                if (oldParameter == null)
+                {
+                    step.Parameters.Remove(StepParameterNames.Content);
+                }
+                else
+                {
+                    step.Parameters[StepParameterNames.Content] = oldParameter;
+                }
+            }
+
+            if (stepCreated)
+            {
+                script.Steps.Remove(step);
+            }
+
+            owner.NotifyQuestionTextChanged();
+        }
+
+        public void Redo()
+        {
+            if (stepCreated && !script.Steps.Contains(step))
+            {
+                script.Steps.Insert(Math.Min(stepIndex, script.Steps.Count), step);
+            }
+
+            if (newParameter != null)
+            {
+                step.Parameters[StepParameterNames.Content] = newParameter;
+            }
+
+            content.Insert(Math.Min(itemIndex, content.Count), item);
+            owner.NotifyQuestionTextChanged();
+        }
+    }
+
+    private void SetPrimaryAnswer(AnswersViewModel answers, string value, string propertyName)
+    {
+        if (answers.Count == 0)
+        {
+            answers.Add(value);
+        }
+        else if (answers[0] != value)
+        {
+            answers[0] = value;
+        }
+
+        OnPropertyChanged(propertyName);
+    }
+
+    private void Right_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        OnPropertyChanged(nameof(PrimaryRightAnswer));
 
     private void Add_Executed(object? arg)
     {
@@ -290,8 +558,11 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         AnswerDuration ??= DefaultAnswerDurationSeconds;
     }
 
-    private void Wrong_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+    private void Wrong_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
         AddWrongAnswers.CanBeExecuted = Model.Wrong.Count == 0;
+        OnPropertyChanged(nameof(PrimaryWrongAnswer));
+    }
 
     private void AddComplexAnswer_Executed(object? arg)
     {

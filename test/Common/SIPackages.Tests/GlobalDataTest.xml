@@ -23,6 +23,10 @@
       </Source>
     </Sources>
   </global>
+  <info>
+    <comments>Metadata after global</comments>
+    <showmanComments>Showman metadata after global</showmanComments>
+  </info>
   <rounds>
     <round name="Test Round">
       <themes>

@@ -12,7 +12,12 @@ namespace SIQuester.ViewModel.Tests.Mocks;
 /// <summary>
 /// Test implementation of PlatformManager that does nothing.
 /// </summary>
-internal sealed class PlatformManagerMock : PlatformManager
+internal sealed class PlatformManagerMock :
+    PlatformManager,
+    IFilePickerService,
+    IDialogService,
+    IApplicationLifetimeService,
+    IMediaMaterializationService
 {
     public override string[] FontFamilies => Array.Empty<string>();
 
@@ -87,6 +92,39 @@ internal sealed class PlatformManagerMock : PlatformManager
     public override Dictionary<string, JsonElement>? PasteInfo() => null;
 
     public override IDisposable ShowProgressDialog() => new NullDisposable();
+
+    public ValueTask<IReadOnlyList<PickedFile>> PickOpenFilesAsync(
+        OpenFilePickerRequest request,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<IReadOnlyList<PickedFile>>(Array.Empty<PickedFile>());
+
+    public ValueTask<PickedFile?> PickSaveFileAsync(
+        SaveFilePickerRequest request,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<PickedFile?>(null);
+
+    public ValueTask<SaveChangesDecision> ConfirmSaveChangesAsync(
+        string message,
+        bool allowCancel,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(SaveChangesDecision.Save);
+
+    ValueTask<bool> IDialogService.ConfirmAsync(string message, CancellationToken cancellationToken) =>
+        ValueTask.FromResult(true);
+
+    public ValueTask ShowMessageAsync(string message, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+
+    public ValueTask ShowErrorAsync(string message, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+
+    public ValueTask<string?> SelectOptionAsync(
+        string message,
+        IReadOnlyList<DialogOption> options,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<string?>(options.LastOrDefault()?.Id);
+
+    public void RequestExit() { }
+
+    public void ReleaseMaterializedMedia(IEnumerable<string> mediaNames) { }
 
     private sealed class NullDisposable : IDisposable
     {

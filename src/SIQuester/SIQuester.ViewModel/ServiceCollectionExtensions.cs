@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPackageTemplatesRepository, PackageTemplatesRepository>();
         services.AddSingleton<StorageViewModel>();
         services.AddSingleton<StorageContextViewModel>();
+        services.AddSingleton<IDocumentPersistenceService, SafeDocumentPersistenceService>();
         services.AddSingleton<IDocumentViewModelFactory, DocumentViewModelFactory>();
 
         return services;

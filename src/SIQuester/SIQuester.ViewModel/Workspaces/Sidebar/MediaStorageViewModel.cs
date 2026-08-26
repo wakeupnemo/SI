@@ -582,7 +582,10 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         HasPendingChanges = false;
     }
 
-    public async Task ApplyToAsync(DataCollection collection, bool final = false)
+    public async Task ApplyToAsync(
+        DataCollection collection,
+        bool final = false,
+        CancellationToken cancellationToken = default)
     {
         foreach (var item in _removed.ToArray())
         {
@@ -597,19 +600,19 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             {
                 using (fs)
                 {
-                    await collection.AddFileAsync(item.Model.Name, fs);
+                    await collection.AddFileAsync(item.Model.Name, fs, cancellationToken);
                 }
             }
             else
             {
-                await collection.AddFileAsync(item.Model.Name, fs);
+                await collection.AddFileAsync(item.Model.Name, fs, cancellationToken);
                 fs.Position = 0;
             }
         }
 
         foreach (var item in _renamed.ToArray())
         {
-            await collection.RenameFileAsync(item.Item1, item.Item2);
+            await collection.RenameFileAsync(item.Item1, item.Item2, cancellationToken);
         }
 
         if (final)
@@ -618,6 +621,37 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             _removed.Clear();
             _renamed.Clear();
         }
+    }
+
+    /// <summary>
+    /// Accepts media changes after a fully validated package has been committed.
+    /// </summary>
+    internal void AcceptPendingChanges()
+    {
+        foreach (var item in _removed)
+        {
+            item.Model.PropertyChanged -= Named_PropertyChanged;
+            item.PropertyChanged -= MediaItem_PropertyChanged;
+        }
+
+        foreach (var streamInfo in _removedStreams.Values)
+        {
+            streamInfo.Item2.Dispose();
+        }
+
+        foreach (var item in _added)
+        {
+            if (_streams.Remove(item, out var streamInfo))
+            {
+                streamInfo.Item2.Dispose();
+            }
+        }
+
+        _removedStreams.Clear();
+        _added.Clear();
+        _removed.Clear();
+        _renamed.Clear();
+        HasPendingChanges = false;
     }
 
     private void AddItem_Executed(object? arg)
@@ -935,5 +969,24 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             // If all else fails, return 0
             return 0;
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            foreach (var stream in _streams.Values
+                .Concat(_removedStreams.Values)
+                .Select(value => value.Item2)
+                .Distinct())
+            {
+                stream.Dispose();
+            }
+
+            _streams.Clear();
+            _removedStreams.Clear();
+        }
+
+        base.Dispose(disposing);
     }
 }

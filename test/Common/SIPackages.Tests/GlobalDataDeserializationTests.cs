@@ -111,4 +111,20 @@ public sealed class GlobalDataDeserializationTests
         // Assert - In version 5.0+, Sources property should reference Package.Global.Sources
         Assert.That(document.Sources, Is.SameAs(document.Package.Global.Sources));
     }
+
+    [Test]
+    public void LoadXml_ContentAfterGlobal_IsDeserializedWithoutSkippingFirstSection()
+    {
+        using var xmlStream = File.OpenRead("GlobalDataTest.xml");
+        using var document = SIDocument.LoadXml(xmlStream);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.Package.Info.Comments.Text, Is.EqualTo("Metadata after global"));
+            Assert.That(document.Package.Info.ShowmanComments?.Text, Is.EqualTo("Showman metadata after global"));
+            Assert.That(document.Package.Rounds, Has.Count.EqualTo(1));
+            Assert.That(document.Package.Rounds[0].Themes, Has.Count.EqualTo(1));
+            Assert.That(document.Package.Rounds[0].Themes[0].Questions, Has.Count.EqualTo(1));
+        });
+    }
 }

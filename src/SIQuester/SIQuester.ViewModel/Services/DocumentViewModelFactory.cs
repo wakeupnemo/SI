@@ -14,19 +14,31 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
     private readonly IClipboardService _clipboardService;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISIStatisticsServiceClient _statisticsClient;
+    private readonly IFilePickerService _filePickerService;
+    private readonly IDialogService _dialogService;
+    private readonly IDocumentPersistenceService _documentPersistenceService;
+    private readonly IMediaMaterializationService _mediaMaterializationService;
 
     public DocumentViewModelFactory(
         StorageContextViewModel storageContextViewModel,
         IPackageTemplatesRepository packageTemplatesRepository,
         IClipboardService clipboardService,
         ILoggerFactory loggerFactory,
-        ISIStatisticsServiceClient statisticsClient)
+        ISIStatisticsServiceClient statisticsClient,
+        IFilePickerService filePickerService,
+        IDialogService dialogService,
+        IDocumentPersistenceService documentPersistenceService,
+        IMediaMaterializationService mediaMaterializationService)
     {
         _storageContextViewModel = storageContextViewModel;
         _packageTemplatesRepository = packageTemplatesRepository;
         _clipboardService = clipboardService;
         _loggerFactory = loggerFactory;
         _statisticsClient = statisticsClient;
+        _filePickerService = filePickerService;
+        _dialogService = dialogService;
+        _documentPersistenceService = documentPersistenceService;
+        _mediaMaterializationService = mediaMaterializationService;
     }
 
     public QDocument CreateViewModelFor(SIDocument document, string? fileName = null) => new(
@@ -36,7 +48,11 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         this,
         _clipboardService,
         _loggerFactory,
-        _statisticsClient)
+        _statisticsClient,
+        _filePickerService,
+        _dialogService,
+        _documentPersistenceService,
+        _mediaMaterializationService)
     {
         FileName = fileName ?? document.Package.Name
     };
