@@ -1,0 +1,20 @@
+<Window
+    x:Class="SIQuester.Avalonia.Views.OptionDialogWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    Width="560"
+    SizeToContent="Height"
+    CanResize="False"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False"
+    Title="{x:Static loc:UiStrings.AppTitle}">
+  <Grid Margin="{StaticResource Space24Thickness}" RowDefinitions="Auto,Auto">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" FontSize="{StaticResource TypographyBodyLarge}" MaxWidth="512" />
+    <StackPanel
+        x:Name="OptionsPanel"
+        Grid.Row="1"
+        Spacing="{StaticResource Space8}"
+        Margin="{StaticResource DialogButtonMargin}" />
+  </Grid>
+</Window>

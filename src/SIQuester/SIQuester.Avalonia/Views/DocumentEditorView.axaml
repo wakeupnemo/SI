@@ -1,0 +1,91 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.DocumentEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:QDocument">
+  <Grid ColumnDefinitions="280,5,*,5,300" RowDefinitions="*,Auto">
+    <Border Grid.Column="0" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Navigator}" />
+        <TreeView
+            x:Name="Navigator"
+            Grid.Row="1"
+            ItemsSource="{Binding Packages}"
+            SelectedItem="{Binding ActiveNode, Mode=OneWay}"
+            SelectionChanged="Navigator_SelectionChanged"
+            AutomationProperties.Name="{x:Static loc:UiStrings.Navigator}">
+          <TreeView.Styles>
+            <Style Selector="TreeViewItem" x:DataType="vm:IItemViewModel">
+              <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            </Style>
+          </TreeView.Styles>
+          <TreeView.DataTemplates>
+            <TreeDataTemplate DataType="{x:Type vm:PackageViewModel}" ItemsSource="{Binding Rounds}">
+              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+            </TreeDataTemplate>
+            <TreeDataTemplate DataType="{x:Type vm:RoundViewModel}" ItemsSource="{Binding Themes}">
+              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+            </TreeDataTemplate>
+            <TreeDataTemplate DataType="{x:Type vm:ThemeViewModel}" ItemsSource="{Binding Questions}">
+              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+            </TreeDataTemplate>
+            <TreeDataTemplate DataType="{x:Type vm:QuestionViewModel}">
+              <TextBlock Text="{Binding Model.Price}" />
+            </TreeDataTemplate>
+          </TreeView.DataTemplates>
+        </TreeView>
+      </Grid>
+    </Border>
+
+    <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+
+    <Border Grid.Column="2" Padding="{StaticResource Space16Thickness}">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Editor}" />
+        <views:InspectorView x:Name="Inspector" Grid.Row="1" SelectedItem="{Binding ActiveNode}" />
+      </Grid>
+    </Border>
+
+    <GridSplitter Grid.Column="3" ResizeDirection="Columns" />
+
+    <Border Grid.Column="4" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
+      <StackPanel Spacing="{StaticResource Space12}">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Media}" />
+        <Border Classes="card">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{x:Static loc:UiStrings.Images}" />
+            <TextBlock Grid.Column="1" Text="{Binding Images.Files.Count}" />
+          </Grid>
+        </Border>
+        <Border Classes="card">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{x:Static loc:UiStrings.Audio}" />
+            <TextBlock Grid.Column="1" Text="{Binding Audio.Files.Count}" />
+          </Grid>
+        </Border>
+        <Border Classes="card">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{x:Static loc:UiStrings.Video}" />
+            <TextBlock Grid.Column="1" Text="{Binding Video.Files.Count}" />
+          </Grid>
+        </Border>
+        <Border Classes="card">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{x:Static loc:UiStrings.Html}" />
+            <TextBlock Grid.Column="1" Text="{Binding Html.Files.Count}" />
+          </Grid>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="1" Grid.ColumnSpan="5" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="{StaticResource StatusBarPadding}">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Text="{Binding FilledQuestionCount}" />
+        <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis" MaxWidth="520" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

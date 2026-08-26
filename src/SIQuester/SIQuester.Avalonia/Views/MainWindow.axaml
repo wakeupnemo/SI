@@ -1,0 +1,114 @@
+<Window
+    x:Class="SIQuester.Avalonia.Views.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:MainViewModel"
+    Title="{x:Static loc:UiStrings.AppTitle}"
+    Width="1200"
+    Height="760"
+    MinWidth="900"
+    MinHeight="600">
+
+  <Window.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:QDocument}">
+      <views:DocumentEditorView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:NewViewModel}">
+      <views:NewPackageView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:DocumentLoaderViewModel}">
+      <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="{StaticResource Space12}">
+          <ProgressBar IsIndeterminate="True" Width="260" />
+          <TextBlock Text="{x:Static loc:UiStrings.Loading}" HorizontalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+N" Command="{Binding New}" />
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding Open}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding ActiveDocument.Save}" />
+    <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding ActiveDocument.SaveAs}" />
+    <KeyBinding Gesture="Ctrl+Z" Command="{Binding ActiveDocument.OperationsManager.Undo}" />
+    <KeyBinding Gesture="Ctrl+Y" Command="{Binding ActiveDocument.OperationsManager.Redo}" />
+    <KeyBinding Gesture="Delete" Command="{Binding ActiveDocument.Delete}" />
+  </Window.KeyBindings>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Menu Grid.Row="0">
+      <MenuItem Header="{x:Static loc:UiStrings.File}">
+        <MenuItem Header="{x:Static loc:UiStrings.New}" Command="{Binding New}" InputGesture="Ctrl+N" />
+        <MenuItem Header="{x:Static loc:UiStrings.Open}" Command="{Binding Open}" InputGesture="Ctrl+O" />
+        <Separator />
+        <MenuItem Header="{x:Static loc:UiStrings.Save}" Command="{Binding ActiveDocument.Save}" InputGesture="Ctrl+S" />
+        <MenuItem Header="{x:Static loc:UiStrings.SaveAs}" Command="{Binding ActiveDocument.SaveAs}" InputGesture="Ctrl+Shift+S" />
+        <Separator />
+        <MenuItem Header="{x:Static loc:UiStrings.Close}" Command="{Binding ActiveWorkspace.Close}" />
+      </MenuItem>
+      <MenuItem Header="{x:Static loc:UiStrings.Edit}">
+        <MenuItem Header="{x:Static loc:UiStrings.Undo}" Command="{Binding ActiveDocument.OperationsManager.Undo}" InputGesture="Ctrl+Z" />
+        <MenuItem Header="{x:Static loc:UiStrings.Redo}" Command="{Binding ActiveDocument.OperationsManager.Redo}" InputGesture="Ctrl+Y" />
+      </MenuItem>
+    </Menu>
+
+    <Border Grid.Row="1" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="{StaticResource CommandBarPadding}">
+      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+        <Button Classes="command" Content="{x:Static loc:UiStrings.New}" Command="{Binding New}" AutomationProperties.Name="{x:Static loc:UiStrings.New}" />
+        <Button Classes="command" Content="{x:Static loc:UiStrings.Open}" Command="{Binding Open}" AutomationProperties.Name="{x:Static loc:UiStrings.Open}" />
+        <Button Classes="command" Content="{x:Static loc:UiStrings.Save}" Command="{Binding ActiveDocument.Save}" AutomationProperties.Name="{x:Static loc:UiStrings.Save}" />
+        <Button Classes="command" Content="{x:Static loc:UiStrings.SaveAs}" Command="{Binding ActiveDocument.SaveAs}" AutomationProperties.Name="{x:Static loc:UiStrings.SaveAs}" />
+        <Separator />
+        <Button Classes="command" Content="{x:Static loc:UiStrings.Undo}" Command="{Binding ActiveDocument.OperationsManager.Undo}" AutomationProperties.Name="{x:Static loc:UiStrings.Undo}" />
+        <Button Classes="command" Content="{x:Static loc:UiStrings.Redo}" Command="{Binding ActiveDocument.OperationsManager.Redo}" AutomationProperties.Name="{x:Static loc:UiStrings.Redo}" />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="2">
+      <TabControl
+          ItemsSource="{Binding DocList}"
+          SelectedItem="{Binding ActiveWorkspace, Mode=TwoWay}"
+          IsVisible="{Binding HasWorkspaces}">
+        <TabControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:WorkspaceViewModel">
+            <Grid ColumnDefinitions="*,Auto" MinWidth="140" ToolTip.Tip="{Binding ToolTip}">
+              <TextBlock Text="{Binding Header}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <Button
+                  Grid.Column="1"
+                  Command="{Binding Close}"
+                  Content="×"
+                  Margin="{StaticResource TabCloseMargin}"
+                  Padding="{StaticResource TabClosePadding}"
+                  Background="Transparent"
+                  AutomationProperties.Name="{x:Static loc:UiStrings.Close}" />
+            </Grid>
+          </DataTemplate>
+        </TabControl.ItemTemplate>
+      </TabControl>
+
+      <Grid IsVisible="{Binding !HasWorkspaces}">
+        <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+          <StackPanel Spacing="{StaticResource Space16}">
+            <TextBlock Text="{x:Static loc:UiStrings.EmptyTitle}" FontSize="{StaticResource TypographyTitle}" FontWeight="SemiBold" TextAlignment="Center" />
+            <TextBlock Text="{x:Static loc:UiStrings.EmptyDescription}" FontSize="{StaticResource TypographyBodyLarge}" TextWrapping="Wrap" TextAlignment="Center" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="{StaticResource Space8}">
+              <Button Classes="command accent" Content="{x:Static loc:UiStrings.New}" Command="{Binding New}" />
+              <Button Classes="command" Content="{x:Static loc:UiStrings.Open}" Command="{Binding Open}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <Border Grid.Row="3" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="{StaticResource StatusBarPadding}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{x:Static loc:UiStrings.StatusReady}" />
+        <TextBlock Grid.Column="1" Text="{Binding ActiveDocument.ErrorMessage}" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

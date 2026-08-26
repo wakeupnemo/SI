@@ -1,0 +1,44 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.NewPackageView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:model="using:SIQuester.ViewModel.Model"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:NewViewModel">
+  <ScrollViewer>
+    <Border Classes="card" Margin="{StaticResource Space32Thickness}" MaxWidth="720" HorizontalAlignment="Center">
+      <StackPanel>
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Create}" />
+
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PackageName}" />
+        <TextBox Text="{Binding PackageName, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PackageAuthor}" />
+        <TextBox Text="{Binding PackageAuthor, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Template}" />
+        <ComboBox
+            ItemsSource="{Binding Templates}"
+            SelectedItem="{Binding CurrentTemplate, Mode=TwoWay}"
+            Margin="{StaticResource FieldMargin}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="model:PackageTemplate">
+              <StackPanel Margin="{StaticResource Space4Thickness}">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Description}" Opacity="0.72" TextWrapping="Wrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <CheckBox Content="{x:Static loc:UiStrings.QualityControl}" IsChecked="{Binding QualityControl}" Margin="{StaticResource FieldMargin}" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{StaticResource Space8}">
+          <Button Classes="command" Content="{x:Static loc:UiStrings.Cancel}" Command="{Binding Close}" />
+          <Button Classes="command accent" Content="{x:Static loc:UiStrings.Create}" Command="{Binding Create}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </ScrollViewer>
+</UserControl>

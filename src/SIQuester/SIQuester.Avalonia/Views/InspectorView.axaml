@@ -1,0 +1,85 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.InspectorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:Name="Root"
+    x:DataType="views:InspectorView">
+  <Grid>
+    <ContentControl Content="{Binding SelectedItem, ElementName=Root}">
+      <ContentControl.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:PackageViewModel}" x:DataType="vm:PackageViewModel">
+      <ScrollViewer>
+        <StackPanel>
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Package}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
+          <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
+          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="120" Margin="{StaticResource FieldMargin}" />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.AddRound}" Command="{Binding AddRound}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:RoundViewModel}" x:DataType="vm:RoundViewModel">
+      <ScrollViewer>
+        <StackPanel>
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Round}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
+          <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
+          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="120" Margin="{StaticResource FieldMargin}" />
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+            <Button Classes="command" Content="{x:Static loc:UiStrings.AddTheme}" Command="{Binding AddTheme}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:ThemeViewModel}" x:DataType="vm:ThemeViewModel">
+      <ScrollViewer>
+        <StackPanel>
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Theme}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
+          <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
+          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="120" Margin="{StaticResource FieldMargin}" />
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+            <Button Classes="command" Content="{x:Static loc:UiStrings.AddQuestion}" Command="{Binding AddQuestion}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:QuestionViewModel}" x:DataType="vm:QuestionViewModel">
+      <ScrollViewer>
+        <StackPanel>
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Question}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Price}" />
+          <NumericUpDown Value="{Binding Model.Price, Mode=TwoWay}" Minimum="-1" Maximum="1000000" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QuestionText}" />
+          <TextBox Text="{Binding QuestionText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="140" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.RightAnswer}" />
+          <TextBox Text="{Binding PrimaryRightAnswer, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.WrongAnswer}" />
+          <TextBox Text="{Binding PrimaryWrongAnswer, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
+          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="100" Margin="{StaticResource FieldMargin}" />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+      </ContentControl.DataTemplates>
+    </ContentControl>
+    <TextBlock
+        Text="{x:Static loc:UiStrings.NoSelection}"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Opacity="0.65"
+        IsVisible="{Binding SelectedItem, ElementName=Root, Converter={x:Static ObjectConverters.IsNull}}" />
+  </Grid>
+</UserControl>
