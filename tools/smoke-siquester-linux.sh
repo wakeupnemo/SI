@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 <SIQuester.Desktop.dll> <package.siq>" >&2
+  echo "Usage: $0 <SIQuester.Desktop executable or DLL> <package.siq>" >&2
   exit 2
 fi
 
@@ -12,12 +12,21 @@ if [ -z "${DISPLAY:-}" ] || [ -z "${XDG_CONFIG_HOME:-}" ] || [ -z "${XDG_STATE_H
   exit 2
 fi
 
-desktop_dll="$1"
+desktop_application="$1"
 package_path="$2"
 settings_path="$XDG_CONFIG_HOME/SIQuester/settings.json"
 log_path="$XDG_STATE_HOME/SIQuester/logs/siquester.log"
 
-dotnet "$desktop_dll" "$package_path" &
+if [[ "$desktop_application" == *.dll ]]; then
+  application_command=(dotnet "$desktop_application")
+elif [ -x "$desktop_application" ]; then
+  application_command=("$desktop_application")
+else
+  echo "SIQuester application is not an executable or a .NET DLL: $desktop_application" >&2
+  exit 2
+fi
+
+"${application_command[@]}" "$package_path" &
 application_pid=$!
 
 cleanup() {

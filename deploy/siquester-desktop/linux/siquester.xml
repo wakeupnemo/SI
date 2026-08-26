@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-siq">
+    <comment>SIGame question package</comment>
+    <comment xml:lang="ru">Пакет вопросов SIGame</comment>
+    <sub-class-of type="application/zip" />
+    <glob pattern="*.siq" weight="80" />
+    <glob pattern="*.SIQ" weight="80" />
+  </mime-type>
+</mime-info>

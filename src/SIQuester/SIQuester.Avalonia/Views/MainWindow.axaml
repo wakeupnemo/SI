@@ -8,6 +8,7 @@
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:MainViewModel"
     Title="{x:Static loc:UiStrings.AppTitle}"
+    Icon="/Assets/logo.png"
     Width="1200"
     Height="760"
     MinWidth="900"

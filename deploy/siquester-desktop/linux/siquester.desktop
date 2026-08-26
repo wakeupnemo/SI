@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SIQuester
+Name[ru]=SIQuester
+Comment=Create and edit SIGame question packages
+Comment[ru]=Создание и редактирование пакетов вопросов SIGame
+Exec=siquester %F
+Icon=siquester
+Terminal=false
+Categories=Education;
+MimeType=application/x-siq;
+StartupNotify=true
+StartupWMClass=SIQuester

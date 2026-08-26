@@ -5,21 +5,33 @@ on:
     branches: [ "master" ]
     paths:
       - "Directory.Build.props"
+      - "Directory.Packages.props"
       - "SIQuester.CrossPlatform.sln"
+      - "LICENSE"
+      - "THIRD_PARTY_NOTICES.md"
+      - "deploy/siquester-desktop/**"
       - "src/Common/**"
       - "src/SIQuester/**"
       - "test/Common/SIPackages.Tests/**"
       - "test/SIQuester/**"
+      - "tools/package-siquester-*.sh"
+      - "tools/smoke-siquester-linux.sh"
       - ".github/workflows/siquester-cross-platform.yml"
   pull_request:
     branches: [ "master" ]
     paths:
       - "Directory.Build.props"
+      - "Directory.Packages.props"
       - "SIQuester.CrossPlatform.sln"
+      - "LICENSE"
+      - "THIRD_PARTY_NOTICES.md"
+      - "deploy/siquester-desktop/**"
       - "src/Common/**"
       - "src/SIQuester/**"
       - "test/Common/SIPackages.Tests/**"
       - "test/SIQuester/**"
+      - "tools/package-siquester-*.sh"
+      - "tools/smoke-siquester-linux.sh"
       - ".github/workflows/siquester-cross-platform.yml"
   workflow_dispatch:
 
@@ -101,4 +113,131 @@ jobs:
         with:
           name: siquester-compatibility-${{ runner.os }}
           path: bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/
+          if-no-files-found: error
+
+  package:
+    name: Package ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            kind: linux
+          - os: ubuntu-latest
+            rid: linux-arm64
+            kind: linux
+          - os: macos-latest
+            rid: osx-arm64
+            kind: macos
+          - os: macos-latest
+            rid: osx-x64
+            kind: macos
+          - os: windows-latest
+            rid: win-x64
+            kind: windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read release metadata
+        shell: bash
+        run: |
+          version="$(sed -n 's|.*<SIQuesterVersion>\([^<]*\)</SIQuesterVersion>.*|\1|p' Directory.Build.props)"
+          [[ "$version" =~ ^[0-9]+([.][0-9]+){1,2}$ ]]
+          echo "SIQUESTER_VERSION=$version" >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
+
+      - name: Restore runtime assets
+        run: dotnet restore src/SIQuester/SIQuester.Desktop/SIQuester.Desktop.csproj --runtime ${{ matrix.rid }} -p:Configuration=Release
+
+      - name: Build Linux packages
+        if: matrix.kind == 'linux'
+        shell: bash
+        run: |
+          tools/package-siquester-linux.sh \
+            --rid "${{ matrix.rid }}" \
+            --version "$SIQUESTER_VERSION" \
+            --output "artifacts/${{ matrix.rid }}" \
+            --no-restore
+
+      - name: Build macOS application bundle
+        if: matrix.kind == 'macos'
+        shell: bash
+        run: |
+          tools/package-siquester-macos.sh \
+            --rid "${{ matrix.rid }}" \
+            --version "$SIQUESTER_VERSION" \
+            --output "artifacts/${{ matrix.rid }}" \
+            --no-restore
+
+      - name: Build Windows Avalonia artifact
+        if: matrix.kind == 'windows'
+        shell: pwsh
+        run: |
+          $publishDirectory = Join-Path $env:RUNNER_TEMP "siquester-win-x64"
+          $artifactDirectory = "artifacts/win-x64"
+          New-Item -ItemType Directory -Force -Path $publishDirectory, $artifactDirectory | Out-Null
+          dotnet publish src/SIQuester/SIQuester.Desktop/SIQuester.Desktop.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --no-restore `
+            --output $publishDirectory `
+            -p:Version=$env:SIQUESTER_VERSION `
+            -p:PublishSingleFile=false `
+            -p:PublishTrimmed=false `
+            -p:DebugSymbols=false `
+            -p:DebugType=None `
+            -p:UseAppHost=true
+          Copy-Item LICENSE, THIRD_PARTY_NOTICES.md -Destination $publishDirectory
+          $archive = Join-Path $artifactDirectory "SIQuester-$env:SIQUESTER_VERSION-win-x64.zip"
+          Compress-Archive -Path "$publishDirectory/*" -DestinationPath $archive -CompressionLevel Optimal
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path -Leaf $archive)" | Set-Content -Encoding ascii "$artifactDirectory/SIQuester-$env:SIQUESTER_VERSION-win-x64.SHA256SUMS"
+
+      - name: Install packaged Linux smoke dependencies
+        if: matrix.rid == 'linux-x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes xvfb xdotool
+
+      - name: Smoke self-contained Linux package
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/siquester-package-smoke/config
+          XDG_DATA_HOME: ${{ runner.temp }}/siquester-package-smoke/data
+          XDG_CACHE_HOME: ${{ runner.temp }}/siquester-package-smoke/cache
+          XDG_STATE_HOME: ${{ runner.temp }}/siquester-package-smoke/state
+        run: |
+          install -d "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$XDG_STATE_HOME"
+          tar -xzf "artifacts/linux-x64/SIQuester-$SIQUESTER_VERSION-linux-x64.tar.gz" -C "${{ runner.temp }}"
+          xvfb-run -a tools/smoke-siquester-linux.sh \
+            "${{ runner.temp }}/SIQuester-$SIQUESTER_VERSION-linux-x64/SIQuester.Desktop" \
+            test/SIGame/SIGame.Tests/SIGameTestNew.siq
+
+      - name: Upload packaged Linux smoke receipt
+        if: always() && matrix.rid == 'linux-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-packaged-linux-smoke
+          path: |
+            ${{ runner.temp }}/siquester-package-smoke/config/SIQuester/settings.json
+            ${{ runner.temp }}/siquester-package-smoke/state/SIQuester/logs/
+          if-no-files-found: error
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-${{ matrix.rid }}
+          path: artifacts/${{ matrix.rid }}/
           if-no-files-found: error

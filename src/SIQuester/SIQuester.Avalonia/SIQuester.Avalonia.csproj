@@ -14,4 +14,8 @@
   <ItemGroup>
     <ProjectReference Include="..\SIQuester.ViewModel\SIQuester.ViewModel.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\..\deploy\SIQuester.Bootstrapper\Resources\logo.png" Link="Assets\logo.png" />
+  </ItemGroup>
 </Project>

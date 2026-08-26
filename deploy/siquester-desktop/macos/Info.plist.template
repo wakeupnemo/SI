@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>SIQuester</string>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>siq</string>
+      </array>
+      <key>CFBundleTypeIconFile</key>
+      <string>@ICON_FILE@</string>
+      <key>CFBundleTypeMIMETypes</key>
+      <array>
+        <string>application/x-siq</string>
+      </array>
+      <key>CFBundleTypeName</key>
+      <string>SIGame question package</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+    </dict>
+  </array>
+  <key>CFBundleExecutable</key>
+  <string>SIQuester.Desktop</string>
+  <key>CFBundleIconFile</key>
+  <string>@ICON_FILE@</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.github.VladimirKhil.SIQuester</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>SIQuester</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@VERSION@</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.education</string>
+  <key>NSHighResolutionCapable</key>
+  <true />
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.zip-archive</string>
+        <string>public.data</string>
+      </array>
+      <key>UTTypeDescription</key>
+      <string>SIGame question package</string>
+      <key>UTTypeIdentifier</key>
+      <string>com.github.VladimirKhil.siq</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>siq</string>
+        </array>
+        <key>public.mime-type</key>
+        <string>application/x-siq</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>
