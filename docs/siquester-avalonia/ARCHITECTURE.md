@@ -47,6 +47,8 @@ Scenario controls adapt the existing canonical objects instead of flattening the
 
 Answer inspectors follow the same adapter rule. Avalonia hosts the existing `NumericAnswerViewModel`, `PointAnswerViewModel`, answer collections, and grouped option parameters rather than creating a second answer model. `QuestionViewModel` observes the canonical answer-type parameter so undo/redo updates typed visibility and disposes point-editor subscriptions when that mode is left. Valid select options survive idempotent type selection; malformed option state remains repairable through the existing command.
 
+Image-backed point selection retains the existing neutral `PointAnswerViewModel.SelectPointRequest` seam used by WPF. `PointSelectionController` contains only normalized coordinate, aspect, deviation, letterbox-layout, and keyboard-nudge logic; it has no Avalonia types. The Avalonia window owns pointer/focus behavior and bounded asynchronous bitmap decoding, and commits to the canonical view model only after explicit acceptance. Cancel and load failure leave package data unchanged, while close deterministically releases the source stream, decoded bitmap, cancellation source, and subscriptions.
+
 ## Security boundaries
 
 - Package data is never executed.
