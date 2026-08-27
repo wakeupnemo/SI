@@ -18,23 +18,23 @@ Build tools: .NET 10 SDK, GNU `tar`, `gzip`, `coreutils`, and `dpkg-deb` (normal
 
 ```bash
 dotnet restore src/SIQuester/SIQuester.Desktop/SIQuester.Desktop.csproj -r linux-x64
-tools/package-siquester-linux.sh --rid linux-x64 --version 0.1.0 --output artifacts --no-restore
+tools/package-siquester-linux.sh --rid linux-x64 --version 0.2.0 --output artifacts --no-restore
 
 dotnet restore src/SIQuester/SIQuester.Desktop/SIQuester.Desktop.csproj -r linux-arm64
-tools/package-siquester-linux.sh --rid linux-arm64 --version 0.1.0 --output artifacts --no-restore
+tools/package-siquester-linux.sh --rid linux-arm64 --version 0.2.0 --output artifacts --no-restore
 ```
 
 The portable tarball runs directly:
 
 ```bash
-tar -xzf artifacts/SIQuester-0.1.0-linux-x64.tar.gz
-./SIQuester-0.1.0-linux-x64/SIQuester.Desktop package.siq
+tar -xzf artifacts/SIQuester-0.2.0-linux-x64.tar.gz
+./SIQuester-0.2.0-linux-x64/SIQuester.Desktop package.siq
 ```
 
 Install the Debian package with:
 
 ```bash
-sudo apt install ./artifacts/siquester_0.1.0_amd64.deb
+sudo apt install ./artifacts/siquester_0.2.0_amd64.deb
 siquester package.siq
 ```
 
@@ -62,10 +62,10 @@ Run each architecture build on a current macOS runner:
 
 ```bash
 dotnet restore src/SIQuester/SIQuester.Desktop/SIQuester.Desktop.csproj -r osx-arm64
-tools/package-siquester-macos.sh --rid osx-arm64 --version 0.1.0 --output artifacts --no-restore
+tools/package-siquester-macos.sh --rid osx-arm64 --version 0.2.0 --output artifacts --no-restore
 
 dotnet restore src/SIQuester/SIQuester.Desktop/SIQuester.Desktop.csproj -r osx-x64
-tools/package-siquester-macos.sh --rid osx-x64 --version 0.1.0 --output artifacts --no-restore
+tools/package-siquester-macos.sh --rid osx-x64 --version 0.2.0 --output artifacts --no-restore
 ```
 
 The builder creates `SIQuester.app`, registers `.siq` as an editable document type, generates an ICNS icon with system tools, performs ad-hoc signing for CI, verifies the signature and property list, then emits an architecture-specific tarball. Ad-hoc signing is not a substitute for release signing.
