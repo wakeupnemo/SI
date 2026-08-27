@@ -25,11 +25,11 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Editor | Package fields and metadata | IN_PROGRESS | Name plus authors/sources/tags/comments/showman-comments inspector fields are verified; publisher/contact/date/language/restriction/difficulty/quality-control UI remains |
 | Editor | Round fields and metadata | IN_PROGRESS | Name plus authors/sources/comments/showman-comments are verified; round type and remaining typed fields are pending |
 | Editor | Theme fields and metadata | IN_PROGRESS | Name plus authors/sources/comments/showman-comments are verified; remaining typed fields are pending |
-| Editor | Question text, price, answers | VERIFIED | Typed inspector plus semantic edit/save/reload test; runtime package inspector visually verified |
+| Editor | Question text, price, simple answer lists | VERIFIED | Typed inspector supports complete right/wrong collections with add/edit/move/delete; `FullSimpleAnswerCollections_SaveAndReloadWithoutDroppingEntries`, removal-rule tests, and the headless inspector test cover Unicode/order, last-right protection, compiled bindings, and hiding for client-managed answers |
 | Editor | Scenarios/content items | NOT_STARTED | Full typed editor pending |
-| Editor | Parameters / answer types | NOT_STARTED | Full typed editor pending |
+| Editor | Parameters / non-text answer types | NOT_STARTED | Numeric, point, select-option, client-managed, and generic parameter editors are pending; simple lists are deliberately hidden outside text-answer mode |
 | Editor | Authors/sources/tags/comments/showman comments | VERIFIED | `TypedMetadataEdits_SaveAndReloadAtEveryPackageLevel`, duplicate/index command and last-package-author tests, plus `Inspector_MetadataEditorsMutateExistingViewModelsThroughCompiledBindings` cover add/edit/move/delete, Unicode SIQ reload, all package levels, compiled bindings, and Russian resources |
-| Editor | Add/delete/rename/duplicate/move | IN_PROGRESS | Basic add/delete wired; duplicate/move and focused tests pending |
+| Editor | Add/delete/rename/duplicate/move | IN_PROGRESS | Basic package-item add/delete plus metadata/answer-list move and guarded delete are tested; package-item duplicate/move and focused tests remain |
 | Editor | Undo/redo | IN_PROGRESS | script-question text value and structural-add undo/redo verified; broader editor coverage pending |
 | Editor | Search/navigation | NOT_STARTED | Existing cancellable `async void` search requires extraction |
 | Editor | Tree mode | VERIFIED | Data-bound hierarchy, expansion, selection/inspector tests, and Linux visual receipt |

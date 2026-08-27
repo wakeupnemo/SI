@@ -15,6 +15,7 @@ Updated: 2026-08-27
 - Added `SIQuester.CrossPlatform.sln`, including the complete portable project-reference graph, and separated reusable Avalonia UI, desktop host, and headless tests while retaining the WPF application.
 - Added a native Fluent three-pane editor shell with tabs, empty state, hierarchy, package/round/theme/question inspectors, common field editing, add/delete commands, media counts, compiled bindings, English/Russian resources, and keyboard bindings for primary commands.
 - Added reusable typed metadata inspectors at package, round, theme, and question levels. Authors, sources, package tags, comments, and showman comments bind directly to the existing view models; list editing is duplicate-safe by selected index and supports add, edit, move, and guarded delete without a second editor model.
+- Replaced the question inspector's primary-answer-only fields with complete right/wrong text-answer collection editors. Order, duplicate-safe editing, last-right-answer protection, empty wrong-answer lists, Unicode save/reload, and client-managed visibility are tested; non-text answer types retain explicit separate-editor boundaries.
 - Migrated New/Open/Save/Save As/Save All/Close orchestration to injected neutral picker, dialog, lifetime, persistence, and media-materialization services. The Avalonia path does not initialize the legacy platform global.
 - Replaced destructive save behavior with same-directory staging, flush, `SIDocument.Load` validation, atomic replacement where available, rollback/backup fallback, final reload, and commit-only media acceptance.
 - Retargeted view-model tests to `net10.0`; added semantic/media/Unicode/cancellation compatibility coverage and Avalonia headless selection/lifecycle coverage.
@@ -44,7 +45,7 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Fresh cross-platform Release build: passed with 0 errors and 130 existing nullable/obsolete-API warnings in `SIPackages`, `QTxtConverter`, and legacy view-model code. An incremental build can report 0 warnings because those projects are not recompiled; analyzers and warnings remain enabled. Every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 86 passed, 5 skipped, 0 failed.
-- `SIQuester.ViewModel.Tests`: 78 passed, 0 failed. `MetadataEditingTests` covers duplicate-safe selected-index replacement, add/move/delete, the required last-package-author invariant, and Unicode save/reload of authors, sources, tags, comments, and showman comments at package/round/theme/question levels. Ten recovery tests plus clipboard and settings coverage remain green.
+- `SIQuester.ViewModel.Tests`: 81 passed, 0 failed. `AnswerCollectionEditingTests` adds complete text-answer order/Unicode SIQ reload, right/wrong removal invariants, and answer-type boundary coverage. `MetadataEditingTests`, ten recovery tests, clipboard, and settings coverage remain green.
 - `SIQuester.Avalonia.Tests`: 16 passed, 0 failed. `Inspector_MetadataEditorsMutateExistingViewModelsThroughCompiledBindings` verifies package tags and common metadata controls mutate the existing item view models and that question selection renders the correct typed editors. Recovery, native clipboard, shortcut, settings, selection, localization, and lifecycle coverage remains green.
 - Existing WPF project cross-compiled on Linux with `-p:EnableWindowsTargeting=true`: passed, 0 errors and 0 warnings in the final incremental compatibility build. Native WPF execution remains a Windows-only verification.
 - Native Linux Release smoke: the self-contained x64 tar payload and the identical executable extracted from the Debian package exposed a visible `SIQuester` window at 1200x760, opened `SIGameTestNew.siq`, and exited normally through the application-owned `Ctrl+Q` path. Both logs record successful open/settings commit and no fatal or unhandled exception.
@@ -72,7 +73,7 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 - Test: `CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia`.
 - Release output: `bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq`.
 - Receipt: adjacent `avalonia-core-roundtrip.receipt.json`.
-- Current artifact: 1,078 bytes; SHA-256 `6297613e77cf8781242bff0a4d41649f678a8c1a3cec7c73e316b95d79a34b83`. ZIP metadata can change this hash between generated runs; semantic and media receipts remain authoritative.
+- Current artifact: 1,078 bytes; SHA-256 `e8974bfe69822f5dbe32e4dbf8a63b32fb4a990fb68a92308de6310ef03f1891`. ZIP metadata can change this hash between generated runs; semantic and media receipts remain authoritative.
 - Verified through `SIDocument.Load`: one round, one theme, one question, and one image with semantic and byte comparison.
 - Existing Windows SIQuester/SIGame runtime acceptance is not yet verified and must not be inferred from the loader receipt.
 
@@ -84,7 +85,7 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Next independent tasks
 
-1. Expand typed inspectors to scenarios/content steps, question parameters/types, complete answer collections, remaining package fields, and media operations.
+1. Expand typed inspectors to scenarios/content steps, question parameters and non-text answer types, remaining package fields, and media operations.
 2. Extract cancellable search scheduling from `QDocument` and cover rapid switching/close races.
 3. Replace clipboard media materialization paths with a bounded, stable-lifetime transfer representation and add media-rich cross-process compatibility coverage.
 4. Implement data-level flat-mode reorder operations and their move/copy/cancellation tests.
@@ -92,7 +93,7 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Known limitations
 
-- This is a verified first vertical slice plus typed common metadata, settings, native clipboard, complete recovery persistence/management, and release packaging foundations, not Milestone 2 completion. Clipboard media lifetime completion, scenario/parameter/complete-answer/media editing, flat mode, question preview, structural SPARD, and advanced import/export remain incomplete.
+- This is a verified first vertical slice plus typed common metadata and complete simple-answer lists, settings, native clipboard, complete recovery persistence/management, and release packaging foundations, not Milestone 2 completion. Clipboard media lifetime completion, scenario/parameter/non-text-answer/media editing, flat mode, question preview, structural SPARD, and advanced import/export remain incomplete.
 - Recovery retention is deliberately conservative: only the latest validated generation is kept per document; superseded generations are removed after pointer commit, and a successful canonical save, approved close, or explicit discard removes the recovery identity. Valid stale snapshots and malformed entries are not age-pruned silently because doing so could destroy the only recoverable user data.
 - Language changes intentionally apply after restart and communicate that boundary. System/light/dark selection is live and persisted, but visual theme snapshots and a macOS runtime Command-key receipt remain pending.
 - WebView and audio/video backends have architectural decisions but no implementation receipt.
@@ -102,4 +103,4 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Review state
 
-- Latest reviewed implementation commit: `1399bd10` (typed common metadata inspectors). Release cross-platform and WPF builds pass; 180 tests pass plus 5 explicit SIPackages skips. The review fixed an early derived-constructor selection callback regression before checkpointing. Duplicate-safe edits, last-author protection, all-level Unicode save/reload, compiled bindings, localization, and the existing semantic/media compatibility artifact pass. No new `PlatformManager.Instance`, `async void`, debug print, dependency, or hardcoded user-facing XAML string was introduced. A new manual Linux screenshot receipt was not produced because the current environment lacks its prior virtual-display utilities; the existing native Linux startup/open receipt remains valid and this slice is verified by named headless and persistence tests.
+- Latest reviewed implementation commit: `72c4ec78` (complete simple text-answer lists), following `1399bd10` (typed common metadata). Release cross-platform and WPF builds pass; 183 tests pass plus 5 explicit SIPackages skips. The metadata review fixed an early derived-constructor selection callback regression before checkpointing; the answer review corrected a local-versus-effective Avalonia visibility assertion. Duplicate-safe edits, last-author/last-right protection, all-level metadata and multi-answer Unicode save/reload, non-text visibility, compiled bindings, localization, and the existing semantic/media compatibility artifact pass. No new `PlatformManager.Instance`, `async void`, debug print, dependency, or hardcoded user-facing XAML string was introduced. A new manual Linux screenshot receipt was not produced because the current environment lacks its prior virtual-display utilities; the existing native Linux startup/open receipt remains valid and these slices are verified by named headless and persistence tests.
