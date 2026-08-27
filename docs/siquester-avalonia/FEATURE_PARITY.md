@@ -42,7 +42,7 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Media | Audio/video preview | NOT_STARTED | Backend spike recorded in ADR 0004 |
 | Media | HTML preview | NOT_STARTED | Controlled WebView policy pending |
 | Preview | Question player / JSON protocol | NOT_STARTED | Existing `QuestionPlayViewModel` and `wwwroot` inventoried |
-| SPARD | Structural editor | NOT_STARTED | Controller extraction and behavior tests pending |
+| SPARD | Structural editor | IN_PROGRESS | Ten `SpardEditorControllerTests` verify parse/serialize, text/alias/line insertion, empty and nested optional groups, backward/forward deletion, structural selection/caret movement, focus commit, malformed recovery, and offset clamping. Four `SpardEditorControlTests` verify real Avalonia text/key routing, structural deletion/line insertion, canonical focus commit, direct-mutation rejection, UI dispatch, and deterministic controller replacement/detach. `SpardTemplateViewModel`/text-import integration, localized alias/optional tooling, and final token presentation remain pending |
 | Imports | SIQ attachment | NOT_STARTED | `QDocument.ImportSiq` merge/attachment flow remains inventoried; external `.siq` drop deliberately opens a separate document and does not claim attachment parity |
 | Imports | Text | IN_PROGRESS | External `.txt` drops open the existing `ImportTextViewModel`; stream-only Unicode/BOM decoding and repeated encoding selection are verified by `MainHost_OpensStreamOnlyPackageAndCreatesRepeatableTextImportWorkspace`. Full importer approval/runtime UI receipt remains pending |
 | Imports | XML | NOT_STARTED | `MainViewModel.ImportXml` inventoried |
