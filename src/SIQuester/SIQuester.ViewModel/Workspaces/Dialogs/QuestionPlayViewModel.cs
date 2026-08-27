@@ -217,7 +217,8 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
 
             OnMessage(new QuestionPreviewSignalMessage(QuestionPreviewMessageTypes.EndPressButtonByTimeout));
 
-            _isFinished = !_questionEngine.PlayNext();
+            var hasNextFragment = _questionEngine.PlayNext();
+            _isFinished = !hasNextFragment || !_questionEngine.CanNext;
             
             // Check if question finished after playing
             if (_isFinished)
@@ -236,6 +237,8 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     {
         try
         {
+            _logger.LogInformation("Question preview replay started");
+
             // Reset the question engine to start from the beginning
             InitializeQuestionEngine();
 

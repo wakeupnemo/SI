@@ -207,6 +207,75 @@ internal sealed class QuestionPreviewProtocolTests
     }
 
     [Test]
+    public void SelectAnswerEngine_CompletesOnRightOptionAndReplayRestartsSameOwnedSession()
+    {
+        const string mediaName = "вариант ответа 例.png";
+        var expectedBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAIAAAACAAQMAAAD58POIAAAAA1BMVEX1xUI6Ko9WAAAAGUlEQVRIx2NgGAWjYBSMglEwCkbBKKAvAAAIgAABbisdVAAAAABJRU5ErkJggg==");
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        using var temporaryMedia = new TemporaryMediaFile(mediaName, expectedBytes);
+        using var package = TestHelper.CreateSelectAnswerPreviewPackage(mediaName);
+        using var document = TestHelper.CreateDocumentViewModelFactory(serviceProvider)
+            .CreateViewModelFor(package, "Select answer preview");
+        document.Images.AddFile(temporaryMedia.Path, mediaName);
+        var service = new TrackingPreviewService(
+            QuestionPreviewHostDescriptor.Available(new Uri("http://127.0.0.1:52731/index.html")),
+            "http://127.0.0.1:52731/private/answer-option-token.png");
+        using var preview = new QuestionPlayViewModel(
+            document.Package.Rounds[0].Themes[0].Questions[0],
+            document,
+            service);
+        var messages = new List<JsonElement>();
+        preview.SendJsonMessage += message => messages.Add(Parse(message));
+
+        preview.Play.Execute(null);
+        var questionMessages = messages.ToArray();
+        messages.Clear();
+        preview.Play.Execute(null);
+        var askMessages = messages.ToArray();
+        messages.Clear();
+        preview.Play.Execute(null);
+        var answerMessages = messages.ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(service.Sessions, Has.Count.EqualTo(1));
+            Assert.That(questionMessages.Select(message => message.GetProperty("type").GetString()),
+                Does.Contain("answerOptionsLayout"));
+            Assert.That(questionMessages.Single(message =>
+                    message.GetProperty("type").GetString() == "answerOption"
+                    && message.GetProperty("label").GetString() == "Б")
+                .GetProperty("contentValue").GetString(), Is.EqualTo(service.ResolvedSource));
+            Assert.That(askMessages.Select(message => message.GetProperty("type").GetString()),
+                Does.Contain(QuestionPreviewMessageTypes.BeginPressButton));
+            Assert.That(answerMessages.Single(message =>
+                    message.GetProperty("type").GetString() == "contentState")
+                .GetProperty("itemState").GetInt32(), Is.EqualTo(2));
+            Assert.That(preview.IsReplayVisible, Is.True);
+            Assert.That(preview.Play.CanExecute(null), Is.False);
+            Assert.That(preview.Replay.CanExecute(null), Is.True);
+        });
+
+        messages.Clear();
+        preview.Replay.Execute(null);
+        var replayMessages = messages.ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(service.Sessions, Has.Count.EqualTo(1));
+            Assert.That(preview.IsReplayVisible, Is.False);
+            Assert.That(preview.Play.CanExecute(null), Is.True);
+            Assert.That(replayMessages[0].GetProperty("type").GetString(), Is.EqualTo("content"));
+            Assert.That(replayMessages[0].GetProperty("content").GetArrayLength(), Is.Zero);
+            Assert.That(replayMessages.Select(message => message.GetProperty("type").GetString()),
+                Does.Contain("answerOptionsLayout"));
+            Assert.That(replayMessages.Any(message =>
+                message.GetProperty("type").GetString() == "answerOption"
+                && message.GetProperty("contentValue").GetString() == service.ResolvedSource), Is.True);
+        });
+    }
+
+    [Test]
     public void EngineCallbacks_EmitTypedProtocolWithoutNativeWebView()
     {
         using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
@@ -251,7 +320,8 @@ internal sealed class QuestionPreviewProtocolTests
         Assert.Multiple(() =>
         {
             Assert.That(preview.IsPreviewAvailable, Is.True);
-            Assert.That(preview.Play.CanExecute(null), Is.True);
+            Assert.That(preview.Play.CanExecute(null), Is.False);
+            Assert.That(preview.IsReplayVisible, Is.True);
             Assert.That(callbackMessages.Select(message => message.GetProperty("type").GetString()),
                 Is.EqualTo(new[]
                 {

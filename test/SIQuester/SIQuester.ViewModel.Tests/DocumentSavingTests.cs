@@ -17,6 +17,9 @@ namespace SIQuester.ViewModel.Tests;
 [TestFixture]
 internal sealed class DocumentSavingTests
 {
+    private const string PreviewPngBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAIAAAACAAQMAAAD58POIAAAAA1BMVEX1xUI6Ko9WAAAAGUlEQVRIx2NgGAWjYBSMglEwCkbBKKAvAAAIgAABbisdVAAAAABJRU5ErkJggg==";
+
     private IServiceProvider _serviceProvider = null!;
     private IDocumentViewModelFactory _documentFactory = null!;
     private string _testDirectory = null!;
@@ -326,8 +329,7 @@ internal sealed class DocumentSavingTests
         question.PrimaryRightAnswer = "Полный семантический текст";
         question.PrimaryWrongAnswer = "Потерянные данные";
 
-        var mediaBytes = Convert.FromBase64String(
-            "iVBORw0KGgoAAAANSUhEUgAAAIAAAACAAQMAAAD58POIAAAAA1BMVEX1xUI6Ko9WAAAAGUlEQVRIx2NgGAWjYBSMglEwCkbBKKAvAAAIgAABbisdVAAAAABJRU5ErkJggg==");
+        var mediaBytes = Convert.FromBase64String(PreviewPngBase64);
         var mediaSource = Path.Combine(_testDirectory, "медиа 例.png");
         await File.WriteAllBytesAsync(mediaSource, mediaBytes);
         qDocument.Images.AddFile(mediaSource);
@@ -406,6 +408,75 @@ internal sealed class DocumentSavingTests
 
         TestContext.Out.WriteLine($"Compatibility artifact: {artifactPath}");
         TestContext.Out.WriteLine($"Compatibility receipt: {receiptPath}");
+    }
+
+    [Test]
+    public async Task QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia()
+    {
+        const string imageName = "вариант ответа 例.png";
+        var artifactDirectory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "compatibility-artifacts");
+        Directory.CreateDirectory(artifactDirectory);
+        var artifactPath = Path.Combine(artifactDirectory, "avalonia-preview-options.siq");
+        var receiptPath = Path.Combine(artifactDirectory, "avalonia-preview-options.receipt.json");
+        var mediaBytes = Convert.FromBase64String(PreviewPngBase64);
+        var mediaSource = Path.Combine(_testDirectory, imageName);
+        await File.WriteAllBytesAsync(mediaSource, mediaBytes);
+
+        using var document = TestHelper.CreateSelectAnswerPreviewPackage(imageName);
+        document.Package.ID = "avalonia-preview-options";
+        document.Package.Language = "ru-RU";
+        using var qDocument = _documentFactory.CreateViewModelFor(document, "Preview options artifact");
+        qDocument.Path = artifactPath;
+        qDocument.Images.AddFile(mediaSource);
+        await qDocument.Save.ExecuteAsync(null);
+
+        await using var artifactStream = File.OpenRead(artifactPath);
+        using var reloaded = SIDocument.Load(artifactStream);
+        var question = reloaded.Package.Rounds[0].Themes[0].Questions[0];
+        var options = question.Parameters[QuestionParameterNames.AnswerOptions].GroupValue!;
+        var imageOption = options["Б"].ContentValue!.Single();
+        var mediaInfo = reloaded.Images.GetFile(imageName);
+        Assert.That(mediaInfo, Is.Not.Null);
+        await using var storedMedia = mediaInfo!.Stream;
+        using var mediaBuffer = new MemoryStream();
+        await storedMedia.CopyToAsync(mediaBuffer);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(reloaded.Package.ID, Is.EqualTo("avalonia-preview-options"));
+            Assert.That(question.Parameters[QuestionParameterNames.AnswerType].SimpleValue,
+                Is.EqualTo(StepParameterValues.SetAnswerTypeType_Select));
+            Assert.That(options.Keys, Is.EqualTo(new[] { "А", "Б" }));
+            Assert.That(question.Right, Is.EqualTo(new[] { "Б" }));
+            Assert.That(imageOption.Type, Is.EqualTo(ContentTypes.Image));
+            Assert.That(imageOption.Value, Is.EqualTo(imageName));
+            Assert.That(imageOption.IsRef, Is.True);
+            Assert.That(mediaBuffer.ToArray(), Is.EqualTo(mediaBytes));
+        });
+
+        var artifactBytes = await File.ReadAllBytesAsync(artifactPath);
+        var receipt = new
+        {
+            schema = 1,
+            test = nameof(QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia),
+            packageFile = Path.GetFileName(artifactPath),
+            sha256 = Convert.ToHexString(SHA256.HashData(artifactBytes)).ToLowerInvariant(),
+            size = artifactBytes.Length,
+            packageId = reloaded.Package.ID,
+            answerType = question.Parameters[QuestionParameterNames.AnswerType].SimpleValue,
+            optionLabels = options.Keys,
+            rightOption = question.Right.Single(),
+            imageName,
+            imageSha256 = Convert.ToHexString(SHA256.HashData(mediaBytes)).ToLowerInvariant(),
+            loader = "SIDocument.Load",
+        };
+
+        await File.WriteAllTextAsync(
+            receiptPath,
+            JsonSerializer.Serialize(receipt, new JsonSerializerOptions { WriteIndented = true }));
+
+        TestContext.Out.WriteLine($"Preview options artifact: {artifactPath}");
+        TestContext.Out.WriteLine($"Preview options receipt: {receiptPath}");
     }
 
     #endregion

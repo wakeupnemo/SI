@@ -3,7 +3,6 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
-    xmlns:dialogs="using:SIQuester.ViewModel.Workspaces.Dialogs"
     xmlns:model="using:SIQuester.Model"
     xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
@@ -186,15 +185,7 @@
         Padding="{StaticResource Space32Thickness}"
         Background="{DynamicResource LayerFillColorAltBrush}"
         IsVisible="{Binding IsQuestionPreviewOpen}">
-      <ContentControl Content="{Binding Dialog}">
-        <ContentControl.DataTemplates>
-          <DataTemplate
-              DataType="{x:Type dialogs:QuestionPlayViewModel}"
-              x:DataType="dialogs:QuestionPlayViewModel">
-            <views:QuestionPreviewView />
-          </DataTemplate>
-        </ContentControl.DataTemplates>
-      </ContentControl>
+      <views:QuestionPreviewView DataContext="{Binding Dialog}" />
     </Border>
   </Grid>
 </UserControl>

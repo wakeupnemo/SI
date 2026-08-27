@@ -150,11 +150,11 @@ jobs:
           --filter FullyQualifiedName~DesktopPreviewService
           --logger "console;verbosity=normal"
 
-      - name: Generate semantic compatibility fixture
+      - name: Generate semantic compatibility fixtures
         run: >-
           dotnet test test/SIQuester/SIQuester.ViewModel.Tests/SIQuester.ViewModel.Tests.csproj
           --configuration Release --no-build --no-restore
-          --filter FullyQualifiedName~CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia
+          --filter FullyQualifiedName~Artifact_
           --logger "console;verbosity=normal"
 
       - name: Render retained question player through WebKitGTK
@@ -168,7 +168,7 @@ jobs:
           xvfb-run -a -s "-screen 0 1200x760x24" \
             tools/smoke-siquester-question-preview-linux.sh \
             bin/AnyCPU.Release/SIQuester.Desktop/net10.0/SIQuester.Desktop.dll \
-            bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq \
+            bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-preview-options.siq \
             "${{ runner.temp }}/siquester-preview-smoke/receipt"
 
       - name: Upload question-preview receipt

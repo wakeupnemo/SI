@@ -29,12 +29,12 @@ public partial class QuestionPreviewView : UserControl
 
     private void QuestionPreviewView_DataContextChanged(object? sender, EventArgs e)
     {
-        DetachHost();
+        DetachSession();
         _viewModel = DataContext as QuestionPlayViewModel;
 
         if (_isAttached)
         {
-            AttachHost();
+            AttachSession();
         }
     }
 
@@ -42,19 +42,18 @@ public partial class QuestionPreviewView : UserControl
     {
         _isAttached = true;
         _viewModel = DataContext as QuestionPlayViewModel;
-        AttachHost();
+        AttachSession();
     }
 
     private void QuestionPreviewView_DetachedFromVisualTree(object? sender, global::Avalonia.VisualTreeAttachmentEventArgs e)
     {
         _isAttached = false;
-        DetachHost();
+        ReleaseHost();
     }
 
-    private void AttachHost()
+    private void AttachSession()
     {
-        if (_webView is not null
-            || _viewModel is not { IsPreviewAvailable: true, Source: { } source } viewModel)
+        if (_viewModel is not { IsPreviewAvailable: true, Source: { } source } viewModel)
         {
             return;
         }
@@ -62,16 +61,27 @@ public partial class QuestionPreviewView : UserControl
         viewModel.SetPreviewReady(false);
         _isBridgeReady = false;
         _sendLifetime = new CancellationTokenSource();
-        var webView = new NativeWebView { Source = source };
-        webView.EnvironmentRequested += WebView_EnvironmentRequested;
-        webView.NavigationStarted += WebView_NavigationStarted;
-        webView.NavigationCompleted += WebView_NavigationCompleted;
-        webView.NewWindowRequested += WebView_NewWindowRequested;
-        webView.WebMessageReceived += WebView_WebMessageReceived;
-        webView.AdapterDestroyed += WebView_AdapterDestroyed;
         viewModel.SendJsonMessage += ViewModel_SendJsonMessage;
-        _webView = webView;
-        PreviewContentHost.Content = webView;
+
+        var webView = _webView;
+
+        if (webView is null)
+        {
+            webView = new NativeWebView { Source = source };
+            webView.EnvironmentRequested += WebView_EnvironmentRequested;
+            webView.NavigationStarted += WebView_NavigationStarted;
+            webView.NavigationCompleted += WebView_NavigationCompleted;
+            webView.NewWindowRequested += WebView_NewWindowRequested;
+            webView.WebMessageReceived += WebView_WebMessageReceived;
+            webView.AdapterDestroyed += WebView_AdapterDestroyed;
+            _webView = webView;
+            PreviewContentHost.Content = webView;
+        }
+        else
+        {
+            webView.Navigate(source);
+        }
+
         _bridgeReadinessTask = WaitForBridgeReadinessAsync(webView, viewModel, _sendLifetime.Token);
     }
 
@@ -199,11 +209,9 @@ public partial class QuestionPreviewView : UserControl
         }
     }
 
-    private void DetachHost()
+    private void DetachSession()
     {
-        var webView = _webView;
         var viewModel = _viewModel;
-        _webView = null;
 
         if (viewModel is not null)
         {
@@ -221,6 +229,14 @@ public partial class QuestionPreviewView : UserControl
         {
             _sendTail = Task.CompletedTask;
         }
+    }
+
+    private void ReleaseHost()
+    {
+        DetachSession();
+
+        var webView = _webView;
+        _webView = null;
 
         if (webView is not null)
         {

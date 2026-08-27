@@ -165,12 +165,93 @@ internal sealed class ViewSmokeTests
             Dispatcher.UIThread.RunJobs();
             Assert.That(document.Dialog, Is.Null);
             Assert.That(document.IsQuestionPreviewOpen, Is.False);
-            Assert.That(view.GetVisualDescendants().OfType<QuestionPreviewView>(), Is.Empty);
+            var retainedPreviewView = view.GetVisualDescendants().OfType<QuestionPreviewView>().Single();
+            Assert.That(retainedPreviewView, Is.SameAs(previewView));
+            Assert.That(retainedPreviewView.DataContext, Is.Null);
+
+            document.PlayQuestion.Execute(question);
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(view.GetVisualDescendants().OfType<QuestionPreviewView>().Single(), Is.SameAs(previewView));
+            Assert.That(previewView.DataContext, Is.SameAs(document.Dialog));
+
+            await ((QuestionPlayViewModel)document.Dialog!).Close.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
         }
         finally
         {
             window.Close();
         }
+    }
+
+    [AvaloniaTest]
+    public void QuestionPreview_SelectAnswerCompletionShowsAccessibleReplayAndRestarts()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var package = SIDocument.Create("Preview options", "Test author");
+        var questionModel = new Question { Price = 100 };
+        questionModel.Parameters[QuestionParameterNames.Question] = new StepParameter
+        {
+            Type = StepParameterTypes.Content,
+            ContentValue = [new ContentItem { Type = ContentTypes.Text, Value = "Choose" }],
+        };
+        questionModel.Parameters[QuestionParameterNames.AnswerType] = new StepParameter
+        {
+            Type = StepParameterTypes.Simple,
+            SimpleValue = StepParameterValues.SetAnswerTypeType_Select,
+        };
+        questionModel.Parameters[QuestionParameterNames.AnswerOptions] = new StepParameter
+        {
+            Type = StepParameterTypes.Group,
+            GroupValue = new StepParameters
+            {
+                ["А"] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = [new ContentItem { Type = ContentTypes.Text, Value = "First" }],
+                },
+                ["Б"] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = [new ContentItem { Type = ContentTypes.Text, Value = "Second" }],
+                },
+            },
+        };
+        questionModel.Right.Add("Б");
+        var theme = new Theme { Name = "Theme", Questions = { questionModel } };
+        package.Package.Rounds.Add(new Round { Name = "Round", Themes = { theme } });
+        using var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Preview options");
+        using var preview = new QuestionPlayViewModel(
+            document.Package.Rounds[0].Themes[0].Questions[0],
+            document,
+            new HeadlessAvailablePreviewService());
+        var view = new QuestionPreviewView { DataContext = preview };
+        var nextButton = view.FindControl<Button>("PreviewNextButton")!;
+        var replayButton = view.FindControl<Button>("PreviewReplayButton")!;
+
+        preview.Play.Execute(null);
+        preview.Play.Execute(null);
+        preview.Play.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(preview.Play.CanExecute(null), Is.False);
+            Assert.That(replayButton.IsVisible, Is.True);
+            Assert.That(replayButton.IsEnabled, Is.True);
+            Assert.That(AutomationProperties.GetName(nextButton), Is.EqualTo(UiStrings.QuestionPreviewNext));
+            Assert.That(AutomationProperties.GetName(replayButton), Is.EqualTo(UiStrings.QuestionPreviewReplay));
+        });
+
+        replayButton.Command!.Execute(replayButton.CommandParameter);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(preview.Play.CanExecute(null), Is.True);
+            Assert.That(replayButton.IsVisible, Is.False);
+            Assert.That(preview.IsReplayVisible, Is.False);
+        });
     }
 
     [AvaloniaTest]
@@ -2081,6 +2162,16 @@ internal sealed class ViewSmokeTests
             SaveFilePickerRequest request,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class HeadlessAvailablePreviewService : IQuestionPreviewService
+    {
+        private static readonly QuestionPreviewHostDescriptor HostDescriptor =
+            QuestionPreviewHostDescriptor.Available(new Uri("http://127.0.0.1:52731/index.html"));
+
+        public QuestionPreviewHostDescriptor GetHostDescriptor() => HostDescriptor;
+
+        public IQuestionPreviewSession CreateSession() => new QuestionPreviewHostSession(HostDescriptor);
     }
 
     private static ServiceProvider CreateServiceProvider(

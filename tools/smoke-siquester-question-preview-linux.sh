@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if [ "$#" -ne 3 ]; then
-  echo "Usage: $0 <SIQuester.Desktop executable or DLL> <one-question package.siq> <receipt-directory>" >&2
+  echo "Usage: $0 <SIQuester.Desktop executable or DLL> <select-answer package.siq> <receipt-directory>" >&2
   exit 2
 fi
 
@@ -82,6 +82,13 @@ xdotool mousemove --window "$window_id" 125 348 click 1
 sleep 1
 xdotool mousemove --window "$window_id" 812 161 click 1
 sleep 4
+
+# Advance question, answer request, and right-answer fragments. The terminal
+# fragment must expose Replay immediately, without a fourth sentinel click.
+xdotool mousemove --window "$window_id" 812 660 click 1
+sleep 2
+xdotool mousemove --window "$window_id" 812 660 click 1
+sleep 2
 xdotool mousemove --window "$window_id" 812 660 click 1
 sleep 5
 
@@ -97,6 +104,19 @@ bright_fraction="$(convert "$screenshot_path" \
   -format '%[fx:mean]' info:)"
 awk -v value="$bright_fraction" 'BEGIN { exit !(value >= 0.01) }'
 
+# Replay in the same dialog, then close and open a second dialog. This checks
+# both deterministic replay and complete media-session attach/dispose cycles.
+xdotool mousemove --window "$window_id" 812 660 click 1
+sleep 2
+xdotool mousemove --window "$window_id" 900 660 click 1
+sleep 2
+xdotool mousemove --window "$window_id" 812 161 click 1
+sleep 4
+xdotool mousemove --window "$window_id" 812 660 click 1
+sleep 3
+xdotool mousemove --window "$window_id" 900 660 click 1
+sleep 2
+
 xdotool key --window "$window_id" ctrl+q
 wait "$application_pid"
 trap - EXIT
@@ -107,9 +127,23 @@ grep -F "Question preview backend available: WebKitGtk" "$log_path"
 grep -F "Question preview package media served: Image" "$log_path"
 ! grep -E "Question preview host failed|Unhandled exception|FATAL" "$log_path"
 
+created_sessions="$(grep -Fc "Question preview media session created" "$log_path")"
+disposed_sessions="$(grep -Fc "Question preview media session disposed" "$log_path")"
+replay_count="$(grep -Fc "Question preview replay started" "$log_path")"
+media_fetches="$(grep -Fc "Question preview package media served: Image" "$log_path")"
+
+test "$created_sessions" -eq 2
+test "$disposed_sessions" -eq 2
+test "$replay_count" -eq 1
+test "$media_fetches" -ge 2
+
 {
   echo "backend=WebKitGtk"
   echo "package_media=Image"
+  echo "created_sessions=$created_sessions"
+  echo "disposed_sessions=$disposed_sessions"
+  echo "replay_count=$replay_count"
+  echo "media_fetches=$media_fetches"
   echo "bright_fraction=$bright_fraction"
   sha256sum "$screenshot_path"
 } > "$receipt_path"

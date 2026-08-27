@@ -738,6 +738,7 @@ internal sealed class QuestionPreviewContentServer : IDisposable
         {
             _server = server;
             Host = host;
+            _server._logger.LogInformation("Question preview media session created");
         }
 
         public QuestionPreviewHostDescriptor Host { get; }
@@ -804,6 +805,7 @@ internal sealed class QuestionPreviewContentServer : IDisposable
 
                 _paths.Clear();
                 _sources.Clear();
+                _server._logger.LogInformation("Question preview media session disposed");
             }
         }
     }

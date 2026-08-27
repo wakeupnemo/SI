@@ -93,19 +93,25 @@
 
       <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{StaticResource Space8}">
         <Button
+            x:Name="PreviewNextButton"
             Classes="command"
             Content="{x:Static loc:UiStrings.QuestionPreviewNext}"
             Command="{Binding Play}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewNext}"
             IsVisible="{Binding IsPreviewAvailable}" />
         <Button
+            x:Name="PreviewReplayButton"
             Classes="command"
             Content="{x:Static loc:UiStrings.QuestionPreviewReplay}"
             Command="{Binding Replay}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewReplay}"
             IsVisible="{Binding IsReplayVisible}"
             IsEnabled="{Binding IsPreviewAvailable}" />
         <Button
+            x:Name="PreviewCloseButton"
             Classes="command accent"
             Content="{x:Static loc:UiStrings.Close}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.Close}"
             Command="{Binding CloseDialog}" />
       </StackPanel>
     </Grid>

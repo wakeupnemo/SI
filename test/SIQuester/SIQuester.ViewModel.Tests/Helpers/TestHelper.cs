@@ -123,6 +123,63 @@ internal static class TestHelper
         return document;
     }
 
+    /// <summary>Creates a script-library question with text and embedded-image answer options.</summary>
+    public static SIDocument CreateSelectAnswerPreviewPackage(string imageName)
+    {
+        var document = SIDocument.Create("Preview options", "Test Author");
+        var question = new Question { Price = 100 };
+        question.Parameters[QuestionParameterNames.Question] = new StepParameter
+        {
+            Type = StepParameterTypes.Content,
+            ContentValue =
+            [
+                new ContentItem
+                {
+                    Type = ContentTypes.Text,
+                    Value = "Выберите жёлтый квадрат",
+                },
+            ],
+        };
+        question.Parameters[QuestionParameterNames.AnswerType] = new StepParameter
+        {
+            Type = StepParameterTypes.Simple,
+            SimpleValue = StepParameterValues.SetAnswerTypeType_Select,
+        };
+        question.Parameters[QuestionParameterNames.AnswerOptions] = new StepParameter
+        {
+            Type = StepParameterTypes.Group,
+            GroupValue = new StepParameters
+            {
+                ["А"] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = [new ContentItem { Type = ContentTypes.Text, Value = "Синий квадрат" }],
+                },
+                ["Б"] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue =
+                    [
+                        new ContentItem
+                        {
+                            Type = ContentTypes.Image,
+                            Value = imageName,
+                            IsRef = true,
+                        },
+                    ],
+                },
+            },
+        };
+        question.Right.Add("Б");
+
+        var theme = new Theme { Name = "Варианты" };
+        theme.Questions.Add(question);
+        var round = new Round { Name = "Раунд" };
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        return document;
+    }
+
     /// <summary>
     /// Creates a document view model factory for testing.
     /// </summary>
