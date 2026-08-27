@@ -54,6 +54,13 @@ internal sealed class MediaLibraryEditingTests
         Assert.That(document.Images.Files, Is.Empty);
         document.OperationsManager.Redo.Execute(null);
         Assert.That(document.Images.Files, Has.Count.EqualTo(2));
+
+        document.Images.CurrentFile = document.Images.Files.Single(file => file.Name == "второй.png");
+        document.Images.RemoveCurrentFile.Execute(null);
+        Assert.That(document.Images.Files.Select(file => file.Name),
+            Is.EqualTo(new[] { "первый 例.png" }));
+        document.OperationsManager.Undo.Execute(null);
+        Assert.That(document.Images.Files, Has.Count.EqualTo(2));
     }
 
     [Test]
