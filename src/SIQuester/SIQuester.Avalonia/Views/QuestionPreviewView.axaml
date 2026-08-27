@@ -1,0 +1,59 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.QuestionPreviewView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:vm="using:SIQuester.ViewModel.Workspaces.Dialogs"
+    x:DataType="vm:QuestionPlayViewModel">
+  <Border
+      Classes="card"
+      MaxWidth="{StaticResource QuestionPreviewMaxWidth}"
+      MinHeight="{StaticResource QuestionPreviewMinHeight}"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Center"
+      AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewTitle}">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{StaticResource Space16}">
+      <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.QuestionPreviewTitle}" />
+
+      <Grid Grid.Row="1">
+        <Border
+            Classes="card"
+            IsVisible="{Binding IsPreviewBackendUnavailable}"
+            BorderBrush="{DynamicResource SystemAccentColor}">
+          <TextBlock
+              Text="{x:Static loc:UiStrings.QuestionPreviewBackendUnavailable}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewBackendUnavailable}" />
+        </Border>
+        <Border
+            Classes="card"
+            IsVisible="{Binding ArePreviewAssetsUnavailable}"
+            BorderBrush="{DynamicResource SystemAccentColor}">
+          <TextBlock
+              Text="{x:Static loc:UiStrings.QuestionPreviewAssetsUnavailable}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewAssetsUnavailable}" />
+        </Border>
+      </Grid>
+
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="{StaticResource Space8}">
+        <Button
+            Classes="command"
+            Content="{x:Static loc:UiStrings.QuestionPreviewNext}"
+            Command="{Binding Play}"
+            IsVisible="{Binding IsPreviewAvailable}" />
+        <Button
+            Classes="command"
+            Content="{x:Static loc:UiStrings.QuestionPreviewReplay}"
+            Command="{Binding Replay}"
+            IsVisible="{Binding IsReplayVisible}" />
+        <Button
+            Classes="command accent"
+            Content="{x:Static loc:UiStrings.Close}"
+            Command="{Binding CloseDialog}" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

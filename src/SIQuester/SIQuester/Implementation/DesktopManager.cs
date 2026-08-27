@@ -41,6 +41,7 @@ internal sealed class DesktopManager :
     IApplicationLifetimeService,
     IMediaMaterializationService,
     IPlatformCapabilities,
+    IQuestionPreviewService,
     IExternalLauncher,
     IUiDispatcher,
     IDisposable
@@ -55,6 +56,15 @@ internal sealed class DesktopManager :
     public override string[] FontFamilies => Fonts.SystemFontFamilies.Select(ff => ff.Source).OrderBy(f => f).ToArray();
 
     public bool SupportsRecoveryManagementUi => false;
+
+    public QuestionPreviewHostDescriptor GetHostDescriptor()
+    {
+        var playerPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "index.html");
+
+        return File.Exists(playerPath)
+            ? QuestionPreviewHostDescriptor.Available(new Uri(Path.GetFullPath(playerPath)))
+            : QuestionPreviewHostDescriptor.Unavailable(QuestionPreviewAvailability.AssetsUnavailable);
+    }
 
     public async ValueTask InvokeAsync(Action action, CancellationToken cancellationToken = default)
     {

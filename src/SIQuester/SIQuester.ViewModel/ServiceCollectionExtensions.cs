@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<StorageContextViewModel>();
         services.TryAddSingleton<IAppPaths, PlatformAppPaths>();
         services.TryAddSingleton<IUiDispatcher, InlineUiDispatcher>();
+        services.TryAddSingleton<IQuestionPreviewService, UnavailableQuestionPreviewService>();
         services.AddSingleton<IDocumentPersistenceService, SafeDocumentPersistenceService>();
         services.AddSingleton<IDocumentRecoveryService, DocumentRecoveryService>();
         services.AddSingleton<IDocumentViewModelFactory, DocumentViewModelFactory>();

@@ -105,6 +105,7 @@ public partial class App : Application
             services.AddSingleton<IApplicationLifetimeService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IMediaMaterializationService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IPlatformCapabilities>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
+            services.AddSingleton<IQuestionPreviewService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IExternalLauncher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IUiDispatcher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSIQuester();
@@ -132,6 +133,9 @@ public partial class App : Application
                 RuntimeInformation.ProcessArchitecture,
                 RuntimeInformation.FrameworkDescription,
                 _settingsReadOnly);
+            logger.LogInformation(
+                "Question preview availability: {PreviewAvailability}",
+                _serviceProvider.GetRequiredService<IQuestionPreviewService>().GetHostDescriptor().Availability);
 
             var mainViewModel = new MainViewModel(
                 desktopLifetime.Args ?? Array.Empty<string>(),

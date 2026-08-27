@@ -236,4 +236,9 @@ public static class UiStrings
     public static string SpardOpaqueToken => Get(nameof(SpardOpaqueToken));
     public static string SpardTokenDepth => Get(nameof(SpardTokenDepth));
     public static string SpardTokenPreviewTruncated => Get(nameof(SpardTokenPreviewTruncated));
+    public static string QuestionPreviewTitle => Get(nameof(QuestionPreviewTitle));
+    public static string QuestionPreviewBackendUnavailable => Get(nameof(QuestionPreviewBackendUnavailable));
+    public static string QuestionPreviewAssetsUnavailable => Get(nameof(QuestionPreviewAssetsUnavailable));
+    public static string QuestionPreviewNext => Get(nameof(QuestionPreviewNext));
+    public static string QuestionPreviewReplay => Get(nameof(QuestionPreviewReplay));
 }

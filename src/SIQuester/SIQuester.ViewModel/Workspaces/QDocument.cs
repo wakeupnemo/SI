@@ -371,6 +371,11 @@ public sealed class QDocument : WorkspaceViewModel
         {
             if (_dialog != value)
             {
+                if (_dialog is WorkspaceViewModel previousWorkspace)
+                {
+                    previousWorkspace.Closed -= Workspace_Closed;
+                }
+
                 _dialog = value;
 
                 if (_dialog is WorkspaceViewModel workspace)
@@ -379,11 +384,23 @@ public sealed class QDocument : WorkspaceViewModel
                 }
 
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsQuestionPreviewOpen));
             }
         }
     }
 
-    private void Workspace_Closed(WorkspaceViewModel obj) => Dialog = null;
+    /// <summary>Gets whether the document currently presents question preview.</summary>
+    public bool IsQuestionPreviewOpen => Dialog is QuestionPlayViewModel;
+
+    private void Workspace_Closed(WorkspaceViewModel workspace)
+    {
+        workspace.Closed -= Workspace_Closed;
+
+        if (ReferenceEquals(Dialog, workspace))
+        {
+            Dialog = null;
+        }
+    }
 
     private string _searchText;
 
@@ -714,6 +731,9 @@ public sealed class QDocument : WorkspaceViewModel
 
     public ICommand PlayQuestion { get; private set; }
 
+    /// <summary>Gets whether the selected item can be opened in question preview.</summary>
+    public bool CanPreviewActiveQuestion => ActiveNode is QuestionViewModel;
+
     public ICommand ExpandAll { get; private set; }
 
     public ICommand CollapseAllMedia { get; private set; }
@@ -763,6 +783,7 @@ public sealed class QDocument : WorkspaceViewModel
             {
                 _activeNode = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(CanPreviewActiveQuestion));
                 SetActiveChain();
 
                 if (_mediaStoragesInitialized)
@@ -1840,6 +1861,7 @@ public sealed class QDocument : WorkspaceViewModel
     private readonly IMediaMaterializationService _mediaMaterializationService;
     private readonly IAppPaths _appPaths;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly IQuestionPreviewService _questionPreviewService;
     private string _recoveryId = Guid.NewGuid().ToString("N");
 
     internal string RecoveryId => _recoveryId;
@@ -1869,7 +1891,8 @@ public sealed class QDocument : WorkspaceViewModel
         IDocumentRecoveryService documentRecoveryService,
         IMediaMaterializationService mediaMaterializationService,
         IAppPaths appPaths,
-        IUiDispatcher uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        IQuestionPreviewService questionPreviewService)
     {
         Lock = new Lock(document.Package.Name);
 
@@ -1888,6 +1911,7 @@ public sealed class QDocument : WorkspaceViewModel
         _mediaMaterializationService = mediaMaterializationService;
         _appPaths = appPaths;
         _uiDispatcher = uiDispatcher;
+        _questionPreviewService = questionPreviewService;
         _logger = loggerFactory.CreateLogger<QDocument>();
 
         StorageContext = storageContextViewModel;
@@ -3953,7 +3977,7 @@ public sealed class QDocument : WorkspaceViewModel
             return;
         }
 
-        Dialog = new QuestionPlayViewModel(questionViewModel, this);
+        Dialog = new QuestionPlayViewModel(questionViewModel, this, _questionPreviewService);
     }
 
     internal bool CheckPackageQuality()
@@ -4294,6 +4318,7 @@ public sealed class QDocument : WorkspaceViewModel
 
         searchRun?.Cancel();
         _lifetimeCancellation.Cancel();
+        Dialog = null;
 
         Settings.PropertyChanged -= Settings_PropertyChanged;
 

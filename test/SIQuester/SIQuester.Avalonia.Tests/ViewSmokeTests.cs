@@ -23,6 +23,7 @@ using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Contracts.Host;
 using SIQuester.ViewModel.Configuration;
 using SIQuester.ViewModel.Model;
+using SIQuester.ViewModel.Workspaces.Dialogs;
 using SIStatisticsService.Contract;
 using SIStorage.Service.Contract;
 using System.Globalization;
@@ -109,6 +110,67 @@ internal sealed class ViewSmokeTests
         var inspector = new InspectorView { SelectedItem = question };
 
         Assert.That(inspector.SelectedItem, Is.SameAs(question));
+    }
+
+    [AvaloniaTest]
+    public async Task DocumentEditor_QuestionPreviewShowsSafeUnavailableStateAndClosesCleanly()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var package = SIDocument.Create("Preview capability", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        theme.Questions.Add(new Question { Price = 100, Right = { "Answer" } });
+        round.Themes.Add(theme);
+        package.Package.Rounds.Add(round);
+        var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Preview capability");
+        var question = document.Package.Rounds[0].Themes[0].Questions[0];
+        var view = new DocumentEditorView { DataContext = document };
+        var window = new Window { Width = 1100, Height = 700, Content = view };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var previewButton = view.GetVisualDescendants().OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, document.PlayQuestion));
+            Assert.That(previewButton.IsEnabled, Is.False);
+
+            document.ActiveNode = question;
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(previewButton.IsEnabled, Is.True);
+            previewButton.Command!.Execute(previewButton.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var preview = (QuestionPlayViewModel)document.Dialog!;
+            var previewView = view.GetVisualDescendants().OfType<QuestionPreviewView>().Single();
+            var messages = previewView.GetVisualDescendants().OfType<TextBlock>()
+                .Where(textBlock => textBlock.IsVisible)
+                .Select(textBlock => textBlock.Text)
+                .ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(preview.IsPreviewBackendUnavailable, Is.True);
+                Assert.That(preview.Source, Is.Null);
+                Assert.That(preview.Play.CanExecute(null), Is.False);
+                Assert.That(document.IsQuestionPreviewOpen, Is.True);
+                Assert.That(messages, Does.Contain(UiStrings.QuestionPreviewBackendUnavailable));
+                Assert.That(previewView.GetVisualDescendants().OfType<Button>()
+                    .Single(button => Equals(button.Content, UiStrings.Close)).IsEnabled, Is.True);
+            });
+
+            await preview.Close.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(document.Dialog, Is.Null);
+            Assert.That(document.IsQuestionPreviewOpen, Is.False);
+            Assert.That(view.GetVisualDescendants().OfType<QuestionPreviewView>(), Is.Empty);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     [AvaloniaTest]
@@ -1985,6 +2047,9 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.SpardAliasToken, Is.EqualTo("Псевдоним"));
             Assert.That(UiStrings.SpardLineToken, Is.EqualTo("Перенос строки"));
             Assert.That(UiStrings.SpardTokenDepth, Is.EqualTo("Уровень вложенности"));
+            Assert.That(UiStrings.QuestionPreviewTitle, Is.EqualTo("Предпросмотр вопроса"));
+            Assert.That(UiStrings.QuestionPreviewBackendUnavailable,
+                Does.StartWith("Предпросмотр вопроса недоступен"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

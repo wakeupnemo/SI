@@ -3,6 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:dialogs="using:SIQuester.ViewModel.Workspaces.Dialogs"
     xmlns:model="using:SIQuester.Model"
     xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
@@ -28,6 +29,7 @@
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" MinWidth="120" MaxWidth="420" />
+          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
@@ -86,6 +88,15 @@
             ToolTip.Tip="{x:Static loc:UiStrings.ClearSearch}"
             IsEnabled="{Binding HasSearchText}"
             Command="{Binding ClearSearchText}" />
+        <Button
+            Grid.Column="7"
+            Classes="command"
+            Content="{x:Static loc:UiStrings.Preview}"
+            Command="{Binding PlayQuestion}"
+            CommandParameter="{Binding ActiveNode}"
+            IsEnabled="{Binding CanPreviewActiveQuestion}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewTitle}"
+            ToolTip.Tip="{x:Static loc:UiStrings.QuestionPreviewTitle}" />
       </Grid>
     </Border>
 
@@ -167,6 +178,23 @@
         <TextBlock Text="{Binding FilledQuestionCount}" />
         <TextBlock Grid.Column="2" Text="{Binding Path}" TextTrimming="CharacterEllipsis" MaxWidth="520" />
       </Grid>
+    </Border>
+
+    <Border
+        Grid.RowSpan="3"
+        Grid.ColumnSpan="5"
+        Padding="{StaticResource Space32Thickness}"
+        Background="{DynamicResource LayerFillColorAltBrush}"
+        IsVisible="{Binding IsQuestionPreviewOpen}">
+      <ContentControl Content="{Binding Dialog}">
+        <ContentControl.DataTemplates>
+          <DataTemplate
+              DataType="{x:Type dialogs:QuestionPlayViewModel}"
+              x:DataType="dialogs:QuestionPlayViewModel">
+            <views:QuestionPreviewView />
+          </DataTemplate>
+        </ContentControl.DataTemplates>
+      </ContentControl>
     </Border>
   </Grid>
 </UserControl>

@@ -225,4 +225,9 @@
   <data name="SpardOpaqueToken" xml:space="preserve"><value>Preserved expression</value></data>
   <data name="SpardTokenDepth" xml:space="preserve"><value>Nesting level</value></data>
   <data name="SpardTokenPreviewTruncated" xml:space="preserve"><value>Token preview truncated for safety</value></data>
+  <data name="QuestionPreviewTitle" xml:space="preserve"><value>Question preview</value></data>
+  <data name="QuestionPreviewBackendUnavailable" xml:space="preserve"><value>Question preview is unavailable because this build has no configured native browser backend. Editing and saving remain available.</value></data>
+  <data name="QuestionPreviewAssetsUnavailable" xml:space="preserve"><value>The application-owned question player files are missing. Reinstall SIQuester or restore its wwwroot assets.</value></data>
+  <data name="QuestionPreviewNext" xml:space="preserve"><value>Next fragment</value></data>
+  <data name="QuestionPreviewReplay" xml:space="preserve"><value>Replay question</value></data>
 </root>
