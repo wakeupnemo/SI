@@ -16,7 +16,10 @@ public sealed class StepParameterViewModel : ModelViewBase
 
     public StepParametersViewModel? GroupValue { get; }
 
-    public bool UsesSimpleValue => Model.IsRef || Model.Type == StepParameterTypes.Simple;
+    public bool UsesSimpleValue => Model.IsRef
+        || Model.Type != StepParameterTypes.Content
+            && Model.Type != StepParameterTypes.Group
+            && Model.Type != StepParameterTypes.NumberSet;
 
     public bool UsesContentValue => !Model.IsRef && Model.Type == StepParameterTypes.Content;
 

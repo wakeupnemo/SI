@@ -1,4 +1,6 @@
 using SIPackages.Core;
+using System.Text;
+using System.Xml;
 
 namespace SIPackages.Tests;
 
@@ -7,6 +9,38 @@ namespace SIPackages.Tests;
 /// </summary>
 public sealed class ScriptDeserializationTests
 {
+    [Test]
+    public void ReadXml_SelfClosingParameters_PreservesNamesTypesAndEmptyValues()
+    {
+        const string xml = """
+            <params>
+              <param name="simple" />
+              <param name="content" type="content" />
+              <param name="group" type="group" />
+              <param name="reference" isRef="True" />
+              <param name="future" type="future-kind" />
+            </params>
+            """;
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(xml));
+        using var reader = XmlReader.Create(stream);
+        reader.MoveToContent();
+        var parameters = new StepParameters();
+
+        parameters.ReadXml(reader, limits: null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(parameters, Has.Count.EqualTo(5));
+            Assert.That(parameters["simple"].SimpleValue, Is.Empty);
+            Assert.That(parameters["content"].ContentValue, Is.Empty);
+            Assert.That(parameters["group"].GroupValue, Is.Empty);
+            Assert.That(parameters["reference"].IsRef, Is.True);
+            Assert.That(parameters["reference"].SimpleValue, Is.Empty);
+            Assert.That(parameters["future"].Type, Is.EqualTo("future-kind"));
+            Assert.That(parameters["future"].SimpleValue, Is.Empty);
+        });
+    }
+
     [Test]
     public void LoadXml_ScriptQuestion_IsDeserialized()
     {

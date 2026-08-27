@@ -135,4 +135,11 @@ public static class UiStrings
     public static string RightOption => Get(nameof(RightOption));
     public static string MarkRightAnswer => Get(nameof(MarkRightAnswer));
     public static string AddOption => Get(nameof(AddOption));
+    public static string AddStep => Get(nameof(AddStep));
+    public static string ParameterName => Get(nameof(ParameterName));
+    public static string AddSimpleParameter => Get(nameof(AddSimpleParameter));
+    public static string AddContentParameter => Get(nameof(AddContentParameter));
+    public static string AddGroupParameter => Get(nameof(AddGroupParameter));
+    public static string AddNumberSetParameter => Get(nameof(AddNumberSetParameter));
+    public static string AddReferenceParameter => Get(nameof(AddReferenceParameter));
 }

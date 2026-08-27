@@ -3,52 +3,75 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:core="using:SIPackages.Core"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     xmlns:views="using:SIQuester.Avalonia.Views"
     x:Name="Root"
     x:DataType="views:StepParametersEditorView">
-  <ItemsControl ItemsSource="{Binding Editor, ElementName=Root}">
-    <ItemsControl.ItemTemplate>
-      <DataTemplate x:DataType="vm:StepParameterRecord">
-        <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0,0,0,1" Padding="0,8">
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space8}">
-              <TextBlock Text="{Binding Key}" FontWeight="SemiBold" />
-              <TextBlock Grid.Column="1" Text="{Binding Value.Model.Type}" Opacity="0.65" />
-            </Grid>
-            <TextBlock Text="{x:Static loc:UiStrings.ParameterReference}" IsVisible="{Binding Value.Model.IsRef}" Opacity="0.65" />
-            <TextBox
-                x:Name="SimpleParameterEditor"
-                Text="{Binding Value.Model.SimpleValue, Mode=TwoWay}"
-                IsVisible="{Binding Value.UsesSimpleValue}"
-                Margin="{StaticResource MetadataEditorMargin}" />
-            <views:ContentItemsEditorView
-                Editor="{Binding Value.ContentValue}"
-                IsVisible="{Binding Value.UsesContentValue}" />
-            <views:StepParametersEditorView
-                Editor="{Binding Value.GroupValue}"
-                IsVisible="{Binding Value.UsesGroupValue}" />
-            <Grid
-                ColumnDefinitions="*,*,*"
-                ColumnSpacing="{StaticResource Space8}"
-                IsVisible="{Binding Value.UsesNumberSetValue}"
-                Margin="{StaticResource MetadataEditorMargin}">
-              <StackPanel>
-                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Minimum}" />
-                <NumericUpDown Value="{Binding Value.NumberSetValue.Minimum, Mode=TwoWay}" />
-              </StackPanel>
-              <StackPanel Grid.Column="1">
-                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Maximum}" />
-                <NumericUpDown Value="{Binding Value.NumberSetValue.Maximum, Mode=TwoWay}" />
-              </StackPanel>
-              <StackPanel Grid.Column="2">
-                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Step}" />
-                <NumericUpDown Value="{Binding Value.NumberSetValue.Step, Mode=TwoWay}" Minimum="0" />
-              </StackPanel>
-            </Grid>
-          </StackPanel>
-        </Border>
-      </DataTemplate>
-    </ItemsControl.ItemTemplate>
-  </ItemsControl>
+  <StackPanel>
+    <ItemsControl ItemsSource="{Binding Editor, ElementName=Root}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:StepParameterRecord">
+          <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0,0,0,1" Padding="{StaticResource Space8Thickness}">
+            <StackPanel>
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Space8}">
+                <TextBlock Text="{Binding Key}" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="{Binding Value.Model.Type}" Opacity="0.65" />
+                <Button
+                    Grid.Column="2"
+                    Classes="command"
+                    Content="{x:Static loc:UiStrings.Delete}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.Delete}"
+                    Command="{Binding Editor.DeleteParameter, ElementName=Root}"
+                    CommandParameter="{Binding}" />
+              </Grid>
+              <TextBlock Text="{x:Static loc:UiStrings.ParameterReference}" IsVisible="{Binding Value.Model.IsRef}" Opacity="0.65" />
+              <TextBox
+                  x:Name="SimpleParameterEditor"
+                  Text="{Binding Value.Model.SimpleValue, Mode=TwoWay}"
+                  IsVisible="{Binding Value.UsesSimpleValue}"
+                  Margin="{StaticResource MetadataEditorMargin}" />
+              <views:ContentItemsEditorView
+                  Editor="{Binding Value.ContentValue}"
+                  IsVisible="{Binding Value.UsesContentValue}" />
+              <views:StepParametersEditorView
+                  Editor="{Binding Value.GroupValue}"
+                  IsVisible="{Binding Value.UsesGroupValue}" />
+              <Grid
+                  ColumnDefinitions="*,*,*"
+                  ColumnSpacing="{StaticResource Space8}"
+                  IsVisible="{Binding Value.UsesNumberSetValue}"
+                  Margin="{StaticResource MetadataEditorMargin}">
+                <StackPanel>
+                  <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Minimum}" />
+                  <NumericUpDown Value="{Binding Value.NumberSetValue.Minimum, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" />
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Maximum}" />
+                  <NumericUpDown Value="{Binding Value.NumberSetValue.Maximum, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Step}" />
+                  <NumericUpDown Value="{Binding Value.NumberSetValue.Step, Mode=TwoWay}" Minimum="0" Maximum="2147483647" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ParameterName}" />
+    <TextBox
+        x:Name="NewParameterNameEditor"
+        Text="{Binding Editor.NewParameterName, ElementName=Root, Mode=TwoWay}"
+        AutomationProperties.Name="{x:Static loc:UiStrings.ParameterName}"
+        Margin="{StaticResource FieldMargin}" />
+    <WrapPanel Margin="{StaticResource FieldMargin}">
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddSimpleParameter}" AutomationProperties.Name="{x:Static loc:UiStrings.AddSimpleParameter}" Command="{Binding Editor.AddGenericParameter, ElementName=Root}" CommandParameter="{x:Static core:StepParameterTypes.Simple}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddContentParameter}" AutomationProperties.Name="{x:Static loc:UiStrings.AddContentParameter}" Command="{Binding Editor.AddGenericParameter, ElementName=Root}" CommandParameter="{x:Static core:StepParameterTypes.Content}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddGroupParameter}" AutomationProperties.Name="{x:Static loc:UiStrings.AddGroupParameter}" Command="{Binding Editor.AddGenericParameter, ElementName=Root}" CommandParameter="{x:Static core:StepParameterTypes.Group}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddNumberSetParameter}" AutomationProperties.Name="{x:Static loc:UiStrings.AddNumberSetParameter}" Command="{Binding Editor.AddGenericParameter, ElementName=Root}" CommandParameter="{x:Static core:StepParameterTypes.NumberSet}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddReferenceParameter}" AutomationProperties.Name="{x:Static loc:UiStrings.AddReferenceParameter}" Command="{Binding Editor.AddGenericParameter, ElementName=Root}" CommandParameter="{x:Static vm:StepParametersViewModel.ReferenceParameterKind}" />
+    </WrapPanel>
+  </StackPanel>
 </UserControl>

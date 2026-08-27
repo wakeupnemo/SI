@@ -14,7 +14,11 @@ namespace SIQuester.ViewModel;
 /// </summary>
 public sealed class StepParametersViewModel : ObservableCollection<StepParameterRecord>
 {
+    public const string ReferenceParameterKind = "reference";
+
     private readonly QuestionViewModel _question;
+    private readonly bool _contentIsTopLevel;
+    private string _newParameterName = "";
 
     public StepParameters Model { get; }
 
@@ -42,6 +46,35 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
     public SimpleCommand MakeRight { get; }
 
+    /// <summary>
+    /// Adds a named parameter of the canonical type supplied as the command argument.
+    /// </summary>
+    public SimpleCommand AddGenericParameter { get; }
+
+    /// <summary>
+    /// Removes the supplied parameter record.
+    /// </summary>
+    public SimpleCommand DeleteParameter { get; }
+
+    /// <summary>
+    /// Gets or sets the exact key used when a generic parameter is added.
+    /// </summary>
+    public string NewParameterName
+    {
+        get => _newParameterName;
+        set
+        {
+            if (_newParameterName == value)
+            {
+                return;
+            }
+
+            _newParameterName = value;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(NewParameterName)));
+            UpdateCommands();
+        }
+    }
+
     public QuestionViewModel Owner => _question;
 
     public StepParametersViewModel(
@@ -53,6 +86,7 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
         Model = parameters;
 
         var isTopLevel = contentIsTopLevel ?? question.Model.Parameters == parameters;
+        _contentIsTopLevel = isTopLevel;
 
         foreach (var parameter in parameters)
         {
@@ -64,6 +98,8 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
         AddItem = new SimpleCommand(AddItem_Executed);
         DeleteItem = new SimpleCommand(DeleteItem_Executed);
         MakeRight = new SimpleCommand(MakeRight_Executed);
+        AddGenericParameter = new SimpleCommand(AddGenericParameter_Executed);
+        DeleteParameter = new SimpleCommand(DeleteParameter_Executed);
 
         UpdateCommands();
 
@@ -114,6 +150,64 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
     private void UpdateCommands()
     {
         DeleteItem.CanBeExecuted = Count > 2; // TODO: this is a forced mode for select options. That is not true for other cases
+        AddGenericParameter.CanBeExecuted = !string.IsNullOrWhiteSpace(_newParameterName)
+            && !Model.ContainsKey(_newParameterName);
+    }
+
+    private void AddGenericParameter_Executed(object? arg)
+    {
+        if (!AddGenericParameter.CanBeExecuted || arg is not string parameterKind)
+        {
+            return;
+        }
+
+        var parameter = parameterKind switch
+        {
+            StepParameterTypes.Simple => new StepParameter
+            {
+                Type = StepParameterTypes.Simple,
+                SimpleValue = "",
+            },
+            StepParameterTypes.Content => new StepParameter
+            {
+                Type = StepParameterTypes.Content,
+                ContentValue = new List<ContentItem>(),
+            },
+            StepParameterTypes.Group => new StepParameter
+            {
+                Type = StepParameterTypes.Group,
+                GroupValue = new StepParameters(),
+            },
+            StepParameterTypes.NumberSet => new StepParameter
+            {
+                Type = StepParameterTypes.NumberSet,
+                NumberSetValue = new NumberSet(),
+            },
+            ReferenceParameterKind => new StepParameter
+            {
+                Type = StepParameterTypes.Simple,
+                IsRef = true,
+                SimpleValue = "",
+            },
+            _ => null,
+        };
+
+        if (parameter == null)
+        {
+            return;
+        }
+
+        var parameterName = _newParameterName;
+        AddParameter(parameterName, new StepParameterViewModel(_question, parameter, _contentIsTopLevel));
+        NewParameterName = "";
+    }
+
+    private void DeleteParameter_Executed(object? arg)
+    {
+        if (arg is StepParameterRecord parameter && Contains(parameter))
+        {
+            Remove(parameter);
+        }
     }
 
     private void AddItem_Executed(object? arg)

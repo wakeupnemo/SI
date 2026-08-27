@@ -214,6 +214,117 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_ScriptAndParameterCrudMutatesCanonicalCollectionsThroughCompiledBindings()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Script CRUD inspector", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 100, Script = new Script() };
+        question.Script.Steps.Add(new Step
+        {
+            Type = StepTypes.AskAnswer,
+            Parameters =
+            {
+                [StepParameterNames.Mode] = new StepParameter { SimpleValue = "direct" },
+            },
+        });
+        question.Right.Add("Answer");
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Script CRUD inspector");
+        var questionViewModel = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+        var inspector = new InspectorView { SelectedItem = questionViewModel };
+        var window = new Window { Width = 820, Height = 1600, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var scenarioEditor = inspector.GetVisualDescendants().OfType<ScenarioEditorView>().Single();
+            var addStepButton = scenarioEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, questionViewModel.ScriptSteps.AddStep));
+            addStepButton.Command!.Execute(addStepButton.CommandParameter);
+            window.UpdateLayout();
+
+            var addedStep = questionViewModel.ScriptSteps[^1];
+            var parameterEditor = scenarioEditor.GetVisualDescendants()
+                .OfType<StepParametersEditorView>()
+                .Single(editor => ReferenceEquals(editor.Editor, addedStep.Parameters));
+            parameterEditor.FindControl<TextBox>("NewParameterNameEditor")!.Text = "ui-parameter-例";
+            var addSimpleButton = parameterEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => Equals(button.Content, UiStrings.AddSimpleParameter));
+            addSimpleButton.Command!.Execute(addSimpleButton.CommandParameter);
+            window.UpdateLayout();
+
+            var parameterRecord = addedStep.Parameters.Single(parameter => parameter.Key == "ui-parameter-例");
+            var valueEditor = parameterEditor.GetVisualDescendants()
+                .OfType<TextBox>()
+                .Single(textBox => textBox.Name == "SimpleParameterEditor"
+                    && textBox.IsEffectivelyVisible
+                    && textBox.DataContext is StepParameterRecord record
+                    && record.Key == parameterRecord.Key);
+            valueEditor.Text = "Значение из Avalonia 例";
+
+            var addedStepExpander = scenarioEditor.GetVisualDescendants()
+                .OfType<Expander>()
+                .Single(expander => ReferenceEquals(expander.DataContext, addedStep));
+            var moveUpButton = addedStepExpander.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, addedStep.MoveUp));
+            moveUpButton.Command!.Execute(moveUpButton.CommandParameter);
+            window.UpdateLayout();
+            parameterEditor = scenarioEditor.GetVisualDescendants()
+                .OfType<StepParametersEditorView>()
+                .Single(editor => ReferenceEquals(editor.Editor, addedStep.Parameters));
+            addedStepExpander = scenarioEditor.GetVisualDescendants()
+                .OfType<Expander>()
+                .Single(expander => ReferenceEquals(expander.DataContext, addedStep));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.ScriptSteps, Has.Count.EqualTo(2));
+                Assert.That(question.Script.Steps[0], Is.SameAs(addedStep.Model));
+                Assert.That(question.Script.Steps[0].Parameters["ui-parameter-例"].SimpleValue,
+                    Is.EqualTo("Значение из Avalonia 例"));
+            });
+
+            var deleteParameterButton = parameterEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, addedStep.Parameters.DeleteParameter)
+                    && button.CommandParameter is StepParameterRecord record
+                    && record.Key == parameterRecord.Key);
+            deleteParameterButton.Command!.Execute(deleteParameterButton.CommandParameter);
+            Assert.That(addedStep.Parameters.Model, Does.Not.ContainKey(parameterRecord.Key));
+            documentViewModel.OperationsManager.Undo.Execute(null);
+            Assert.That(addedStep.Parameters.Model, Contains.Key(parameterRecord.Key));
+
+            var deleteStepButton = addedStepExpander.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, addedStep.Remove));
+            deleteStepButton.Command!.Execute(deleteStepButton.CommandParameter);
+            Assert.That(questionViewModel.ScriptSteps, Has.Count.EqualTo(1));
+            documentViewModel.OperationsManager.Undo.Execute(null);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.ScriptSteps, Has.Count.EqualTo(2));
+                Assert.That(question.Script.Steps[0], Is.SameAs(addedStep.Model));
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void Inspector_NonTextAnswerEditorsMutateCanonicalParametersThroughCompiledBindings()
     {
         using var serviceProvider = CreateServiceProvider();

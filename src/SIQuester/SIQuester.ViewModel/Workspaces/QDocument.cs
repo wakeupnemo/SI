@@ -753,20 +753,34 @@ public sealed class QDocument : WorkspaceViewModel
 
     private void AttachScriptListeners(QuestionViewModel question)
     {
+        question.ScriptSteps.CollectionChanged += Object_CollectionChanged;
+
         foreach (var step in question.ScriptSteps)
         {
-            step.Model.PropertyChanged += Object_PropertyValueChanged;
-            AttachParametersListener(step.Parameters);
+            AttachScriptStepListeners(step);
         }
     }
 
     private void DetachScriptListeners(QuestionViewModel question)
     {
+        question.ScriptSteps.CollectionChanged -= Object_CollectionChanged;
+
         foreach (var step in question.ScriptSteps)
         {
-            step.Model.PropertyChanged -= Object_PropertyValueChanged;
-            DetachParametersLsteners(step.Parameters);
+            DetachScriptStepListeners(step);
         }
+    }
+
+    private void AttachScriptStepListeners(ScriptStepViewModel step)
+    {
+        step.Model.PropertyChanged += Object_PropertyValueChanged;
+        AttachParametersListener(step.Parameters);
+    }
+
+    private void DetachScriptStepListeners(ScriptStepViewModel step)
+    {
+        step.Model.PropertyChanged -= Object_PropertyValueChanged;
+        DetachParametersLsteners(step.Parameters);
     }
 
     private void AttachParameterListeners(StepParameterRecord parameter)
@@ -1051,6 +1065,10 @@ public sealed class QDocument : WorkspaceViewModel
                     {
                         contentItem.Model.PropertyChanged += Object_PropertyValueChanged;
                     }
+                    else if (item is ScriptStepViewModel scriptStep)
+                    {
+                        AttachScriptStepListeners(scriptStep);
+                    }
                 }
                 break;
 
@@ -1116,6 +1134,10 @@ public sealed class QDocument : WorkspaceViewModel
                     else if (item is ContentItemViewModel contentItem)
                     {
                         contentItem.Model.PropertyChanged -= Object_PropertyValueChanged;
+                    }
+                    else if (item is ScriptStepViewModel scriptStep)
+                    {
+                        DetachScriptStepListeners(scriptStep);
                     }
                 }
                 break;

@@ -108,7 +108,7 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     /// <summary>
     /// Gets canonical script steps without converting legacy questions.
     /// </summary>
-    public IReadOnlyList<ScriptStepViewModel> ScriptSteps { get; private set; }
+    public ScriptStepsViewModel ScriptSteps { get; private set; }
 
     public bool HasScript => Model.Script != null;
 
@@ -338,8 +338,7 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         Right = new AnswersViewModel(this, question.Right, true);
         Wrong = new AnswersViewModel(this, question.Wrong, false);
         Parameters = new StepParametersViewModel(this, question.Parameters);
-        ScriptSteps = question.Script?.Steps.Select(step => new ScriptStepViewModel(this, step)).ToArray()
-            ?? Array.Empty<ScriptStepViewModel>();
+        ScriptSteps = new ScriptStepsViewModel(this, question.Script);
 
         if (question.Script == null
             && Parameters.TryGetValue(QuestionParameterNames.Question, out var questionParameter))
@@ -499,7 +498,7 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     private void RecordQuestionTextChange(IChange change) =>
         OwnerTheme?.OwnerRound?.OwnerPackage?.Document?.OperationsManager.AddChange(change);
 
-    private void NotifyQuestionTextChanged() => OnPropertyChanged(nameof(QuestionText));
+    internal void NotifyQuestionTextChanged() => OnPropertyChanged(nameof(QuestionText));
 
     private sealed class QuestionTextValueChange(
         QuestionViewModel owner,

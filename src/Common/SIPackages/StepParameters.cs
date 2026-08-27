@@ -49,7 +49,7 @@ public sealed class StepParameters : Dictionary<string, StepParameter>, IEquatab
                 && reader.Depth == parentDepth + 1
                 && reader.LocalName == "param")
             {
-                if (!reader.IsEmptyElement && (limits == null || Count < limits.ParameterCount))
+                if (limits == null || Count < limits.ParameterCount)
                 {
                     var name = reader.GetAttribute("name")?.LimitLengthBy(limits?.TextLength) ?? "";
                     var parameter = new StepParameter();

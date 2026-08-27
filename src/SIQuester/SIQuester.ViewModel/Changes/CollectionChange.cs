@@ -66,10 +66,8 @@ public sealed class CollectionChange : IChange
                     break;
 
                 case NotifyCollectionChangedAction.Move:
-                    // TODO: this seems to be incorrect. Write unit test to check this logic
-                    var newIndex = Args.NewStartingIndex - (Args.OldStartingIndex < Args.NewStartingIndex ? 1 : 0);
-                    var tmp = Collection[newIndex];
-                    Collection.RemoveAt(newIndex);
+                    var tmp = Collection[Args.NewStartingIndex];
+                    Collection.RemoveAt(Args.NewStartingIndex);
                     Collection.Insert(Args.OldStartingIndex, tmp);
                     break;
             }
@@ -97,7 +95,7 @@ public sealed class CollectionChange : IChange
             case NotifyCollectionChangedAction.Move:
                 var tmp = Collection[Args.OldStartingIndex];
                 Collection.RemoveAt(Args.OldStartingIndex);
-                Collection.Insert(Args.NewStartingIndex - (Args.OldStartingIndex < Args.NewStartingIndex ? 1 : 0), tmp);
+                Collection.Insert(Args.NewStartingIndex, tmp);
                 break;
 
             case NotifyCollectionChangedAction.Remove:

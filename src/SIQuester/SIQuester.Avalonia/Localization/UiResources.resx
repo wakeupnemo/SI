@@ -124,4 +124,11 @@
   <data name="RightOption" xml:space="preserve"><value>Right option:</value></data>
   <data name="MarkRightAnswer" xml:space="preserve"><value>Mark as right</value></data>
   <data name="AddOption" xml:space="preserve"><value>Add option</value></data>
+  <data name="AddStep" xml:space="preserve"><value>Add step</value></data>
+  <data name="ParameterName" xml:space="preserve"><value>Parameter name</value></data>
+  <data name="AddSimpleParameter" xml:space="preserve"><value>Add text value</value></data>
+  <data name="AddContentParameter" xml:space="preserve"><value>Add content</value></data>
+  <data name="AddGroupParameter" xml:space="preserve"><value>Add group</value></data>
+  <data name="AddNumberSetParameter" xml:space="preserve"><value>Add number set</value></data>
+  <data name="AddReferenceParameter" xml:space="preserve"><value>Add reference</value></data>
 </root>

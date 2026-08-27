@@ -23,12 +23,24 @@
             </Expander.Header>
             <StackPanel Margin="{StaticResource Space8Thickness}">
               <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.StepType}" />
-              <TextBox Text="{Binding Model.Type, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+              <TextBox Text="{Binding Model.Type, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.StepType}" Margin="{StaticResource FieldMargin}" />
               <views:StepParametersEditorView Editor="{Binding Parameters}" />
+              <WrapPanel>
+                <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveUp}" Command="{Binding MoveUp}" Margin="{StaticResource MetadataCommandMargin}" />
+                <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveDown}" Command="{Binding MoveDown}" Margin="{StaticResource MetadataCommandMargin}" />
+                <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" AutomationProperties.Name="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
+              </WrapPanel>
             </StackPanel>
           </Expander>
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
+    <Button
+        Classes="command"
+        Content="{x:Static loc:UiStrings.AddStep}"
+        AutomationProperties.Name="{x:Static loc:UiStrings.AddStep}"
+        Command="{Binding Question.ScriptSteps.AddStep, ElementName=Root}"
+        IsVisible="{Binding Question.HasScript, ElementName=Root}"
+        HorizontalAlignment="Left" />
   </StackPanel>
 </UserControl>

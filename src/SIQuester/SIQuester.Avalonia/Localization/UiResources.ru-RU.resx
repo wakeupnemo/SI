@@ -124,4 +124,11 @@
   <data name="RightOption" xml:space="preserve"><value>Правильный вариант:</value></data>
   <data name="MarkRightAnswer" xml:space="preserve"><value>Сделать правильным</value></data>
   <data name="AddOption" xml:space="preserve"><value>Добавить вариант</value></data>
+  <data name="AddStep" xml:space="preserve"><value>Добавить шаг</value></data>
+  <data name="ParameterName" xml:space="preserve"><value>Имя параметра</value></data>
+  <data name="AddSimpleParameter" xml:space="preserve"><value>Добавить текстовое значение</value></data>
+  <data name="AddContentParameter" xml:space="preserve"><value>Добавить содержимое</value></data>
+  <data name="AddGroupParameter" xml:space="preserve"><value>Добавить группу</value></data>
+  <data name="AddNumberSetParameter" xml:space="preserve"><value>Добавить набор чисел</value></data>
+  <data name="AddReferenceParameter" xml:space="preserve"><value>Добавить ссылку</value></data>
 </root>
