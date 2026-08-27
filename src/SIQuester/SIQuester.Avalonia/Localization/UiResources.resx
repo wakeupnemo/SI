@@ -4,7 +4,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
-  <data name="AppTitle" xml:space="preserve"><value>SIQuester</value></data>
+  <data name="AppTitle" xml:space="preserve"><value>SIQuester Cross-Platform</value></data>
   <data name="New" xml:space="preserve"><value>New</value></data>
   <data name="Open" xml:space="preserve"><value>Open</value></data>
   <data name="Save" xml:space="preserve"><value>Save</value></data>

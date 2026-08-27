@@ -91,7 +91,7 @@ publish_arguments=(
   --runtime "$rid"
   --self-contained true
   --output "$publish_directory"
-  -p:Version="$version"
+  -p:SIQuesterCrossPlatformVersion="$version"
   -p:PublishSingleFile=false
   -p:PublishTrimmed=false
   -p:DebugSymbols=false

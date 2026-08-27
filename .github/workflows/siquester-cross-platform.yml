@@ -243,7 +243,7 @@ jobs:
       - name: Read release metadata
         shell: bash
         run: |
-          version="$(sed -n 's|.*<SIQuesterVersion>\([^<]*\)</SIQuesterVersion>.*|\1|p' Directory.Build.props)"
+          version="$(sed -n 's|.*<SIQuesterCrossPlatformVersion>\([^<]*\)</SIQuesterCrossPlatformVersion>.*|\1|p' Directory.Build.props)"
           [[ "$version" =~ ^[0-9]+([.][0-9]+){1,2}$ ]]
           echo "SIQUESTER_VERSION=$version" >> "$GITHUB_ENV"
           echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct HEAD)" >> "$GITHUB_ENV"
@@ -284,7 +284,7 @@ jobs:
             --self-contained true `
             --no-restore `
             --output $publishDirectory `
-            -p:Version=$env:SIQUESTER_VERSION `
+            -p:SIQuesterCrossPlatformVersion=$env:SIQUESTER_VERSION `
             -p:PublishSingleFile=false `
             -p:PublishTrimmed=false `
             -p:DebugSymbols=false `

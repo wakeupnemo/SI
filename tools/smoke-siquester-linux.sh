@@ -41,7 +41,7 @@ trap cleanup EXIT
 window_id=""
 
 for _ in $(seq 1 80); do
-  window_id="$(xdotool search --onlyvisible --name '^SIQuester$' 2>/dev/null | head -n 1 || true)"
+  window_id="$(xdotool search --onlyvisible --name '^SIQuester Cross-Platform$' 2>/dev/null | head -n 1 || true)"
 
   if [ -n "$window_id" ]; then
     break

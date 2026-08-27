@@ -4,9 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyTitle>SIQuester Desktop</AssemblyTitle>
-    <Product>SIQuester</Product>
-    <Version>$(SIQuesterVersion)</Version>
+    <AssemblyTitle>SIQuester Cross-Platform</AssemblyTitle>
+    <Product>SIQuester Cross-Platform</Product>
+    <Version>$(SIQuesterCrossPlatformVersion)</Version>
     <ApplicationIcon>..\SIQuester\Resources\logo.ico</ApplicationIcon>
   </PropertyGroup>
 

@@ -132,7 +132,7 @@ public partial class App : Application
             _settings.PropertyChanged += Settings_PropertyChanged;
 
             logger.LogInformation(
-                "Starting SIQuester Desktop on {OperatingSystem}; architecture {Architecture}; runtime {RuntimeVersion}; settings read-only: {SettingsReadOnly}",
+                "Starting SIQuester Cross-Platform on {OperatingSystem}; architecture {Architecture}; runtime {RuntimeVersion}; settings read-only: {SettingsReadOnly}",
                 RuntimeInformation.OSDescription,
                 RuntimeInformation.ProcessArchitecture,
                 RuntimeInformation.FrameworkDescription,

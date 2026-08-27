@@ -108,7 +108,7 @@ find_window() {
 }
 
 start_application
-application_window="$(find_window '^SIQuester$' "$application_pid")"
+application_window="$(find_window '^SIQuester Cross-Platform$' "$application_pid")"
 python3 "$drag_source" "$source_image" &
 drag_source_pid=$!
 source_window="$(find_window '^SIQuester Xdnd file source$' "$drag_source_pid")"
@@ -172,7 +172,7 @@ PY
 
 # Reopen the saved package through the production command-line path.
 start_application
-application_window="$(find_window '^SIQuester$' "$application_pid")"
+application_window="$(find_window '^SIQuester Cross-Platform$' "$application_pid")"
 sleep 2
 import -window "$application_window" "$receipt_directory/reopened.png"
 xdotool key --window "$application_window" ctrl+q
