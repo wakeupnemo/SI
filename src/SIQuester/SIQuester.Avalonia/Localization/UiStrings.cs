@@ -198,4 +198,6 @@ public static class UiStrings
     public static string GoToIssue => Get(nameof(GoToIssue));
     public static string ValidationDetails => Get(nameof(ValidationDetails));
     public static string DuplicateItem => Get(nameof(DuplicateItem));
+    public static string DragQuestion => Get(nameof(DragQuestion));
+    public static string DragQuestionFailed => Get(nameof(DragQuestionFailed));
 }

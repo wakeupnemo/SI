@@ -187,4 +187,6 @@
   <data name="GoToIssue" xml:space="preserve"><value>Go to</value></data>
   <data name="ValidationDetails" xml:space="preserve"><value>Detailed report</value></data>
   <data name="DuplicateItem" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="DragQuestion" xml:space="preserve"><value>Drag question</value></data>
+  <data name="DragQuestionFailed" xml:space="preserve"><value>Unable to drag the question</value></data>
 </root>

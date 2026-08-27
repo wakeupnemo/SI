@@ -3,7 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using SIQuester.Avalonia.Localization;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel;
 using SIQuester.ViewModel.Serializers;
@@ -44,8 +46,6 @@ public partial class FlatDocumentView : UserControl
     public FlatDocumentView()
     {
         InitializeComponent();
-        PointerMoved += FlatDocumentView_PointerMoved;
-        PointerReleased += FlatDocumentView_PointerReleased;
         DataContextChanged += FlatDocumentView_DataContextChanged;
     }
 
@@ -61,6 +61,7 @@ public partial class FlatDocumentView : UserControl
         _externalDropCancellation?.Cancel();
         _externalDropCancellation?.Dispose();
         _externalDropCancellation = null;
+        ClearPendingDrag();
         SubscribeToDocument(null);
         base.OnDetachedFromVisualTree(e);
     }
@@ -116,21 +117,21 @@ public partial class FlatDocumentView : UserControl
         e.Handled = true;
     }
 
-    private void Question_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void QuestionDragHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is not QDocument document
-            || sender is not Border { DataContext: QuestionViewModel question }
+            || sender is not Control { DataContext: QuestionViewModel question } control
             || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             return;
         }
 
         Select(document, question);
-        ((Border)sender).Focus();
+        control.Focus();
         _pendingPointerPress = e;
         _pendingQuestion = question;
         _dragStart = e.GetPosition(this);
-        e.Pointer.Capture(this);
+        e.Pointer.Capture(control);
         e.Handled = true;
     }
 
@@ -225,7 +226,7 @@ public partial class FlatDocumentView : UserControl
         document.ActiveNode = item;
     }
 
-    private async void FlatDocumentView_PointerMoved(object? sender, PointerEventArgs e)
+    private async void QuestionDragHandle_PointerMoved(object? sender, PointerEventArgs e)
     {
         if (_isDragging
             || _pendingPointerPress == null
@@ -235,15 +236,7 @@ public partial class FlatDocumentView : UserControl
             return;
         }
 
-        var currentPoint = e.GetCurrentPoint(this);
-
-        if (!currentPoint.Properties.IsLeftButtonPressed)
-        {
-            CancelPendingDrag(e.Pointer);
-            return;
-        }
-
-        var position = currentPoint.Position;
+        var position = e.GetPosition(this);
 
         if (Math.Abs(position.X - _dragStart.X) <= DragThreshold
             && Math.Abs(position.Y - _dragStart.Y) <= DragThreshold)
@@ -277,32 +270,47 @@ public partial class FlatDocumentView : UserControl
 
         try
         {
+            // Avalonia owns and disposes the transfer after the native drag operation starts.
             await DragDrop.DoDragDropAsync(pointerPress, transfer, DragDropEffects.Move | DragDropEffects.Copy);
+        }
+        catch (Exception exception)
+        {
+            document.ErrorMessage = $"{UiStrings.DragQuestionFailed}: {exception.Message}";
         }
         finally
         {
-            ((IDisposable)transfer).Dispose();
             _isDragging = false;
         }
     }
 
-    private void FlatDocumentView_PointerReleased(object? sender, PointerReleasedEventArgs e) =>
+    private void QuestionDragHandle_PointerReleased(object? sender, PointerReleasedEventArgs e) =>
         CancelPendingDrag(e.Pointer);
 
-    private void Question_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    private void QuestionDragHandle_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        if (!_isDragging)
-        {
-            _pendingPointerPress = null;
-            _pendingQuestion = null;
-        }
+        var pointer = e.Pointer;
+        var expectedCapture = sender as IInputElement;
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (!_isDragging && !ReferenceEquals(pointer.Captured, expectedCapture))
+                {
+                    ClearPendingDrag();
+                }
+            },
+            DispatcherPriority.Input);
     }
 
     private void CancelPendingDrag(IPointer pointer)
     {
+        ClearPendingDrag();
+        pointer.Capture(null);
+    }
+
+    private void ClearPendingDrag()
+    {
         _pendingPointerPress = null;
         _pendingQuestion = null;
-        pointer.Capture(null);
     }
 
     private void DropTarget_DragOver(object? sender, DragEventArgs e)

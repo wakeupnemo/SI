@@ -187,4 +187,6 @@
   <data name="GoToIssue" xml:space="preserve"><value>Перейти</value></data>
   <data name="ValidationDetails" xml:space="preserve"><value>Подробный отчёт</value></data>
   <data name="DuplicateItem" xml:space="preserve"><value>Дублировать</value></data>
+  <data name="DragQuestion" xml:space="preserve"><value>Перетащить вопрос</value></data>
+  <data name="DragQuestionFailed" xml:space="preserve"><value>Не удалось перетащить вопрос</value></data>
 </root>

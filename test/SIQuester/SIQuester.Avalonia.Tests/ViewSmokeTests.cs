@@ -1135,7 +1135,30 @@ internal sealed class ViewSmokeTests
             scaleButtons[FlatScale.Theme].Command!.Execute(FlatScale.Theme);
             Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
-            Assert.That(flatView.FindControl<Grid>("DetailedScaleSurface")!.IsVisible, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(flatView.FindControl<Grid>("DetailedScaleSurface")!.IsVisible, Is.True);
+                Assert.That(flatView.GetVisualDescendants().OfType<Border>()
+                    .Count(border => border.IsEffectivelyVisible
+                        && Equals(border.GetValue(AutomationProperties.NameProperty), UiStrings.DragQuestion)),
+                    Is.EqualTo(2));
+            });
+
+            var secondQuestion = documentViewModel.Package.Rounds[0].Themes[0].Questions[1];
+            var secondQuestionDragHandle = flatView.GetVisualDescendants()
+                .OfType<Border>()
+                .Single(border => border.IsEffectivelyVisible
+                    && ReferenceEquals(border.DataContext, secondQuestion)
+                    && Equals(border.GetValue(AutomationProperties.NameProperty), UiStrings.DragQuestion));
+            var dragHandleCenter = secondQuestionDragHandle.TranslatePoint(
+                new Point(secondQuestionDragHandle.Bounds.Width / 2, secondQuestionDragHandle.Bounds.Height / 2),
+                window);
+            Assert.That(dragHandleCenter, Is.Not.Null);
+            window.MouseDown(dragHandleCenter!.Value, MouseButton.Left, RawInputModifiers.None);
+            window.MouseUp(dragHandleCenter.Value, MouseButton.Left, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(documentViewModel.ActiveNode, Is.SameAs(secondQuestion),
+                "the visible drag grip must be a native pointer hit target before the drag threshold is crossed");
 
             scaleButtons[FlatScale.Question].Command!.Execute(FlatScale.Question);
             Dispatcher.UIThread.RunJobs();
@@ -1753,6 +1776,8 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.ClearSearch, Is.EqualTo("Очистить поиск"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
             Assert.That(UiStrings.DuplicateItem, Is.EqualTo("Дублировать"));
+            Assert.That(UiStrings.DragQuestion, Is.EqualTo("Перетащить вопрос"));
+            Assert.That(UiStrings.DragQuestionFailed, Is.EqualTo("Не удалось перетащить вопрос"));
             Assert.That(UiStrings.Validation, Is.EqualTo("Проверка"));
             Assert.That(UiStrings.GoToIssue, Is.EqualTo("Перейти"));
             Assert.That(

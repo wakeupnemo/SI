@@ -31,13 +31,23 @@
         <Border
             Classes="card flat-question-card"
             Focusable="True"
-            PointerPressed="Question_PointerPressed"
-            PointerCaptureLost="Question_PointerCaptureLost"
             KeyDown="Question_KeyDown"
-            ToolTip.Tip="{x:Static loc:UiStrings.FlatViewDragHint}"
             AutomationProperties.Name="{x:Static loc:UiStrings.Question}">
           <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{StaticResource Space4}">
             <TextBlock Text="{x:Static loc:UiStrings.Price}" />
+            <Border
+                Classes="flat-drag-handle"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                PointerPressed="QuestionDragHandle_PointerPressed"
+                PointerMoved="QuestionDragHandle_PointerMoved"
+                PointerReleased="QuestionDragHandle_PointerReleased"
+                PointerCaptureLost="QuestionDragHandle_PointerCaptureLost"
+                Cursor="SizeAll"
+                AutomationProperties.Name="{x:Static loc:UiStrings.DragQuestion}"
+                ToolTip.Tip="{x:Static loc:UiStrings.FlatViewDragHint}">
+              <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
             <TextBlock Grid.Row="1" FontSize="18" FontWeight="SemiBold" Text="{Binding Model.Price}" />
             <TextBlock
                 Grid.Row="2"
