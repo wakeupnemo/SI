@@ -106,6 +106,7 @@ public partial class App : Application
             services.AddSingleton<IMediaMaterializationService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IPlatformCapabilities>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IExternalLauncher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
+            services.AddSingleton<IUiDispatcher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSIQuester();
 
             _serviceProvider = services.BuildServiceProvider(validateScopes: true);

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using SIQuester.Avalonia.Views;
 using SIQuester.ViewModel.Contracts;
@@ -16,6 +17,7 @@ internal sealed class DesktopPlatformServices :
     IMediaMaterializationService,
     IPlatformCapabilities,
     IExternalLauncher,
+    IUiDispatcher,
     IPlatformService
 {
     private const string HelpUri = "https://github.com/VladimirKhil/SI";
@@ -36,6 +38,19 @@ internal sealed class DesktopPlatformServices :
         .ToArray();
 
     public bool SupportsRecoveryManagementUi => true;
+
+    public async ValueTask InvokeAsync(Action action, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
+    }
 
     public void ShowHelp()
     {

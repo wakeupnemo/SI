@@ -151,4 +151,9 @@
   <data name="PackageLogo" xml:space="preserve"><value>Package logo</value></data>
   <data name="SelectLogo" xml:space="preserve"><value>Select logo</value></data>
   <data name="RemoveLogo" xml:space="preserve"><value>Remove logo</value></data>
+  <data name="Search" xml:space="preserve"><value>Search</value></data>
+  <data name="NoSearchResults" xml:space="preserve"><value>No matches found</value></data>
+  <data name="PreviousSearchResult" xml:space="preserve"><value>Previous match</value></data>
+  <data name="NextSearchResult" xml:space="preserve"><value>Next match</value></data>
+  <data name="ClearSearch" xml:space="preserve"><value>Clear search</value></data>
 </root>

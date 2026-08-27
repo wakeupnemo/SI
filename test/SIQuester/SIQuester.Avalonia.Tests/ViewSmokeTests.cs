@@ -797,6 +797,105 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task DocumentEditor_SearchBarRoutesFocusAndPublishesLatestResultState()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Search inspector", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 100 };
+        question.Right.Add("search-target-例");
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Search inspector");
+        var view = new DocumentEditorView { DataContext = documentViewModel };
+        var window = new Window { Width = 900, Height = 600, Content = view };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var searchBox = view.FindControl<TextBox>("SearchBox")!;
+            var noResults = view.FindControl<TextBlock>("NoSearchResultsText")!;
+            var previousButton = view.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, documentViewModel.PreviousSearchResult));
+            var nextButton = view.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, documentViewModel.NextSearchResult));
+            var clearButton = view.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, documentViewModel.ClearSearchText));
+
+            var editorTextBox = view.GetVisualDescendants()
+                .OfType<TextBox>()
+                .First(textBox => !ReferenceEquals(textBox, searchBox));
+            editorTextBox.Focus();
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(editorTextBox.IsFocused, Is.True);
+            window.KeyPress(Key.F, RawInputModifiers.Control, PhysicalKey.F, "f");
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(searchBox.IsFocused, Is.True);
+
+            editorTextBox.Focus();
+            Dispatcher.UIThread.RunJobs();
+            window.KeyPress(Key.F, RawInputModifiers.Meta, PhysicalKey.F, "f");
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(searchBox.IsFocused, Is.True, "Meta+F must route to search on macOS");
+
+            searchBox.Text = "search-target-例";
+
+            for (var i = 0; i < 100 && documentViewModel.SearchResults?.Query != "search-target-例"; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(documentViewModel.SearchResults?.Results, Has.Count.EqualTo(1));
+                Assert.That(noResults.IsEffectivelyVisible, Is.False);
+                Assert.That(previousButton.IsEnabled, Is.True);
+                Assert.That(nextButton.IsEnabled, Is.True);
+                Assert.That(clearButton.IsEnabled, Is.True);
+                Assert.That(searchBox.Bounds.Width, Is.GreaterThanOrEqualTo(120));
+            });
+
+            searchBox.Text = "missing-target";
+
+            for (var i = 0;
+                i < 100 && (!documentViewModel.SearchFailed || documentViewModel.NextSearchResult.CanBeExecuted);
+                i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(documentViewModel.SearchFailed, Is.True);
+                Assert.That(noResults.IsEffectivelyVisible, Is.True);
+                Assert.That(previousButton.IsEnabled, Is.False);
+                Assert.That(nextButton.IsEnabled, Is.False);
+                Assert.That(clearButton.IsEnabled, Is.True);
+                Assert.That(noResults.Text, Is.EqualTo(UiStrings.NoSearchResults));
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void MainWindow_DocumentOpenedAfterStartup_PreservesInitialSelection()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -1151,6 +1250,11 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.PackageLogo, Is.EqualTo("Логотип пакета"));
             Assert.That(UiStrings.SelectLogo, Is.EqualTo("Выбрать логотип"));
             Assert.That(UiStrings.RemoveLogo, Is.EqualTo("Удалить логотип"));
+            Assert.That(UiStrings.Search, Is.EqualTo("Поиск"));
+            Assert.That(UiStrings.NoSearchResults, Is.EqualTo("Совпадений не найдено"));
+            Assert.That(UiStrings.PreviousSearchResult, Is.EqualTo("Предыдущее совпадение"));
+            Assert.That(UiStrings.NextSearchResult, Is.EqualTo("Следующее совпадение"));
+            Assert.That(UiStrings.ClearSearch, Is.EqualTo("Очистить поиск"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(

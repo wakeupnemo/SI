@@ -162,70 +162,155 @@ public sealed class QDocument : WorkspaceViewModel
             {
                 _searchText = value;
                 OnPropertyChanged();
-                MakeSearch();
+                OnPropertyChanged(nameof(HasSearchText));
+                ScheduleSearch();
             }
         }
     }
 
-    private CancellationTokenSource? _cancellation = null;
+    public bool HasSearchText => _searchText.Length > 0;
 
-    private readonly object _searchSync = new();
+    private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(100);
 
-    private async void MakeSearch()
+    private readonly object _searchStateSync = new();
+    private SearchRun? _searchRun;
+    private bool _searchLifetimeEnded;
+
+    internal Task CurrentSearchTask
     {
-        lock (_searchSync)
+        get
         {
-            if (_cancellation != null)
+            lock (_searchStateSync)
             {
-                _cancellation.Cancel();
-                _cancellation = null;
+                return _searchRun?.Task ?? Task.CompletedTask;
             }
         }
+    }
 
-        if (string.IsNullOrEmpty(_searchText))
+    private void ScheduleSearch()
+    {
+        var run = new SearchRun();
+        SearchRun? previousRun;
+        var query = _searchText;
+
+        lock (_searchStateSync)
         {
-            SearchFailed = false;
-            Navigate.Execute(null);
-            ClearSearchText.CanBeExecuted = false;
-            NextSearchResult.CanBeExecuted = false;
-            PreviousSearchResult.CanBeExecuted = false;
-            return;
+            if (_searchLifetimeEnded)
+            {
+                run.Dispose();
+                return;
+            }
+
+            previousRun = _searchRun;
+            _searchRun = run;
+            run.Task = RunSearchAsync(run, query);
         }
 
-        _cancellation = new CancellationTokenSource();
-        ClearSearchText.CanBeExecuted = true;
+        previousRun?.Cancel();
 
-        var task = Task.Run(() => Search(_searchText, _cancellation.Token), _cancellation.Token);
+        if (previousRun != null)
+        {
+            _ = DisposeSearchRunWhenCompleteAsync(previousRun);
+        }
 
+    }
+
+    private async Task RunSearchAsync(SearchRun run, string query)
+    {
         try
         {
-            await task;
+            SearchResults? results = null;
+
+            if (!string.IsNullOrEmpty(query))
+            {
+                await Task.Delay(SearchDebounceInterval, run.Token);
+                results = await Task.Run(() => Search(query, run.Token), run.Token);
+            }
+
+            await _uiDispatcher.InvokeAsync(
+                () => ApplySearchResults(run, query, results),
+                run.Token);
+        }
+        catch (OperationCanceledException) when (run.IsCancellationRequested)
+        {
         }
         catch (Exception exc)
         {
-            OnError(exc);
-            return;
-        }
+            _logger.LogWarning(exc, "Document search failed for query length {length}", query.Length);
 
-        if (task.IsCanceled)
+            try
+            {
+                await _uiDispatcher.InvokeAsync(
+                    () =>
+                    {
+                        if (IsCurrentSearch(run))
+                        {
+                            OnError(exc);
+                        }
+                    });
+            }
+            catch (Exception dispatchException)
+            {
+                _logger.LogWarning(dispatchException, "Could not report a document search error");
+            }
+        }
+    }
+
+    private void ApplySearchResults(SearchRun run, string query, SearchResults? results)
+    {
+        if (!IsCurrentSearch(run))
         {
             return;
         }
 
-        if (SearchResults != null && SearchResults.Results.Count > 0)
+        SearchResults = results;
+        OnPropertyChanged(nameof(SearchResults));
+        OnPropertyChanged(nameof(HasSearchResults));
+        ClearSearchText.CanBeExecuted = query.Length > 0;
+
+        if (results?.Results.Count > 0)
         {
-            SearchFailed = false;
             NextSearchResult.CanBeExecuted = true;
             PreviousSearchResult.CanBeExecuted = true;
-            Navigate.Execute(SearchResults.Results[SearchResults.Index]);
+            SearchFailed = false;
+            Navigate.Execute(results.Results[results.Index]);
         }
         else
         {
-            SearchFailed = true;
             NextSearchResult.CanBeExecuted = false;
             PreviousSearchResult.CanBeExecuted = false;
+            SearchFailed = query.Length > 0;
             Navigate.Execute(null);
         }
+    }
+
+    private bool IsCurrentSearch(SearchRun run)
+    {
+        lock (_searchStateSync)
+        {
+            return !_searchLifetimeEnded && ReferenceEquals(_searchRun, run);
+        }
+    }
+
+    private static async Task DisposeSearchRunWhenCompleteAsync(SearchRun run)
+    {
+        await run.Task.ConfigureAwait(false);
+        run.Dispose();
+    }
+
+    private sealed class SearchRun : IDisposable
+    {
+        private readonly CancellationTokenSource _cancellation = new();
+
+        internal CancellationToken Token => _cancellation.Token;
+
+        internal bool IsCancellationRequested => _cancellation.IsCancellationRequested;
+
+        internal Task Task { get; set; } = Task.CompletedTask;
+
+        internal void Cancel() => _cancellation.Cancel();
+
+        public void Dispose() => _cancellation.Dispose();
     }
 
     internal void ClearLinks(RoundViewModel round)
@@ -633,6 +718,8 @@ public sealed class QDocument : WorkspaceViewModel
     public override string Header => $"{FileName}{(NeedSave() ? "*" : "")}";
 
     public SearchResults? SearchResults { get; private set; } = null;
+
+    public bool HasSearchResults => SearchResults?.Results.Count > 0;
 
     private AuthorsStorageViewModel? _authors;
 
@@ -1451,6 +1538,7 @@ public sealed class QDocument : WorkspaceViewModel
     private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IMediaMaterializationService _mediaMaterializationService;
     private readonly IAppPaths _appPaths;
+    private readonly IUiDispatcher _uiDispatcher;
     private string _recoveryId = Guid.NewGuid().ToString("N");
 
     internal string RecoveryId => _recoveryId;
@@ -1479,7 +1567,8 @@ public sealed class QDocument : WorkspaceViewModel
         IDocumentPersistenceService documentPersistenceService,
         IDocumentRecoveryService documentRecoveryService,
         IMediaMaterializationService mediaMaterializationService,
-        IAppPaths appPaths)
+        IAppPaths appPaths,
+        IUiDispatcher uiDispatcher)
     {
         Lock = new Lock(document.Package.Name);
 
@@ -1497,6 +1586,7 @@ public sealed class QDocument : WorkspaceViewModel
         _documentRecoveryService = documentRecoveryService;
         _mediaMaterializationService = mediaMaterializationService;
         _appPaths = appPaths;
+        _uiDispatcher = uiDispatcher;
         _logger = loggerFactory.CreateLogger<QDocument>();
 
         StorageContext = storageContextViewModel;
@@ -2789,71 +2879,52 @@ public sealed class QDocument : WorkspaceViewModel
         }
     }
 
-    internal void Search(string query, CancellationToken token)
+    internal SearchResults Search(string query, CancellationToken token)
     {
-        SearchResults = new SearchResults(query);
+        var results = new SearchResults(query);
         var package = Package;
+        token.ThrowIfCancellationRequested();
 
         if (package.Model.ContainsInfoOwner(query))
         {
-            lock (_searchSync)
-            {
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                SearchResults.Results.Add(package);
-            }
+            token.ThrowIfCancellationRequested();
+            results.Results.Add(package);
         }
 
         foreach (var round in package.Rounds)
         {
+            token.ThrowIfCancellationRequested();
+
             if (round.Model.ContainsInfoOwner(query))
             {
-                lock (_searchSync)
-                {
-                    if (token.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    SearchResults.Results.Add(round);
-                }
+                token.ThrowIfCancellationRequested();
+                results.Results.Add(round);
             }
 
             foreach (var theme in round.Themes)
             {
+                token.ThrowIfCancellationRequested();
+
                 if (theme.Model.ContainsInfoOwner(query))
                 {
-                    lock (_searchSync)
-                    {
-                        if (token.IsCancellationRequested)
-                        {
-                            return;
-                        }
-
-                        SearchResults.Results.Add(theme);
-                    }
+                    token.ThrowIfCancellationRequested();
+                    results.Results.Add(theme);
                 }
 
                 foreach (var quest in theme.Questions)
                 {
+                    token.ThrowIfCancellationRequested();
+
                     if (quest.Model.Contains(query))
                     {
-                        lock (_searchSync)
-                        {
-                            if (token.IsCancellationRequested)
-                            {
-                                return;
-                            }
-
-                            SearchResults.Results.Add(quest);
-                        }
+                        token.ThrowIfCancellationRequested();
+                        results.Results.Add(quest);
                     }
                 }
             }
         }
+
+        return results;
     }
 
     protected override async Task Close_Executed(object? arg)
@@ -3697,6 +3768,22 @@ public sealed class QDocument : WorkspaceViewModel
         if (_isDisposed)
         {
             return;
+        }
+
+        SearchRun? searchRun;
+
+        lock (_searchStateSync)
+        {
+            _searchLifetimeEnded = true;
+            searchRun = _searchRun;
+            _searchRun = null;
+        }
+
+        searchRun?.Cancel();
+
+        if (searchRun != null)
+        {
+            _ = DisposeSearchRunWhenCompleteAsync(searchRun);
         }
 
         _mediaMaterializationService.ReleaseMaterializedMedia(Document.Images);

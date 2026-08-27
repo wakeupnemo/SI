@@ -151,4 +151,9 @@
   <data name="PackageLogo" xml:space="preserve"><value>Логотип пакета</value></data>
   <data name="SelectLogo" xml:space="preserve"><value>Выбрать логотип</value></data>
   <data name="RemoveLogo" xml:space="preserve"><value>Удалить логотип</value></data>
+  <data name="Search" xml:space="preserve"><value>Поиск</value></data>
+  <data name="NoSearchResults" xml:space="preserve"><value>Совпадений не найдено</value></data>
+  <data name="PreviousSearchResult" xml:space="preserve"><value>Предыдущее совпадение</value></data>
+  <data name="NextSearchResult" xml:space="preserve"><value>Следующее совпадение</value></data>
+  <data name="ClearSearch" xml:space="preserve"><value>Очистить поиск</value></data>
 </root>

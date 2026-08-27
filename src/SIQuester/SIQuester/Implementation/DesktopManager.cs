@@ -42,6 +42,7 @@ internal sealed class DesktopManager :
     IMediaMaterializationService,
     IPlatformCapabilities,
     IExternalLauncher,
+    IUiDispatcher,
     IDisposable
 {
     internal const string STR_Definition = "{0}: {1}";
@@ -54,6 +55,20 @@ internal sealed class DesktopManager :
     public override string[] FontFamilies => Fonts.SystemFontFamilies.Select(ff => ff.Source).OrderBy(f => f).ToArray();
 
     public bool SupportsRecoveryManagementUi => false;
+
+    public async ValueTask InvokeAsync(Action action, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var dispatcher = Application.Current.Dispatcher;
+
+        if (dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        await dispatcher.InvokeAsync(action, System.Windows.Threading.DispatcherPriority.DataBind, cancellationToken);
+    }
 
     private static readonly Dictionary<string, string> QuestionTypeMap = new()
     {

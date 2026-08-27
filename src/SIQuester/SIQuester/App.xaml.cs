@@ -255,6 +255,7 @@ public partial class App : Application
         services.AddSingleton<IMediaMaterializationService>(_manager);
         services.AddSingleton<IPlatformCapabilities>(_manager);
         services.AddSingleton<IExternalLauncher>(_manager);
+        services.AddSingleton<IUiDispatcher>(_manager);
 
         services.AddSIQuester();
     }

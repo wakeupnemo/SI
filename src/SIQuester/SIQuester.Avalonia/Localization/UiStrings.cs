@@ -162,4 +162,9 @@ public static class UiStrings
     public static string PackageLogo => Get(nameof(PackageLogo));
     public static string SelectLogo => Get(nameof(SelectLogo));
     public static string RemoveLogo => Get(nameof(RemoveLogo));
+    public static string Search => Get(nameof(Search));
+    public static string NoSearchResults => Get(nameof(NoSearchResults));
+    public static string PreviousSearchResult => Get(nameof(PreviousSearchResult));
+    public static string NextSearchResult => Get(nameof(NextSearchResult));
+    public static string ClearSearch => Get(nameof(ClearSearch));
 }

@@ -22,7 +22,9 @@ internal static class TestHelper
     /// <summary>
     /// Creates a test service provider with mock dependencies.
     /// </summary>
-    public static IServiceProvider CreateServiceProvider(IFilePickerService? filePickerService = null)
+    public static IServiceProvider CreateServiceProvider(
+        IFilePickerService? filePickerService = null,
+        IUiDispatcher? uiDispatcher = null)
     {
         // Ensure PlatformManager.Instance is initialized before creating documents.
         var platformManager = EnsurePlatformManager();
@@ -40,6 +42,12 @@ internal static class TestHelper
         services.AddSingleton<IMediaMaterializationService>(platformManager);
         services.AddSingleton<IPlatformCapabilities>(platformManager);
         services.AddSingleton<IExternalLauncher>(platformManager);
+
+        if (uiDispatcher != null)
+        {
+            services.AddSingleton(uiDispatcher);
+        }
+
         services.AddSingleton(Substitute.For<ISIStatisticsServiceClient>());
         services.AddSingleton<StorageContextViewModel>(sp => CreateStorageContextViewModel(sp));
         services.AddSingleton<IDocumentViewModelFactory, TestDocumentViewModelFactory>();
