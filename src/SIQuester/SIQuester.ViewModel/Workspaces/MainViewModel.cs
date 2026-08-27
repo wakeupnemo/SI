@@ -33,6 +33,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<MainViewModel> _logger;
     private readonly SemaphoreSlim _autoSaveGate = new(1, 1);
+    private readonly SemaphoreSlim _closeGate = new(1, 1);
 
     public ILogger Logger => _logger;
 
@@ -177,6 +178,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IPlatformCapabilities _platformCapabilities;
     private readonly IExternalLauncher _externalLauncher;
+    private readonly IAppPaths _appPaths;
 
     public AppOptions AppOptions => _appOptions;
 
@@ -207,6 +209,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         _documentRecoveryService = documentRecoveryService;
         _platformCapabilities = platformCapabilities;
         _externalLauncher = externalLauncher;
+        _appPaths = serviceProvider.GetRequiredService<IAppPaths>();
         _logger = loggerFactory.CreateLogger<MainViewModel>();
         _appOptions = appOptions;
 
@@ -419,34 +422,48 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
     private void Help_Executed(object? arg) => _platformService.ShowHelp();
 
-    private async Task Close_Executed(object? arg)
+    private Task Close_Executed(object? arg)
     {
-        _logger.LogInformation("Close_Executed");
-
-        if (await TryCloseAsync())
-        {
-            _logger.LogInformation("Close_Executed complete");
-            _applicationLifetimeService.RequestExit();
-        }
+        _logger.LogInformation("Application close requested");
+        _applicationLifetimeService.RequestExit();
+        return Task.CompletedTask;
     }
 
     public async Task<bool> TryCloseAsync()
     {
-        _logger.LogInformation("TryCloseAsync started");
-
-        foreach (var doc in DocList.ToArray())
+        if (!await _closeGate.WaitAsync(0))
         {
-            await doc.Close.ExecuteAsync(null);
-
-            if (DocList.Contains(doc)) // Closing has been cancelled
-            {
-                _logger.LogInformation("TryCloseAsync cancelled");
-                return false;
-            }
+            _logger.LogInformation("Overlapping application close request was ignored");
+            return false;
         }
 
-        _logger.LogInformation("TryCloseAsync completed");
-        return true;
+        _logger.LogInformation("TryCloseAsync started");
+
+        try
+        {
+            foreach (var doc in DocList.ToArray())
+            {
+                await doc.Close.ExecuteAsync(null);
+
+                if (DocList.Contains(doc)) // Closing has been cancelled or failed.
+                {
+                    _logger.LogInformation("TryCloseAsync cancelled");
+                    return false;
+                }
+            }
+
+            _logger.LogInformation("TryCloseAsync completed");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            await ReportErrorAsync(exception, null);
+            return false;
+        }
+        finally
+        {
+            _closeGate.Release();
+        }
     }
 
     private void Feedback_Executed(object? arg) => OpenUri(Resources.AuthorSiteUrl);
@@ -683,37 +700,34 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             AppSettings.Default.History.Add(path);
             return document;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
-            RemoveFailedLoader(loaderViewModel);
-            throw;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+
+            return null;
         }
         catch (InvalidDataException exc)
         {
-            if (cancellationToken.CanBeCanceled)
-            {
-                RemoveFailedLoader(loaderViewModel);
-            }
-
             _logger.LogError(exc, "File {path} open error: {error}", path, exc.Message);
-            await ShowCorruptedPackageErrorAsync(path);
+            await ShowCorruptedPackageErrorAsync();
             return null;
         }
         catch (Exception exc)
         {
-            if (cancellationToken.CanBeCanceled)
-            {
-                RemoveFailedLoader(loaderViewModel);
-            }
-
             if (exc is FileNotFoundException)
             {
                 AppSettings.Default.History.Remove(path);
             }
 
-            _logger.LogError(exc, "File {path} open error: {error}", path, exc.Message);
             await ReportErrorAsync(exc, Resources.FileOpenError);
             return null;
+        }
+        finally
+        {
+            RemoveFailedLoader(loaderViewModel);
         }
     }
 
@@ -769,7 +783,6 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         catch (Exception exc)
         {
             RemoveFailedLoader(loaderViewModel);
-            _logger.LogError(exc, "Dropped package {fileName} open error: {error}", file.DisplayName, exc.Message);
             await ReportErrorAsync(exc, Resources.FileOpenError);
             return null;
         }
@@ -826,18 +839,13 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         }
     }
 
-    private async Task ShowCorruptedPackageErrorAsync(string path)
+    private async Task ShowCorruptedPackageErrorAsync()
     {
         const string openAutosave = "open-autosave";
         const string openLogs = "open-logs";
 
-        var autoSavePath = Path.Combine(
-            Path.GetTempPath(),
-            AppSettings.ProductName,
-            AppSettings.AutoSaveSimpleFolderName,
-            PathHelper.EncodePath(path));
-
-        var logsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log");
+        var autoSavePath = _appPaths.RecoveryDirectory;
+        var logsPath = _appPaths.LogDirectory;
         var title = new StringBuilder(Resources.PackageCorruptedHint);
         var options = new List<DialogOption>();
 
@@ -1061,6 +1069,8 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
     private async Task ReportErrorAsync(Exception exception, string? message)
     {
+        _logger.LogError(exception, "Operation failed: {UserMessage}", message ?? exception.Message);
+
         try
         {
             await _dialogService.ShowErrorAsync(BuildErrorMessage(exception, message));
@@ -1070,6 +1080,11 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             _logger.LogError(dialogException, "Error dialog failed while reporting {Error}", exception.Message);
         }
     }
+
+    /// <summary>
+    /// Persists and presents an exception raised by the desktop shutdown boundary.
+    /// </summary>
+    public Task ReportShutdownFailureAsync(Exception exception) => ReportErrorAsync(exception, null);
 
     private static string BuildErrorMessage(Exception exception, string? message)
     {

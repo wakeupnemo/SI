@@ -2121,6 +2121,44 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task MainWindow_SettingsFailureKeepsWindowOpenAndReportsOnce()
+    {
+        var dialogs = Substitute.For<IDialogService>();
+        using var serviceProvider = CreateServiceProvider(dialogService: dialogs);
+        using var mainViewModel = CreateMainViewModel(serviceProvider);
+        var expected = new IOException("settings destination is unavailable");
+        var persistenceCalls = 0;
+        var window = new MainWindow(_ =>
+        {
+            persistenceCalls++;
+            return ValueTask.FromException(expected);
+        })
+        {
+            DataContext = mainViewModel,
+        };
+
+        try
+        {
+            window.Show();
+            window.Close();
+            await Dispatcher.UIThread.InvokeAsync(() => { });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(window.IsVisible, Is.True,
+                    "shutdown must remain cancelled when settings cannot be persisted");
+                Assert.That(persistenceCalls, Is.EqualTo(1));
+            });
+            await dialogs.Received(1).ShowErrorAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            window.DataContext = null;
+            window.Close();
+        }
+    }
+
+    [AvaloniaTest]
     public async Task RecoveryCenter_RendersPerEntryCommandsAndStaleState()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -2519,7 +2557,8 @@ internal sealed class ViewSmokeTests
     private static ServiceProvider CreateServiceProvider(
         IClipboardService? clipboardService = null,
         IFilePickerService? filePickerService = null,
-        IMediaPreviewService? mediaPreviewService = null)
+        IMediaPreviewService? mediaPreviewService = null,
+        IDialogService? dialogService = null)
     {
         AppSettings.Default = new AppSettings();
         var services = new ServiceCollection();
@@ -2535,7 +2574,7 @@ internal sealed class ViewSmokeTests
         services.AddSingleton(appPaths);
         services.AddSingleton(clipboardService ?? Substitute.For<IClipboardService>());
         services.AddSingleton(filePickerService ?? Substitute.For<IFilePickerService>());
-        services.AddSingleton(Substitute.For<IDialogService>());
+        services.AddSingleton(dialogService ?? Substitute.For<IDialogService>());
         services.AddSingleton(Substitute.For<IApplicationLifetimeService>());
         services.AddSingleton(Substitute.For<IMediaMaterializationService>());
         services.AddSingleton(Substitute.For<IPlatformService>());

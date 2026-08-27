@@ -27,6 +27,7 @@ using SIStatisticsService.Client;
 using SIStorage.Service.Client;
 using System.ComponentModel;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace SIQuester.Desktop;
@@ -42,6 +43,8 @@ public partial class App : Application
     private MainViewModel? _mainViewModel;
     private DispatcherTimer? _autoSaveTimer;
     private readonly CancellationTokenSource _applicationCancellation = new();
+    private readonly string _sessionId = Guid.NewGuid().ToString("N");
+    private bool _unhandledHandlersRegistered;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -66,7 +69,10 @@ public partial class App : Application
         {
             var paths = new PlatformAppPaths();
             paths.EnsureDirectories();
+            GlobalDiagnosticsContext.Set("siquesterSessionId", _sessionId);
             ConfigureLogging(paths.LogDirectory);
+            global::Avalonia.Logging.Logger.Sink = new AvaloniaPersistentLogSink();
+            RegisterUnhandledExceptionHandlers();
 
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
@@ -132,7 +138,9 @@ public partial class App : Application
             _settings.PropertyChanged += Settings_PropertyChanged;
 
             logger.LogInformation(
-                "Starting SIQuester Cross-Platform on {OperatingSystem}; architecture {Architecture}; runtime {RuntimeVersion}; settings read-only: {SettingsReadOnly}",
+                "Starting SIQuester Cross-Platform {AppVersion}; session {SessionId}; operating system {OperatingSystem}; architecture {Architecture}; runtime {RuntimeVersion}; settings read-only: {SettingsReadOnly}",
+                GetApplicationVersion(),
+                _sessionId,
                 RuntimeInformation.OSDescription,
                 RuntimeInformation.ProcessArchitecture,
                 RuntimeInformation.FrameworkDescription,
@@ -169,9 +177,11 @@ public partial class App : Application
                 }
                 _applicationCancellation.Cancel();
                 _settings.PropertyChanged -= Settings_PropertyChanged;
+                UnregisterUnhandledExceptionHandlers();
                 mainViewModel.Dispose();
                 _serviceProvider.Dispose();
                 _applicationCancellation.Dispose();
+                LogManager.Flush(TimeSpan.FromSeconds(2));
             };
             mainWindow.Show();
 
@@ -184,7 +194,7 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
-            LogManager.GetCurrentClassLogger().Fatal(exception, "SIQuester desktop initialization failed");
+            Program.WriteLastResortFailure(exception, "SIQuester desktop initialization failed");
             desktopLifetime.Shutdown(1);
         }
     }
@@ -239,14 +249,7 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
-            _serviceProvider?.GetRequiredService<ILogger<App>>()
-                .LogError(exception, "Application settings could not be saved");
-
-            if (_serviceProvider != null)
-            {
-                await _serviceProvider.GetRequiredService<IDialogService>()
-                    .ShowErrorAsync(UiStrings.SettingsSavingError, cancellationToken);
-            }
+            throw new InvalidOperationException(UiStrings.SettingsSavingError, exception);
         }
     }
 
@@ -272,12 +275,67 @@ public partial class App : Application
         var fileTarget = new FileTarget("file")
         {
             FileName = Path.Combine(logDirectory, "siquester.log"),
-            Layout = "${longdate}|${uppercase:${level}}|${logger}|${message} ${exception:format=tostring}",
+            Layout = "${longdate}|session=${gdc:item=siquesterSessionId}|${uppercase:${level}}|${logger}|${message} ${exception:format=tostring}",
             ArchiveAboveSize = 5 * 1024 * 1024,
             MaxArchiveFiles = 3,
         };
 
         configuration.AddRule(NLog.LogLevel.Info, NLog.LogLevel.Fatal, fileTarget);
         LogManager.Configuration = configuration;
+    }
+
+    internal static string GetApplicationVersion() =>
+        typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(App).Assembly.GetName().Version?.ToString()
+        ?? "unknown";
+
+    private void RegisterUnhandledExceptionHandlers()
+    {
+        if (_unhandledHandlersRegistered)
+        {
+            return;
+        }
+
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+        Dispatcher.UIThread.UnhandledException += Dispatcher_UnhandledException;
+        _unhandledHandlersRegistered = true;
+    }
+
+    private void UnregisterUnhandledExceptionHandlers()
+    {
+        if (!_unhandledHandlersRegistered)
+        {
+            return;
+        }
+
+        AppDomain.CurrentDomain.UnhandledException -= CurrentDomain_UnhandledException;
+        TaskScheduler.UnobservedTaskException -= TaskScheduler_UnobservedTaskException;
+        Dispatcher.UIThread.UnhandledException -= Dispatcher_UnhandledException;
+        _unhandledHandlersRegistered = false;
+    }
+
+    private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs eventArgs)
+    {
+        var exception = eventArgs.ExceptionObject as Exception
+            ?? new InvalidOperationException($"Unhandled runtime object: {eventArgs.ExceptionObject}");
+        LogManager.GetCurrentClassLogger().Fatal(
+            exception,
+            "Unhandled AppDomain exception; terminating: {IsTerminating}",
+            eventArgs.IsTerminating);
+        LogManager.Flush(TimeSpan.FromSeconds(2));
+    }
+
+    private static void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs eventArgs)
+    {
+        LogManager.GetCurrentClassLogger().Error(eventArgs.Exception, "Unobserved task exception");
+        eventArgs.SetObserved();
+        LogManager.Flush(TimeSpan.FromSeconds(2));
+    }
+
+    private static void Dispatcher_UnhandledException(object? sender, DispatcherUnhandledExceptionEventArgs eventArgs)
+    {
+        LogManager.GetCurrentClassLogger().Fatal(eventArgs.Exception, "Unhandled Avalonia dispatcher exception");
+        LogManager.Flush(TimeSpan.FromSeconds(2));
     }
 }

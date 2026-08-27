@@ -78,12 +78,17 @@ public partial class MainWindow : Window
 
         try
         {
+            await _beforeClose(CancellationToken.None);
+
             if (await viewModel.TryCloseAsync())
             {
-                await _beforeClose(CancellationToken.None);
                 _closeApproved = true;
                 Close();
             }
+        }
+        catch (Exception exception)
+        {
+            await viewModel.ReportShutdownFailureAsync(exception);
         }
         finally
         {

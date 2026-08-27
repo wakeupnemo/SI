@@ -27,7 +27,10 @@ internal static class TestHelper
         IUiDispatcher? uiDispatcher = null,
         IDialogService? dialogService = null,
         IQuestionPreviewService? questionPreviewService = null,
-        IMediaPreviewService? mediaPreviewService = null)
+        IMediaPreviewService? mediaPreviewService = null,
+        ILoggerFactory? loggerFactory = null,
+        IAppPaths? appPaths = null,
+        IApplicationLifetimeService? applicationLifetimeService = null)
     {
         // Ensure PlatformManager.Instance is initialized before creating documents.
         var platformManager = EnsurePlatformManager();
@@ -35,13 +38,13 @@ internal static class TestHelper
         var services = new ServiceCollection();
         services.AddSIQuester();
         
-        services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
-        services.AddSingleton<IAppPaths, TestAppPaths>();
+        services.AddSingleton(loggerFactory ?? NullLoggerFactory.Instance);
+        services.AddSingleton(appPaths ?? new TestAppPaths());
         services.AddSingleton<IClipboardService, ClipboardServiceMock>();
         services.AddSingleton<IPackageTemplatesRepository, PackageTemplatesRepositoryMock>();
         services.AddSingleton(filePickerService ?? platformManager);
         services.AddSingleton(dialogService ?? platformManager);
-        services.AddSingleton<IApplicationLifetimeService>(platformManager);
+        services.AddSingleton(applicationLifetimeService ?? platformManager);
         services.AddSingleton<IMediaMaterializationService>(platformManager);
         services.AddSingleton<IPlatformCapabilities>(platformManager);
         services.AddSingleton<IExternalLauncher>(platformManager);

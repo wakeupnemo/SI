@@ -549,6 +549,50 @@ internal sealed class DocumentSavingTests
     }
 
     [Test]
+    [Platform("Linux")]
+    public async Task SaveDocument_UnwritableDirectory_ShouldLeaveExistingPackageUntouched()
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
+        var document = TestHelper.CreateSimpleTestPackage();
+        using var qDocument = _documentFactory.CreateViewModelFor(document, "Original Package");
+        var protectedDirectory = Path.Combine(_testDirectory, "read only destination");
+        Directory.CreateDirectory(protectedDirectory);
+        var filePath = Path.Combine(protectedDirectory, "пакет 例.siq");
+        qDocument.Path = filePath;
+        await qDocument.Save.ExecuteAsync(null);
+        var originalBytes = await File.ReadAllBytesAsync(filePath);
+        qDocument.Package.Model.Name = "Replacement Must Not Commit";
+        var persistence = _serviceProvider.GetRequiredService<IDocumentPersistenceService>();
+
+        File.SetUnixFileMode(
+            protectedDirectory,
+            UnixFileMode.UserRead | UnixFileMode.UserExecute);
+
+        try
+        {
+            Assert.That(
+                async () => await persistence.SaveAsync(qDocument, filePath),
+                Throws.InstanceOf<UnauthorizedAccessException>());
+        }
+        finally
+        {
+            File.SetUnixFileMode(
+                protectedDirectory,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+
+        Assert.That(await File.ReadAllBytesAsync(filePath), Is.EqualTo(originalBytes));
+        using var stream = File.OpenRead(filePath);
+        using var reloaded = SIDocument.Load(stream);
+        Assert.That(reloaded.Package.Name, Is.EqualTo("Test Package"));
+        Assert.That(Directory.GetFiles(protectedDirectory, ".пакет 例.siq.*.tmp"), Is.Empty);
+    }
+
+    [Test]
     public void SaveDocument_WithInvalidPath_ShouldHandleGracefully()
     {
         // Arrange

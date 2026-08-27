@@ -28,4 +28,10 @@
     <ProjectReference Include="..\..\..\src\SIQuester\SIQuester.ViewModel\SIQuester.ViewModel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\SIGame\SIGame.Tests\SIGameTestNew.siq"
+          Link="Fixtures\SIGameTestNew.siq"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

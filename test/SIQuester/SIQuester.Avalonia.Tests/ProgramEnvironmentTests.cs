@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Avalonia.Logging;
 using SIQuester.Desktop;
 
 namespace SIQuester.Avalonia.Tests;
@@ -7,6 +8,26 @@ namespace SIQuester.Avalonia.Tests;
 [NonParallelizable]
 internal sealed class ProgramEnvironmentTests
 {
+    [Test]
+    public void ApplicationVersionMatchesCrossPlatformRelease()
+    {
+        Assert.That(App.GetApplicationVersion(), Does.StartWith("0.2.0"));
+    }
+
+    [Test]
+    public void PersistentAvaloniaSinkKeepsReleaseLogsFocusedOnWarningsAndFailures()
+    {
+        var sink = new AvaloniaPersistentLogSink();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(sink.IsEnabled(LogEventLevel.Information, "test"), Is.False);
+            Assert.That(sink.IsEnabled(LogEventLevel.Warning, "test"), Is.True);
+            Assert.That(sink.IsEnabled(LogEventLevel.Error, "test"), Is.True);
+            Assert.That(sink.IsEnabled(LogEventLevel.Fatal, "test"), Is.True);
+        });
+    }
+
     [Test]
     public void ConfigureLinuxWebKitEnvironment_SetsCompatibilityValueWhenUnset()
     {
