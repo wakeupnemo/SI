@@ -15,6 +15,8 @@
 
 The desktop host probes WebKit only when question or media preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Embedded image/audio/video references are streamed through per-session controlled loopback URLs; package HTML is not executed. The retained application page provides native HTML5 audio/video transport controls and tears playback down on selection, view, document, or application closure. Codec coverage depends on the distribution's GStreamer packages.
 
+On Linux the desktop host defaults `WEBKIT_DISABLE_COMPOSITING_MODE` to `1` before Avalonia initializes. This works around blank WebKitGTK preview surfaces reproduced on Debian 13. An explicitly supplied environment value is always preserved, so advanced users can override the default before launching SIQuester.
+
 ## Commands
 
 ```bash

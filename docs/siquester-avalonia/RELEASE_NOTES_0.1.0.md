@@ -8,6 +8,7 @@ SIQuester Cross-Platform 0.1.0 is the first usable native Linux prototype. It is
 - Authors, sources, tags, comments, showman comments, answers, scenarios, parameters, validation, search, undo/redo, clipboard, recovery, and image/media authoring for ordinary packages.
 - Tree and flat workspaces, native external file drops, English/Russian resources, system/light/dark themes, keyboard command routing, and a focused 200% scaling/accessibility pass.
 - Controlled question and audio/video preview with an actionable non-fatal state when WebKitGTK or codecs are unavailable.
+- Linux startup applies the WebKitGTK compositing compatibility default required to avoid blank preview surfaces on Debian 13, while preserving explicit environment overrides.
 - Self-contained Linux x64 tarball and Debian amd64 package with `.siq` desktop/MIME registration.
 
 ## Install
