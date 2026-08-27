@@ -43,6 +43,8 @@ The initial shell uses Fluent theme plus semantic tokens. A command surface and 
 
 Scenario controls adapt the existing canonical objects instead of flattening them. Legacy question content remains in the top-level question parameters, while scripted questions expose one `ScriptStepViewModel` per existing `SIPackages.Step`; recursive parameter controls reuse `StepParametersViewModel` for simple/reference, content, group, and number-set values. Script-owned models are attached to the same document operation listeners as legacy parameters. Package cloning and XML parsing retain complete scripts before a save transaction is allowed to validate and commit them.
 
+`ScriptStepsViewModel` is the ordered mutation boundary for scripts. It mirrors add/remove/move operations into the canonical `Script.Steps` list by index, preserving identity even when two steps compare equal, while `QDocument` attaches and detaches change listeners as wrappers enter or leave the collection. `StepParametersViewModel` similarly owns named parameter creation/deletion and recursive wrappers without converting unknown future parameter types; opaque types remain simple-value editable and serialize with their original type discriminator.
+
 Answer inspectors follow the same adapter rule. Avalonia hosts the existing `NumericAnswerViewModel`, `PointAnswerViewModel`, answer collections, and grouped option parameters rather than creating a second answer model. `QuestionViewModel` observes the canonical answer-type parameter so undo/redo updates typed visibility and disposes point-editor subscriptions when that mode is left. Valid select options survive idempotent type selection; malformed option state remains repairable through the existing command.
 
 ## Security boundaries
