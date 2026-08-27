@@ -792,7 +792,11 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
         try
         {
-            model = new ImportTextViewModel(_appOptions, _clipboardService, _documentViewModelFactory);
+            model = new ImportTextViewModel(
+                _appOptions,
+                _clipboardService,
+                _documentViewModelFactory,
+                _filePickerService);
             DocList.Add(model);
             model.Import(textSource);
             return true;
@@ -884,7 +888,11 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
                 _ => throw new InvalidOperationException($"Incorrect text source: {arg}"),
             };
 
-            var model = new ImportTextViewModel(_appOptions, _clipboardService, _documentViewModelFactory);
+            var model = new ImportTextViewModel(
+                _appOptions,
+                _clipboardService,
+                _documentViewModelFactory,
+                _filePickerService);
             DocList.Add(model);
 
             if (textSource != null)

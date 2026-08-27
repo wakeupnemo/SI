@@ -46,10 +46,46 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     public UIState State
     {
         get => _state;
-        set { if (_state != value) { _state = value; OnPropertyChanged(); } }
+        set
+        {
+            if (_state != value)
+            {
+                _state = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsInitialState));
+                OnPropertyChanged(nameof(IsImportFileState));
+                OnPropertyChanged(nameof(IsSplitState));
+                OnPropertyChanged(nameof(IsParseState));
+            }
+        }
     }
 
+    public bool IsInitialState => State == UIState.Initial;
+
+    public bool IsImportFileState => State == UIState.ImportFile;
+
+    public bool IsSplitState => State == UIState.Split;
+
+    public bool IsParseState => State == UIState.Parse;
+
     public ICommand SelectFile { get; private set; }
+
+    private readonly AsyncCommand _selectFile;
+
+    private bool _isSelectingFile;
+
+    public bool IsSelectingFile
+    {
+        get => _isSelectingFile;
+        private set
+        {
+            if (_isSelectingFile != value)
+            {
+                _isSelectingFile = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public ICommand Run { get; private set; }
 
@@ -262,7 +298,9 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     private readonly TaskScheduler _scheduler;
 
     private readonly AppOptions _appOptions;
+    private readonly IFilePickerService _filePickerService;
     private string _badTextCopy = "";
+    private bool _cleaned;
 
     private readonly QConverter _converter = new();
 
@@ -378,10 +416,16 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     /// <param name="appOptions">Application options.</param>
     /// <param name="clipboardService">Clipboard access service.</param>
     /// <param name="documentViewModelFactory">Factory to create documents.</param>
-    public ImportTextViewModel(AppOptions appOptions, IClipboardService clipboardService, IDocumentViewModelFactory documentViewModelFactory)
+    /// <param name="filePickerService">Platform-neutral text file selection.</param>
+    public ImportTextViewModel(
+        AppOptions appOptions,
+        IClipboardService clipboardService,
+        IDocumentViewModelFactory documentViewModelFactory,
+        IFilePickerService filePickerService)
     {
         _appOptions = appOptions;
         _documentViewModelFactory = documentViewModelFactory;
+        _filePickerService = filePickerService ?? throw new ArgumentNullException(nameof(filePickerService));
         _scheduler = TaskScheduler.FromCurrentSynchronizationContext();
 
         var trashAlias = new EditAlias(Resources.Trash, "#FFD3D3D3");
@@ -441,7 +485,8 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         _go = new SimpleCommand(Go_Executed);
         _skip = new SimpleCommand(Skip_Executed) { CanBeExecuted = false };
 
-        SelectFile = new SimpleCommand(SelectFile_Executed);
+        _selectFile = new AsyncCommand(SelectFile_ExecutedAsync);
+        SelectFile = _selectFile;
         Run = new SimpleCommand(Run_Executed);
         CancelImport = new SimpleCommand(CancelImport_Executed);
         ApproveImport = new SimpleCommand(ApproveImport_Executed);
@@ -458,27 +503,74 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         CanGo = true;
     }
 
-    private void SelectFile_Executed(object? arg)
+    private async Task SelectFile_ExecutedAsync(object? arg)
     {
-        var sourceFile = PlatformManager.Instance.ShowImportUI("txt", Resources.TxtFilesFilter);
-
-        if (sourceFile == null)
+        if (_cleaned || IsSelectingFile)
         {
             return;
         }
 
+        IsSelectingFile = true;
+        _selectFile.CanBeExecuted = false;
+
         try
         {
-            Import(new FileTextSource(sourceFile));
+            var files = await _filePickerService.PickOpenFilesAsync(
+                new OpenFilePickerRequest(
+                    Resources.TextImport,
+                    [new FileTypeFilter(Resources.TextFiles, ["txt"])],
+                    AllowMultiple: false),
+                _tokenSource.Token);
+
+            if (files.Count == 0)
+            {
+                return;
+            }
+
+            var file = files[0];
+
+            if (ExternalDropClassifier.Classify(file).Kind != ExternalDropFileKind.Text)
+            {
+                throw new InvalidOperationException(string.Format(
+                    Resources.InvalidFileExtension,
+                    file.DisplayName,
+                    Path.GetExtension(file.DisplayName),
+                    ".txt"));
+            }
+
+            ITextSource textSource;
+
+            if (!string.IsNullOrWhiteSpace(file.LocalPath))
+            {
+                textSource = new FileTextSource(file.LocalPath);
+            }
+            else
+            {
+                await using var source = await file.OpenReadAsync(_tokenSource.Token);
+                using var buffer = new MemoryStream();
+                await source.CopyToAsync(buffer, _tokenSource.Token);
+                textSource = new BufferedTextSource(file.DisplayName, buffer.ToArray());
+            }
+
+            Import(textSource);
+        }
+        catch (OperationCanceledException) when (_tokenSource.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
             OnError(ex);
         }
+        finally
+        {
+            IsSelectingFile = false;
+            _selectFile.CanBeExecuted = !_cleaned;
+        }
     }
 
     internal void Import(ITextSource textSource)
     {
+        _textSource?.Dispose();
         _textSource = textSource;
         OnPropertyChanged(nameof(FileName));
         ReloadImportText();
@@ -771,9 +863,21 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
     public void Clean()
     {
+        if (_cleaned)
+        {
+            return;
+        }
+
+        _cleaned = true;
+        _selectFile.CanBeExecuted = false;
         _converter.ParseError -= QTxtConverter_ParseError;
         _converter.ReadError -= QTxtConverter_ReadError;
         _converter.Progress -= QTxtConverter_Progress;
+
+        foreach (var template in Templates)
+        {
+            template.PropertyChanged -= Item_PropertyChanged;
+        }
 
         switch (_stage)
         {
@@ -795,9 +899,11 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
         if (_task != null && _existing != null)
         {
-            if (!string.IsNullOrEmpty(FileName) && Path.IsPathFullyQualified(FileName))
+            var sourceFileName = FileName;
+
+            if (!string.IsNullOrEmpty(sourceFileName) && Path.IsPathFullyQualified(sourceFileName))
             {
-                string filename = Path.GetFileNameWithoutExtension(FileName);
+                string filename = Path.GetFileNameWithoutExtension(sourceFileName);
 
                 UI.Execute(
                     new Action(() =>
@@ -809,7 +915,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
                         if (save)
                         {
-                            using var writer = new StreamWriter(Path.Combine(Path.GetDirectoryName(FileName), string.Format("{0}_LostPart.txt", filename)));
+                            using var writer = new StreamWriter(Path.Combine(Path.GetDirectoryName(sourceFileName), string.Format("{0}_LostPart.txt", filename)));
                         
                             if (themesNum < _parts.Length)
                             {
@@ -846,6 +952,9 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         //        writer.Close();
         //    }
         //}
+
+        _textSource?.Dispose();
+        _textSource = null;
     }
 
     private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e) => OnReadyChanged();
@@ -1163,5 +1272,15 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         BindHelper.Bind(_questTemplate.Variants, _template.QuestionTemplate);
         BindHelper.Bind(_separatorTemplate.Variants, _template.SeparatorTemplate);
         BindHelper.Bind(_answerTemplate.Variants, _template.AnswerTemplate);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Clean();
+        }
+
+        base.Dispose(disposing);
     }
 }
