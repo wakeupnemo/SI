@@ -1,6 +1,7 @@
 ﻿using SIPackages;
 using SIPackages.Core;
 using SIQuester.ViewModel;
+using SIQuester.ViewModel.Services;
 using System.Text;
 using System.Xml;
 
@@ -34,6 +35,14 @@ public sealed class InfoOwnerData
 
     public Dictionary<string, string> Html { get; set; } = new();
 
+    public Dictionary<string, byte[]> EmbeddedImages { get; set; } = new();
+
+    public Dictionary<string, byte[]> EmbeddedAudio { get; set; } = new();
+
+    public Dictionary<string, byte[]> EmbeddedVideo { get; set; } = new();
+
+    public Dictionary<string, byte[]> EmbeddedHtml { get; set; } = new();
+
     public InfoOwnerData(QDocument document, IItemViewModel item)
     {
         var model = item.GetModel();
@@ -53,6 +62,84 @@ public sealed class InfoOwnerData
             model is Theme ? Level.Theme : Level.Question;
 
         GetFullData(document, item);
+    }
+
+    internal async Task EmbedMediaAsync(QDocument document, CancellationToken cancellationToken = default)
+    {
+        long totalBytes = 0;
+        totalBytes = await EmbedCollectionAsync(
+            document.Images,
+            Images.Keys,
+            EmbeddedImages,
+            totalBytes,
+            cancellationToken);
+        totalBytes = await EmbedCollectionAsync(
+            document.Audio,
+            Audio.Keys,
+            EmbeddedAudio,
+            totalBytes,
+            cancellationToken);
+        totalBytes = await EmbedCollectionAsync(
+            document.Video,
+            Video.Keys,
+            EmbeddedVideo,
+            totalBytes,
+            cancellationToken);
+        await EmbedCollectionAsync(
+            document.Html,
+            Html.Keys,
+            EmbeddedHtml,
+            totalBytes,
+            cancellationToken);
+    }
+
+    private static async Task<long> EmbedCollectionAsync(
+        MediaStorageViewModel collection,
+        IEnumerable<string> names,
+        Dictionary<string, byte[]> destination,
+        long currentTotal,
+        CancellationToken cancellationToken)
+    {
+        foreach (var name in names)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var streamInfo = collection.TryGetStreamInfo(name)
+                ?? throw new InvalidDataException($"Referenced media is unavailable: {name}");
+
+            if (streamInfo.Length < 0
+                || streamInfo.Length > SIQuesterClipboardSerializer.MaximumEmbeddedMediaBytes - currentTotal)
+            {
+                streamInfo.Stream.Dispose();
+                throw new InvalidDataException("The embedded clipboard media exceeds the supported size limit.");
+            }
+
+            await using var stream = streamInfo.Stream;
+            using var buffer = new MemoryStream((int)streamInfo.Length);
+            var copyBuffer = new byte[81920];
+
+            while (true)
+            {
+                var read = await stream.ReadAsync(copyBuffer, cancellationToken);
+
+                if (read == 0)
+                {
+                    break;
+                }
+
+                currentTotal += read;
+
+                if (currentTotal > SIQuesterClipboardSerializer.MaximumEmbeddedMediaBytes)
+                {
+                    throw new InvalidDataException("The embedded clipboard media exceeds the supported size limit.");
+                }
+
+                await buffer.WriteAsync(copyBuffer.AsMemory(0, read), cancellationToken);
+            }
+
+            destination.Add(name, buffer.ToArray());
+        }
+
+        return currentTotal;
     }
 
     public InfoOwner GetItem()

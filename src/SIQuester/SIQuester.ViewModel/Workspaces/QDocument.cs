@@ -1966,6 +1966,7 @@ public sealed class QDocument : WorkspaceViewModel
         try
         {
             var itemData = new InfoOwnerData(this, activeNode);
+            await itemData.EmbedMediaAsync(this);
             await _clipboardService.WriteAsync(new ClipboardWriteRequest
             {
                 CustomData =
@@ -2006,12 +2007,19 @@ public sealed class QDocument : WorkspaceViewModel
                 || !SIQuesterClipboardSerializer.TryDeserializeItem(clipboardData, out itemData))
             {
                 clipboardData = await _clipboardService.ReadCustomDataAsync(
-                    SIQuesterClipboardSerializer.LegacyItemFormat);
+                    SIQuesterClipboardSerializer.LegacyVersionedItemFormat);
 
                 if (clipboardData == null
-                    || !SIQuesterClipboardSerializer.TryDeserializeLegacyItem(clipboardData, out itemData))
+                    || !SIQuesterClipboardSerializer.TryDeserializeLegacyVersionedItem(clipboardData, out itemData))
                 {
-                    return;
+                    clipboardData = await _clipboardService.ReadCustomDataAsync(
+                        SIQuesterClipboardSerializer.LegacyItemFormat);
+
+                    if (clipboardData == null
+                        || !SIQuesterClipboardSerializer.TryDeserializeLegacyItem(clipboardData, out itemData))
+                    {
+                        return;
+                    }
                 }
             }
 
@@ -2092,7 +2100,7 @@ public sealed class QDocument : WorkspaceViewModel
                 return;
             }
 
-            ApplyData(itemData);
+            await ApplyClipboardDataAsync(itemData);
             change.Commit();
         }
         catch (Exception exc)
@@ -2106,6 +2114,21 @@ public sealed class QDocument : WorkspaceViewModel
     /// </summary>
     /// <param name="data">Document data to import.</param>
     public void ApplyData(InfoOwnerData data)
+    {
+        ApplyLinkedData(data);
+
+        var tempMediaDirectory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), AppSettings.ProductName, AppSettings.MediaFolderName);
+        Directory.CreateDirectory(tempMediaDirectory);
+
+        // Legacy in-process WPF drag data keeps its established name-first collision behavior.
+
+        ApplyLegacyMedia(data.Images, Images, tempMediaDirectory);
+        ApplyLegacyMedia(data.Audio, Audio, tempMediaDirectory);
+        ApplyLegacyMedia(data.Video, Video, tempMediaDirectory);
+        ApplyLegacyMedia(data.Html, Html, tempMediaDirectory);
+    }
+
+    private void ApplyLinkedData(InfoOwnerData data)
     {
         foreach (var author in data.Authors)
         {
@@ -2122,58 +2145,232 @@ public sealed class QDocument : WorkspaceViewModel
                 Sources.Collection.Add(source);
             }
         }
+    }
 
-        var tempMediaDirectory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), AppSettings.ProductName, AppSettings.MediaFolderName);
-        Directory.CreateDirectory(tempMediaDirectory);
-
-        // TODO: correctly handle situations with media names collision in source and target packages
-
-        foreach (var item in data.Images)
+    private static void ApplyLegacyMedia(
+        IReadOnlyDictionary<string, string> media,
+        MediaStorageViewModel collection,
+        string tempMediaDirectory)
+    {
+        foreach (var item in media)
         {
-            if (!Images.Files.Any(file => file.Model.Name == item.Key))
+            if (!collection.Files.Any(file => file.Model.Name == item.Key))
             {
                 var extension = System.IO.Path.GetExtension(item.Key);
                 var tmp = System.IO.Path.ChangeExtension(System.IO.Path.Combine(tempMediaDirectory, Guid.NewGuid().ToString()), extension);
                 File.Copy(item.Value, tmp);
 
-                Images.AddFile(tmp, item.Key);
+                collection.AddFile(tmp, item.Key);
+            }
+        }
+    }
+
+    private async Task ApplyClipboardDataAsync(InfoOwnerData data, CancellationToken cancellationToken = default)
+    {
+        ApplyLinkedData(data);
+        Directory.CreateDirectory(_appPaths.TemporaryMediaDirectory);
+        long totalBytes = 0;
+
+        totalBytes = await ApplyClipboardMediaAsync(
+            data.Images,
+            data.EmbeddedImages,
+            Images,
+            totalBytes,
+            cancellationToken);
+        totalBytes = await ApplyClipboardMediaAsync(
+            data.Audio,
+            data.EmbeddedAudio,
+            Audio,
+            totalBytes,
+            cancellationToken);
+        totalBytes = await ApplyClipboardMediaAsync(
+            data.Video,
+            data.EmbeddedVideo,
+            Video,
+            totalBytes,
+            cancellationToken);
+        await ApplyClipboardMediaAsync(
+            data.Html,
+            data.EmbeddedHtml,
+            Html,
+            totalBytes,
+            cancellationToken);
+    }
+
+    private async Task<long> ApplyClipboardMediaAsync(
+        IReadOnlyDictionary<string, string> legacyPaths,
+        IReadOnlyDictionary<string, byte[]> embeddedMedia,
+        MediaStorageViewModel collection,
+        long currentTotal,
+        CancellationToken cancellationToken)
+    {
+        foreach (var name in legacyPaths.Keys.Concat(embeddedMedia.Keys).Distinct(StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            ValidateClipboardMediaName(name);
+            var extension = GetSafeClipboardExtension(name);
+            var temporaryPath = System.IO.Path.Combine(
+                _appPaths.TemporaryMediaDirectory,
+                $"clipboard-{Guid.NewGuid():N}{extension}");
+
+            try
+            {
+                await using var source = embeddedMedia.TryGetValue(name, out var bytes)
+                    ? new MemoryStream(bytes, writable: false)
+                    : OpenLegacyClipboardMedia(legacyPaths, name);
+
+                var existingStreamInfo = collection.TryGetStreamInfo(name);
+
+                if (existingStreamInfo != null)
+                {
+                    await using var existingStream = existingStreamInfo.Stream;
+
+                    if (!await StreamsEqualAsync(source, existingStream, cancellationToken))
+                    {
+                        throw new InvalidDataException($"Clipboard media conflicts with an existing file: {name}");
+                    }
+
+                    continue;
+                }
+
+                await using (var destination = new FileStream(
+                    temporaryPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    81920,
+                    System.IO.FileOptions.Asynchronous
+                        | System.IO.FileOptions.SequentialScan
+                        | System.IO.FileOptions.WriteThrough))
+                {
+                    currentTotal = await CopyClipboardMediaAsync(
+                        source,
+                        destination,
+                        currentTotal,
+                        cancellationToken);
+                    await destination.FlushAsync(cancellationToken);
+                    destination.Flush(flushToDisk: true);
+                }
+
+                using var stagedMedia = new MediaStorageViewModel.StagedMediaFile(
+                    temporaryPath,
+                    name,
+                    deleteOnDispose: true,
+                    _logger);
+                collection.AddFile(stagedMedia);
+            }
+            catch
+            {
+                TryDeleteClipboardTemporaryFile(temporaryPath);
+                throw;
             }
         }
 
-        foreach (var item in data.Audio)
-        {
-            if (!Audio.Files.Any(file => file.Model.Name == item.Key))
-            {
-                var extension = System.IO.Path.GetExtension(item.Key);
-                var tmp = System.IO.Path.ChangeExtension(System.IO.Path.Combine(tempMediaDirectory, Guid.NewGuid().ToString()), extension);
-                File.Copy(item.Value, tmp);
+        return currentTotal;
+    }
 
-                Audio.AddFile(tmp, item.Key);
-            }
+    private static Stream OpenLegacyClipboardMedia(
+        IReadOnlyDictionary<string, string> legacyPaths,
+        string name)
+    {
+        if (!legacyPaths.TryGetValue(name, out var path) || !File.Exists(path))
+        {
+            throw new InvalidDataException($"Clipboard media is no longer available: {name}");
         }
 
-        foreach (var item in data.Video)
-        {
-            if (!Video.Files.Any(file => file.Model.Name == item.Key))
-            {
-                var extension = System.IO.Path.GetExtension(item.Key);
-                var tmp = System.IO.Path.ChangeExtension(System.IO.Path.Combine(tempMediaDirectory, Guid.NewGuid().ToString()), extension);
-                File.Copy(item.Value, tmp);
+        return File.OpenRead(path);
+    }
 
-                Video.AddFile(tmp, item.Key);
+    private static void ValidateClipboardMediaName(string name)
+    {
+        if (!SIQuesterClipboardSerializer.IsSafeMediaName(name))
+        {
+            throw new InvalidDataException("The clipboard contains an unsafe media name.");
+        }
+    }
+
+    private static string GetSafeClipboardExtension(string name)
+    {
+        var extension = System.IO.Path.GetExtension(name);
+        return extension.Length is > 1 and <= 16
+            && extension[1..].All(char.IsLetterOrDigit)
+                ? extension
+                : "";
+    }
+
+    private static async Task<long> CopyClipboardMediaAsync(
+        Stream source,
+        Stream destination,
+        long currentTotal,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[81920];
+
+        while (true)
+        {
+            var read = await source.ReadAsync(buffer, cancellationToken);
+
+            if (read == 0)
+            {
+                return currentTotal;
             }
+
+            currentTotal += read;
+
+            if (currentTotal > SIQuesterClipboardSerializer.MaximumEmbeddedMediaBytes)
+            {
+                throw new InvalidDataException("The embedded clipboard media exceeds the supported size limit.");
+            }
+
+            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
+    }
+
+    private static async Task<bool> StreamsEqualAsync(
+        Stream first,
+        Stream second,
+        CancellationToken cancellationToken)
+    {
+        if (first.CanSeek && second.CanSeek && first.Length != second.Length)
+        {
+            return false;
         }
 
-        foreach (var item in data.Html)
-        {
-            if (!Html.Files.Any(file => file.Model.Name == item.Key))
-            {
-                var extension = System.IO.Path.GetExtension(item.Key);
-                var tmp = System.IO.Path.ChangeExtension(System.IO.Path.Combine(tempMediaDirectory, Guid.NewGuid().ToString()), extension);
-                File.Copy(item.Value, tmp);
+        var firstBuffer = new byte[81920];
+        var secondBuffer = new byte[81920];
 
-                Html.AddFile(tmp, item.Key);
+        while (true)
+        {
+            var firstRead = await first.ReadAsync(firstBuffer, cancellationToken);
+            var secondRead = await second.ReadAsync(secondBuffer, cancellationToken);
+
+            if (firstRead != secondRead)
+            {
+                return false;
             }
+
+            if (firstRead == 0)
+            {
+                return true;
+            }
+
+            if (!firstBuffer.AsSpan(0, firstRead).SequenceEqual(secondBuffer.AsSpan(0, secondRead)))
+            {
+                return false;
+            }
+        }
+    }
+
+    private void TryDeleteClipboardTemporaryFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Could not delete clipboard staging file {path}", path);
         }
     }
 

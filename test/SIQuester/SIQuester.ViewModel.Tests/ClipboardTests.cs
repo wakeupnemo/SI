@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using SIPackages;
+using SIPackages.Core;
 using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Contracts.Host;
@@ -25,6 +26,7 @@ internal sealed class ClipboardTests
             ItemLevel = InfoOwnerData.Level.Question,
             ItemData = "<question price=\"300\" />",
             Images = new Dictionary<string, string> { ["лодка.png"] = "/tmp/media with spaces/image.png" },
+            EmbeddedImages = new Dictionary<string, byte[]> { ["лодка.png"] = new byte[] { 1, 2, 3 } },
         };
 
         var payload = SIQuesterClipboardSerializer.SerializeItem(item);
@@ -33,12 +35,55 @@ internal sealed class ClipboardTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(root["schemaVersion"]!.GetValue<int>(), Is.EqualTo(1));
+            Assert.That(root["schemaVersion"]!.GetValue<int>(), Is.EqualTo(2));
             Assert.That(root["kind"]!.GetValue<string>(), Is.EqualTo(SIQuesterClipboardSerializer.ItemKind));
             Assert.That(succeeded, Is.True);
             Assert.That(restored!.ItemLevel, Is.EqualTo(InfoOwnerData.Level.Question));
             Assert.That(restored.Images["лодка.png"], Is.EqualTo("/tmp/media with spaces/image.png"));
+            Assert.That(restored.EmbeddedImages["лодка.png"], Is.EqualTo(new byte[] { 1, 2, 3 }));
+            Assert.That(
+                SIQuesterClipboardSerializer.SerializeLegacyItem(item),
+                Does.Not.Contain("EmbeddedImages"),
+                "The WPF compatibility format must not duplicate embedded media bytes");
         });
+    }
+
+    [Test]
+    public void ItemPayload_VersionOneEnvelope_RemainsReadable()
+    {
+        var payload = SIQuesterClipboardSerializer.SerializeItem(new InfoOwnerData
+        {
+            ItemLevel = InfoOwnerData.Level.Round,
+            ItemData = "<round name=\"Legacy v1\" />",
+        });
+        var root = JsonNode.Parse(payload)!.AsObject();
+        root["schemaVersion"] = SIQuesterClipboardSerializer.LegacyItemSchemaVersion;
+
+        var succeeded = SIQuesterClipboardSerializer.TryDeserializeLegacyVersionedItem(
+            Encoding.UTF8.GetBytes(root.ToJsonString()),
+            out var restored);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(succeeded, Is.True);
+            Assert.That(restored!.ItemLevel, Is.EqualTo(InfoOwnerData.Level.Round));
+            Assert.That(restored.ItemData, Does.Contain("Legacy v1"));
+        });
+    }
+
+    [TestCase("../escape.png")]
+    [TestCase("..\\escape.png")]
+    public void ItemPayload_UnsafeEmbeddedMediaName_IsRejected(string unsafeName)
+    {
+        var item = new InfoOwnerData
+        {
+            Images = new Dictionary<string, string> { [unsafeName] = "legacy-path" },
+            EmbeddedImages = new Dictionary<string, byte[]> { [unsafeName] = new byte[] { 1 } },
+        };
+
+        Assert.That(
+            () => SIQuesterClipboardSerializer.SerializeItem(item),
+            Throws.TypeOf<InvalidOperationException>());
     }
 
     [Test]
@@ -168,6 +213,122 @@ internal sealed class ClipboardTests
     }
 
     [Test]
+    public async Task CopyPasteQuestion_WithAllMediaSurvivesSourceCloseAndSafeSaveReload()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        var clipboard = serviceProvider.GetRequiredService<IClipboardService>();
+        var appPaths = serviceProvider.GetRequiredService<IAppPaths>();
+        var sourceDocument = TestHelper.CreateSimpleTestPackage();
+        var expectedMedia = new[]
+        {
+            (ContentTypes.Image, "изображение 例.png", new byte[] { 1, 2, 3, 4 }),
+            (ContentTypes.Audio, "звук 例.ogg", new byte[] { 5, 6, 7 }),
+            (ContentTypes.Video, "видео 例.webm", new byte[] { 8, 9 }),
+            (ContentTypes.Html, "страница 例.html", Encoding.UTF8.GetBytes("<p>clipboard</p>")),
+        };
+
+        foreach (var (type, name, bytes) in expectedMedia)
+        {
+            await using var stream = new MemoryStream(bytes, writable: false);
+            await sourceDocument.GetCollection(type).AddFileAsync(name, stream);
+            sourceDocument.Package.Rounds[0].Themes[0].Questions[0].Script!.Steps[0]
+                .Parameters[StepParameterNames.Content].ContentValue!.Add(new ContentItem
+                {
+                    Type = type,
+                    Value = name,
+                    IsRef = true,
+                });
+        }
+
+        var source = factory.CreateViewModelFor(sourceDocument, "source with media.siq");
+        using var targetDocument = TestHelper.CreateSimpleTestPackage();
+        using var target = factory.CreateViewModelFor(targetDocument, "target with media.siq");
+        source.ActiveNode = source.Package.Rounds[0].Themes[0].Questions[0];
+        target.ActiveNode = target.Package.Rounds[0].Themes[0];
+        var outputPath = Path.Combine(Path.GetTempPath(), $"SIQuester clipboard media {Guid.NewGuid():N}.siq");
+        Exception? pasteError = null;
+        target.Error += (exception, _) => pasteError = exception;
+
+        try
+        {
+            await ((IAsyncCommand)source.Copy).ExecuteAsync(null);
+            var versionTwoPayload = await clipboard.ReadCustomDataAsync(SIQuesterClipboardSerializer.ItemFormat);
+            Assert.That(versionTwoPayload, Is.Not.Null);
+            Assert.That(
+                SIQuesterClipboardSerializer.TryDeserializeItem(versionTwoPayload!, out var copiedData),
+                Is.True);
+            Assert.That(
+                new[]
+                {
+                    copiedData!.EmbeddedImages.Count,
+                    copiedData.EmbeddedAudio.Count,
+                    copiedData.EmbeddedVideo.Count,
+                    copiedData.EmbeddedHtml.Count,
+                },
+                Is.EqualTo(new[] { 1, 1, 1, 1 }));
+
+            source.Dispose();
+            await clipboard.WriteAsync(new ClipboardWriteRequest
+            {
+                CustomData =
+                [
+                    new ClipboardCustomData(SIQuesterClipboardSerializer.ItemFormat, versionTwoPayload!),
+                ],
+            });
+
+            await ((IAsyncCommand)target.Paste).ExecuteAsync(null);
+            var pastedQuestion = target.Package.Rounds[0].Themes[0].Questions[^1].Model;
+            Assert.Multiple(() =>
+            {
+                Assert.That(pasteError, Is.Null);
+                Assert.That(
+                    pastedQuestion.GetContent().Where(item => item.IsRef).Select(item => item.Value),
+                    Is.EquivalentTo(expectedMedia.Select(item => item.Item2)));
+                Assert.That(target.Images.Files.Select(file => file.Model.Name), Does.Contain("изображение 例.png"));
+                Assert.That(target.Audio.Files.Select(file => file.Model.Name), Does.Contain("звук 例.ogg"));
+                Assert.That(target.Video.Files.Select(file => file.Model.Name), Does.Contain("видео 例.webm"));
+                Assert.That(target.Html.Files.Select(file => file.Model.Name), Does.Contain("страница 例.html"));
+                Assert.That(target.Images.HasPendingChanges, Is.True);
+                Assert.That(target.Audio.HasPendingChanges, Is.True);
+                Assert.That(target.Video.HasPendingChanges, Is.True);
+                Assert.That(target.Html.HasPendingChanges, Is.True);
+            });
+            await target.SaveAsInternalAsync(outputPath);
+
+            using (var packageStream = File.OpenRead(outputPath))
+            using (var reloaded = SIDocument.Load(packageStream))
+            {
+                foreach (var (type, name, bytes) in expectedMedia)
+                {
+                    var collection = reloaded.GetCollection(type);
+                    var streamInfo = collection.GetFile(name);
+                    Assert.That(
+                        streamInfo,
+                        Is.Not.Null,
+                        $"Missing pasted {type} media {name}; stored names: {string.Join(", ", collection)}");
+                    await using var stream = streamInfo!.Stream;
+                    using var buffer = new MemoryStream();
+                    await stream.CopyToAsync(buffer);
+                    Assert.That(buffer.ToArray(), Is.EqualTo(bytes), $"Changed pasted {type} media {name}");
+                }
+            }
+
+            Assert.That(
+                Directory.Exists(appPaths.TemporaryMediaDirectory)
+                    ? Directory.EnumerateFiles(appPaths.TemporaryMediaDirectory, "clipboard-*").ToArray()
+                    : Array.Empty<string>(),
+                Is.Empty,
+                "Committed clipboard staging must be released");
+        }
+        finally
+        {
+            source.Dispose();
+            File.Delete(outputPath);
+        }
+    }
+
+    [Test]
     public async Task CutQuestion_RemovesSourceOnlyAfterClipboardWriteAndCanPasteToTarget()
     {
         using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
@@ -190,6 +351,46 @@ internal sealed class ClipboardTests
             Assert.That(sourceTheme.Questions, Is.Empty);
             Assert.That(targetTheme.Questions, Has.Count.EqualTo(2));
             Assert.That(targetTheme.Questions[1].Right.Single(), Is.EqualTo("Test answer"));
+        });
+    }
+
+    [Test]
+    public async Task PasteQuestion_WithDifferentExistingMediaBytesFailsWithoutInsertingQuestion()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        using var sourceDocument = TestHelper.CreateSimpleTestPackage();
+        using var targetDocument = TestHelper.CreateSimpleTestPackage();
+        const string mediaName = "collision 例.png";
+        await sourceDocument.Images.AddFileAsync(mediaName, new MemoryStream(new byte[] { 1, 2, 3 }));
+        await targetDocument.Images.AddFileAsync(mediaName, new MemoryStream(new byte[] { 9, 8, 7 }));
+        sourceDocument.Package.Rounds[0].Themes[0].Questions[0].Script!.Steps[0]
+            .Parameters[StepParameterNames.Content].ContentValue!.Add(new ContentItem
+            {
+                Type = ContentTypes.Image,
+                Value = mediaName,
+                IsRef = true,
+            });
+        using var source = factory.CreateViewModelFor(sourceDocument, "collision source.siq");
+        using var target = factory.CreateViewModelFor(targetDocument, "collision target.siq");
+        source.ActiveNode = source.Package.Rounds[0].Themes[0].Questions[0];
+        target.ActiveNode = target.Package.Rounds[0].Themes[0];
+        Exception? pasteError = null;
+        target.Error += (exception, _) => pasteError = exception;
+
+        await ((IAsyncCommand)source.Copy).ExecuteAsync(null);
+        await ((IAsyncCommand)target.Paste).ExecuteAsync(null);
+
+        var streamInfo = target.Document.Images.GetFile(mediaName)!;
+        await using var stream = streamInfo.Stream;
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pasteError, Is.TypeOf<InvalidDataException>());
+            Assert.That(target.Package.Rounds[0].Themes[0].Questions, Has.Count.EqualTo(1));
+            Assert.That(buffer.ToArray(), Is.EqualTo(new byte[] { 9, 8, 7 }));
         });
     }
 
