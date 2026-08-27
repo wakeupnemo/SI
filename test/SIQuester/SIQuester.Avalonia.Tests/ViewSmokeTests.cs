@@ -893,6 +893,38 @@ internal sealed class ViewSmokeTests
                     && record.Key == parameterRecord.Key);
             valueEditor.Text = "Значение из Avalonia 例";
 
+            parameterEditor.FindControl<TextBox>("NewParameterNameEditor")!.Text = "ui-convert-例";
+            addSimpleButton.Command!.Execute(addSimpleButton.CommandParameter);
+            window.UpdateLayout();
+            var convertibleRecord = addedStep.Parameters.Single(parameter => parameter.Key == "ui-convert-例");
+            var renameEditor = parameterEditor.GetVisualDescendants()
+                .OfType<TextBox>()
+                .Single(textBox => ReferenceEquals(textBox.DataContext, convertibleRecord)
+                    && Equals(textBox.GetValue(AutomationProperties.NameProperty), UiStrings.ParameterName));
+            renameEditor.Text = "ui-renamed-例";
+            Dispatcher.UIThread.RunJobs();
+            var renameButton = parameterEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, addedStep.Parameters.RenameParameter)
+                    && ReferenceEquals(button.CommandParameter, convertibleRecord));
+            Assert.That(renameButton.IsEnabled, Is.True);
+            renameButton.Command!.Execute(renameButton.CommandParameter);
+            window.UpdateLayout();
+
+            var renamedRecord = addedStep.Parameters.Single(parameter => parameter.Key == "ui-renamed-例");
+            var kindSelector = parameterEditor.GetVisualDescendants()
+                .OfType<ComboBox>()
+                .Single(comboBox => ReferenceEquals(comboBox.DataContext, renamedRecord));
+            kindSelector.SelectedItem = StepParameterTypes.NumberSet;
+            Dispatcher.UIThread.RunJobs();
+            var convertButton = parameterEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, addedStep.Parameters.ConvertParameter)
+                    && ReferenceEquals(button.CommandParameter, renamedRecord));
+            Assert.That(convertButton.IsEnabled, Is.True);
+            convertButton.Command!.Execute(convertButton.CommandParameter);
+            window.UpdateLayout();
+
             var addedStepExpander = scenarioEditor.GetVisualDescendants()
                 .OfType<Expander>()
                 .Single(expander => ReferenceEquals(expander.DataContext, addedStep));
@@ -914,6 +946,8 @@ internal sealed class ViewSmokeTests
                 Assert.That(question.Script.Steps[0], Is.SameAs(addedStep.Model));
                 Assert.That(question.Script.Steps[0].Parameters["ui-parameter-例"].SimpleValue,
                     Is.EqualTo("Значение из Avalonia 例"));
+                Assert.That(question.Script.Steps[0].Parameters["ui-renamed-例"].Type,
+                    Is.EqualTo(StepParameterTypes.NumberSet));
             });
 
             var deleteParameterButton = parameterEditor.GetVisualDescendants()
@@ -1865,6 +1899,9 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.DuplicateItem, Is.EqualTo("Дублировать"));
             Assert.That(UiStrings.DragQuestion, Is.EqualTo("Перетащить вопрос"));
             Assert.That(UiStrings.DragQuestionFailed, Is.EqualTo("Не удалось перетащить вопрос"));
+            Assert.That(UiStrings.RenameParameter, Is.EqualTo("Переименовать параметр"));
+            Assert.That(UiStrings.ConvertParameter, Is.EqualTo("Преобразовать параметр"));
+            Assert.That(UiStrings.ParameterType, Is.EqualTo("Тип параметра"));
             Assert.That(UiStrings.Validation, Is.EqualTo("Проверка"));
             Assert.That(UiStrings.GoToIssue, Is.EqualTo("Перейти"));
             Assert.That(

@@ -191,6 +191,138 @@ internal sealed class ScriptCrudEditingTests
         }
     }
 
+    [Test]
+    public async Task ParameterRenameAndTypeConversion_AreSingleUndoableChangesAndPreserveOpaqueValues()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        using var package = CreateScriptPackage();
+        using var document = factory.CreateViewModelFor(package, "Parameter conversion 例");
+        var filePath = Path.Combine(Path.GetTempPath(), $"SIQuester parameter conversion {Guid.NewGuid():N} 例.siq");
+        document.Path = filePath;
+
+        try
+        {
+            var parameters = document.Package.Rounds[0].Themes[0].Questions[0].ScriptSteps[0].Parameters;
+            var unknown = parameters.Single(parameter => parameter.Key == "future-parameter");
+            var opaqueModel = unknown.Value.Model;
+            Assert.Multiple(() =>
+            {
+                Assert.That(unknown.DraftKind, Is.EqualTo("future-kind-例"));
+                Assert.That(unknown.AvailableKinds, Does.Contain("future-kind-例"));
+                Assert.That(unknown.CanConvert, Is.False,
+                    "an opaque future kind must remain untouched until a known target is explicitly selected");
+            });
+            unknown.DraftKey = "future-renamed-例";
+
+            Assert.That(unknown.CanRename, Is.True);
+            parameters.RenameParameter.Execute(unknown);
+
+            var renamed = parameters.Single(parameter => parameter.Key == "future-renamed-例");
+            Assert.Multiple(() =>
+            {
+                Assert.That(parameters.Model, Does.Not.ContainKey("future-parameter"));
+                Assert.That(renamed.Value.Model, Is.SameAs(opaqueModel));
+                Assert.That(renamed.Value.Model.Type, Is.EqualTo("future-kind-例"));
+                Assert.That(renamed.Value.Model.SimpleValue, Is.EqualTo("opaque-original-例"));
+            });
+
+            document.OperationsManager.Undo.Execute(null);
+            var restored = parameters.Single(parameter => parameter.Key == "future-parameter");
+            Assert.Multiple(() =>
+            {
+                Assert.That(restored.Value.Model, Is.SameAs(opaqueModel));
+                Assert.That(restored.DraftKey, Is.EqualTo("future-parameter"));
+            });
+            document.OperationsManager.Redo.Execute(null);
+
+            AddParameter(parameters, "convert-me-例", StepParameterTypes.Simple);
+            var simple = parameters.Single(parameter => parameter.Key == "convert-me-例");
+            simple.Value.Model.SimpleValue = "preserved reference 例";
+            var simpleModel = simple.Value.Model;
+            simple.DraftKind = StepParametersViewModel.ReferenceParameterKind;
+            Assert.That(simple.CanConvert, Is.True);
+            parameters.ConvertParameter.Execute(simple);
+
+            var reference = parameters.Single(parameter => parameter.Key == "convert-me-例");
+            Assert.Multiple(() =>
+            {
+                Assert.That(reference.Value.Model.IsRef, Is.True);
+                Assert.That(reference.Value.Model.Type, Is.EqualTo(StepParameterTypes.Simple));
+                Assert.That(reference.Value.Model.SimpleValue, Is.EqualTo("preserved reference 例"));
+            });
+
+            document.OperationsManager.Undo.Execute(null);
+            var restoredSimple = parameters.Single(parameter => parameter.Key == "convert-me-例");
+            Assert.Multiple(() =>
+            {
+                Assert.That(restoredSimple.Value.Model, Is.SameAs(simpleModel));
+                Assert.That(restoredSimple.Value.Model.IsRef, Is.False);
+                Assert.That(restoredSimple.Value.Model.SimpleValue, Is.EqualTo("preserved reference 例"));
+            });
+            document.OperationsManager.Redo.Execute(null);
+
+            reference = parameters.Single(parameter => parameter.Key == "convert-me-例");
+            reference.DraftKind = StepParameterTypes.NumberSet;
+            parameters.ConvertParameter.Execute(reference);
+            var numberSet = parameters.Single(parameter => parameter.Key == "convert-me-例");
+            numberSet.Value.NumberSetValue!.Minimum = -10;
+            numberSet.Value.NumberSetValue.Maximum = 40;
+            numberSet.Value.NumberSetValue.Step = 5;
+
+            Assert.That(parameters.Select(parameter => parameter.Key),
+                Is.EqualTo(new[] { "convert-me-例", "future-renamed-例" }),
+                "conversion must reapply the existing canonical type ordering");
+
+            await document.Save.ExecuteAsync(null);
+            await using var stream = File.OpenRead(filePath);
+            using var reloaded = SIDocument.Load(stream);
+            var reloadedParameters = reloaded.Package.Rounds[0].Themes[0].Questions[0].Script!.Steps[0].Parameters;
+            var reloadedNumberSet = reloadedParameters["convert-me-例"].NumberSetValue!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(reloadedParameters, Does.Not.ContainKey("future-parameter"));
+                Assert.That(reloadedParameters["future-renamed-例"].Type, Is.EqualTo("future-kind-例"));
+                Assert.That(reloadedParameters["future-renamed-例"].SimpleValue,
+                    Is.EqualTo("opaque-original-例"));
+                Assert.That(reloadedParameters["convert-me-例"].Type, Is.EqualTo(StepParameterTypes.NumberSet));
+                Assert.That(reloadedNumberSet.Minimum, Is.EqualTo(-10));
+                Assert.That(reloadedNumberSet.Maximum, Is.EqualTo(40));
+                Assert.That(reloadedNumberSet.Step, Is.EqualTo(5));
+            });
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Test]
+    public void ParameterRename_RejectsEmptyAndDuplicateDraftsWithoutMutation()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        using var package = CreateScriptPackage();
+        using var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Parameter rename validation");
+        var parameters = document.Package.Rounds[0].Themes[0].Questions[0].ScriptSteps[0].Parameters;
+        AddParameter(parameters, "existing", StepParameterTypes.Simple);
+        var unknown = parameters.Single(parameter => parameter.Key == "future-parameter");
+
+        unknown.DraftKey = " ";
+        Assert.That(unknown.CanRename, Is.False);
+        parameters.RenameParameter.Execute(unknown);
+        unknown.DraftKey = "existing";
+        Assert.That(unknown.CanRename, Is.False);
+        parameters.RenameParameter.Execute(unknown);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(parameters.Model.Keys, Is.EquivalentTo(new[] { "future-parameter", "existing" }));
+            Assert.That(parameters, Has.Count.EqualTo(2));
+        });
+    }
+
     private static void AddParameter(StepParametersViewModel parameters, string name, string parameterKind)
     {
         parameters.NewParameterName = name;

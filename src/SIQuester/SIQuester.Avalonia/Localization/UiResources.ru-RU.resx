@@ -189,4 +189,7 @@
   <data name="DuplicateItem" xml:space="preserve"><value>Дублировать</value></data>
   <data name="DragQuestion" xml:space="preserve"><value>Перетащить вопрос</value></data>
   <data name="DragQuestionFailed" xml:space="preserve"><value>Не удалось перетащить вопрос</value></data>
+  <data name="RenameParameter" xml:space="preserve"><value>Переименовать параметр</value></data>
+  <data name="ConvertParameter" xml:space="preserve"><value>Преобразовать параметр</value></data>
+  <data name="ParameterType" xml:space="preserve"><value>Тип параметра</value></data>
 </root>

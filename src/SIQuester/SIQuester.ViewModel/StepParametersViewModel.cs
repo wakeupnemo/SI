@@ -16,6 +16,15 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 {
     public const string ReferenceParameterKind = "reference";
 
+    private static readonly string[] KnownParameterKinds =
+    [
+        StepParameterTypes.Simple,
+        StepParameterTypes.Content,
+        StepParameterTypes.Group,
+        StepParameterTypes.NumberSet,
+        ReferenceParameterKind,
+    ];
+
     private readonly QuestionViewModel _question;
     private readonly bool _contentIsTopLevel;
     private string _newParameterName = "";
@@ -55,6 +64,16 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
     /// Removes the supplied parameter record.
     /// </summary>
     public SimpleCommand DeleteParameter { get; }
+
+    /// <summary>
+    /// Renames the supplied parameter to its validated draft key.
+    /// </summary>
+    public SimpleCommand RenameParameter { get; }
+
+    /// <summary>
+    /// Converts the supplied parameter to its explicitly selected canonical kind.
+    /// </summary>
+    public SimpleCommand ConvertParameter { get; }
 
     /// <summary>
     /// Gets or sets the exact key used when a generic parameter is added.
@@ -100,6 +119,8 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
         MakeRight = new SimpleCommand(MakeRight_Executed);
         AddGenericParameter = new SimpleCommand(AddGenericParameter_Executed);
         DeleteParameter = new SimpleCommand(DeleteParameter_Executed);
+        RenameParameter = new SimpleCommand(RenameParameter_Executed);
+        ConvertParameter = new SimpleCommand(ConvertParameter_Executed);
 
         UpdateCommands();
 
@@ -108,6 +129,7 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
     internal void InsertSorted(StepParameterRecord stepParameterRecord)
     {
+        PrepareRecord(stepParameterRecord);
         var parameterWeight = GetParameterWeight(stepParameterRecord);
 
         for (var i = 0; i < Count; i++)
@@ -210,6 +232,82 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
         }
     }
 
+    private void RenameParameter_Executed(object? arg)
+    {
+        if (arg is not StepParameterRecord parameter
+            || !Contains(parameter)
+            || !parameter.CanRename
+            || _question.OwnerTheme?.OwnerRound?.OwnerPackage?.Document is not QDocument document)
+        {
+            return;
+        }
+
+        var index = IndexOf(parameter);
+        var renamed = new StepParameterRecord(parameter.DraftKey, parameter.Value);
+        using var change = document.OperationsManager.BeginComplexChange();
+        RemoveAt(index);
+        Insert(index, renamed);
+        change.Commit();
+    }
+
+    private void ConvertParameter_Executed(object? arg)
+    {
+        if (arg is not StepParameterRecord parameter
+            || !Contains(parameter)
+            || !parameter.CanConvert
+            || _question.OwnerTheme?.OwnerRound?.OwnerPackage?.Document is not QDocument document)
+        {
+            return;
+        }
+
+        var convertedModel = CreateParameter(parameter.DraftKind, parameter.Value.Model.SimpleValue);
+
+        if (convertedModel == null)
+        {
+            parameter.ResetDrafts();
+            return;
+        }
+
+        using var change = document.OperationsManager.BeginComplexChange();
+        Remove(parameter);
+        InsertSorted(new StepParameterRecord(
+            parameter.Key,
+            new StepParameterViewModel(_question, convertedModel, _contentIsTopLevel)));
+        change.Commit();
+    }
+
+    private static StepParameter? CreateParameter(string parameterKind, string previousSimpleValue) =>
+        parameterKind switch
+        {
+            StepParameterTypes.Simple => new StepParameter
+            {
+                Type = StepParameterTypes.Simple,
+                SimpleValue = previousSimpleValue,
+            },
+            StepParameterTypes.Content => new StepParameter
+            {
+                Type = StepParameterTypes.Content,
+                ContentValue = new List<ContentItem>(),
+            },
+            StepParameterTypes.Group => new StepParameter
+            {
+                Type = StepParameterTypes.Group,
+                GroupValue = new StepParameters(),
+            },
+            StepParameterTypes.NumberSet => new StepParameter
+            {
+                Type = StepParameterTypes.NumberSet,
+                NumberSetValue = new NumberSet(),
+            },
+            ReferenceParameterKind => new StepParameter
+            {
+                Type = StepParameterTypes.Simple,
+                IsRef = true,
+                SimpleValue = previousSimpleValue,
+            },
+            _ => null,
+        };
+
     private void AddItem_Executed(object? arg)
     {
         if (arg is not QuestionViewModel question)
@@ -236,10 +334,9 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
     private void DeleteItem_Executed(object? arg)
     {
-        var item = (StepParameterRecord?)arg;
         var package = _question.OwnerTheme?.OwnerRound?.OwnerPackage;
 
-        if (!item.HasValue || package == null)
+        if (arg is not StepParameterRecord item || package == null)
         {
             return;
         }
@@ -248,7 +345,7 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
         using var change = package.Document.OperationsManager.BeginComplexChange();
 
-        Remove(item.Value);
+        Remove(item);
 
         var rightIsValid = false;
 
@@ -270,20 +367,18 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
     private void MakeRight_Executed(object? arg)
     {
-        var item = (StepParameterRecord?)arg;
-
-        if (!item.HasValue)
+        if (arg is not StepParameterRecord item)
         {
             return;
         }
 
         if (_question.Right.Count == 0)
         {
-            _question.Right.Add(item.Value.Key);
+            _question.Right.Add(item.Key);
         }
         else
         {
-            _question.Right[0] = item.Value.Key;
+            _question.Right[0] = item.Key;
         }
     }
 
@@ -297,6 +392,7 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
                     for (int i = e.NewStartingIndex; i < e.NewStartingIndex + e.NewItems.Count; i++)
                     {
                         var item = this[i];
+                        PrepareRecord(item);
                         Model[item.Key] = item.Value.Model;
                     }
                 }
@@ -317,6 +413,7 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
                     for (int i = e.NewStartingIndex; i < e.NewStartingIndex + e.NewItems.Count; i++)
                     {
                         var item = this[i];
+                        PrepareRecord(item);
                         Model[item.Key] = item.Value.Model;
                     }
                 }
@@ -341,7 +438,24 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(HasComplexAnswer)));
         OnPropertyChanged(new PropertyChangedEventArgs(nameof(AnswerType)));
+        RefreshRecordValidation();
         UpdateCommands();
+    }
+
+    private void PrepareRecord(StepParameterRecord parameter)
+    {
+        parameter.AttachValidation(
+            candidate => !string.IsNullOrWhiteSpace(candidate)
+                && (candidate == parameter.Key || !Model.ContainsKey(candidate)),
+            KnownParameterKinds);
+    }
+
+    private void RefreshRecordValidation()
+    {
+        foreach (var parameter in this)
+        {
+            parameter.RefreshValidation();
+        }
     }
 
     public void AddAnswer(StepParameterViewModel answer) => AddParameter(QuestionParameterNames.Answer, answer);
@@ -388,4 +502,110 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
     }
 }
 
-public record struct StepParameterRecord(string Key, StepParameterViewModel Value);
+/// <summary>
+/// Provides one canonical parameter entry plus non-persistent rename and conversion drafts for an editor.
+/// </summary>
+public sealed class StepParameterRecord : INotifyPropertyChanged
+{
+    private Func<string, bool>? _keyValidator;
+    private string _draftKey;
+    private string _draftKind;
+    private IReadOnlyList<string> _availableKinds = Array.Empty<string>();
+
+    /// <summary>Gets the canonical parameter key.</summary>
+    public string Key { get; }
+
+    /// <summary>Gets the canonical parameter value view model.</summary>
+    public StepParameterViewModel Value { get; }
+
+    /// <summary>Gets or sets the candidate key committed by the rename command.</summary>
+    public string DraftKey
+    {
+        get => _draftKey;
+        set
+        {
+            if (_draftKey == value)
+            {
+                return;
+            }
+
+            _draftKey = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DraftKey)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRename)));
+        }
+    }
+
+    /// <summary>Gets or sets the candidate canonical kind committed by the conversion command.</summary>
+    public string DraftKind
+    {
+        get => _draftKind;
+        set
+        {
+            if (_draftKind == value)
+            {
+                return;
+            }
+
+            _draftKind = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DraftKind)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanConvert)));
+        }
+    }
+
+    /// <summary>Gets known conversion targets plus the current opaque kind, when applicable.</summary>
+    public IReadOnlyList<string> AvailableKinds => _availableKinds;
+
+    /// <summary>Gets whether the current key draft is non-empty, unique, and different.</summary>
+    public bool CanRename => _draftKey != Key && _keyValidator?.Invoke(_draftKey) == true;
+
+    /// <summary>Gets whether the selected draft kind is a different supported conversion target.</summary>
+    public bool CanConvert => _draftKind != GetCurrentKind()
+        && KnownKind(_draftKind);
+
+    /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Initializes an editor record over an existing canonical parameter.</summary>
+    public StepParameterRecord(string key, StepParameterViewModel value)
+    {
+        Key = key;
+        Value = value;
+        _draftKey = key;
+        _draftKind = GetCurrentKind();
+    }
+
+    internal void AttachValidation(Func<string, bool> keyValidator, IReadOnlyList<string> knownKinds)
+    {
+        _keyValidator = keyValidator;
+        var currentKind = GetCurrentKind();
+        _availableKinds = knownKinds.Contains(currentKind)
+            ? knownKinds
+            : new[] { currentKind }.Concat(knownKinds).ToArray();
+        ResetDrafts();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvailableKinds)));
+    }
+
+    internal void ResetDrafts()
+    {
+        DraftKey = Key;
+        DraftKind = GetCurrentKind();
+        RefreshValidation();
+    }
+
+    internal void RefreshValidation()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRename)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanConvert)));
+    }
+
+    private string GetCurrentKind() => Value.Model.IsRef
+        ? StepParametersViewModel.ReferenceParameterKind
+        : Value.Model.Type;
+
+    private static bool KnownKind(string parameterKind) =>
+        parameterKind == StepParameterTypes.Simple
+        || parameterKind == StepParameterTypes.Content
+        || parameterKind == StepParameterTypes.Group
+        || parameterKind == StepParameterTypes.NumberSet
+        || parameterKind == StepParametersViewModel.ReferenceParameterKind;
+}

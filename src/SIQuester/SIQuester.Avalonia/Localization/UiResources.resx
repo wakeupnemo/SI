@@ -189,4 +189,7 @@
   <data name="DuplicateItem" xml:space="preserve"><value>Duplicate</value></data>
   <data name="DragQuestion" xml:space="preserve"><value>Drag question</value></data>
   <data name="DragQuestionFailed" xml:space="preserve"><value>Unable to drag the question</value></data>
+  <data name="RenameParameter" xml:space="preserve"><value>Rename parameter</value></data>
+  <data name="ConvertParameter" xml:space="preserve"><value>Convert parameter</value></data>
+  <data name="ParameterType" xml:space="preserve"><value>Parameter type</value></data>
 </root>

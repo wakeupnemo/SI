@@ -14,9 +14,15 @@
         <DataTemplate x:DataType="vm:StepParameterRecord">
           <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0,0,0,1" Padding="{StaticResource Space8Thickness}">
             <StackPanel>
-              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{StaticResource Space8}">
-                <TextBlock Text="{Binding Key}" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="1" Text="{Binding Value.Model.Type}" Opacity="0.65" />
+              <Grid ColumnDefinitions="2*,*,Auto" ColumnSpacing="{StaticResource Space8}">
+                <TextBox
+                    Text="{Binding DraftKey, Mode=TwoWay}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.ParameterName}" />
+                <ComboBox
+                    Grid.Column="1"
+                    ItemsSource="{Binding AvailableKinds}"
+                    SelectedItem="{Binding DraftKind, Mode=TwoWay}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.ParameterType}" />
                 <Button
                     Grid.Column="2"
                     Classes="command"
@@ -25,6 +31,23 @@
                     Command="{Binding Editor.DeleteParameter, ElementName=Root}"
                     CommandParameter="{Binding}" />
               </Grid>
+              <WrapPanel Margin="{StaticResource MetadataCommandMargin}">
+                <Button
+                    Classes="command"
+                    Content="{x:Static loc:UiStrings.RenameParameter}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.RenameParameter}"
+                    Command="{Binding Editor.RenameParameter, ElementName=Root}"
+                    CommandParameter="{Binding}"
+                    IsEnabled="{Binding CanRename}"
+                    Margin="{StaticResource MetadataCommandMargin}" />
+                <Button
+                    Classes="command"
+                    Content="{x:Static loc:UiStrings.ConvertParameter}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.ConvertParameter}"
+                    Command="{Binding Editor.ConvertParameter, ElementName=Root}"
+                    CommandParameter="{Binding}"
+                    IsEnabled="{Binding CanConvert}" />
+              </WrapPanel>
               <TextBlock Text="{x:Static loc:UiStrings.ParameterReference}" IsVisible="{Binding Value.Model.IsRef}" Opacity="0.65" />
               <TextBox
                   x:Name="SimpleParameterEditor"

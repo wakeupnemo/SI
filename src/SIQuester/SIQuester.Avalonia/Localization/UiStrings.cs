@@ -200,4 +200,7 @@ public static class UiStrings
     public static string DuplicateItem => Get(nameof(DuplicateItem));
     public static string DragQuestion => Get(nameof(DragQuestion));
     public static string DragQuestionFailed => Get(nameof(DragQuestionFailed));
+    public static string RenameParameter => Get(nameof(RenameParameter));
+    public static string ConvertParameter => Get(nameof(ConvertParameter));
+    public static string ParameterType => Get(nameof(ParameterType));
 }
