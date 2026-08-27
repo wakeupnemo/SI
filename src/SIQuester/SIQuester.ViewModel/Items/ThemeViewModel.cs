@@ -184,6 +184,11 @@ public sealed class ThemeViewModel : ItemViewModel<Theme>
                 }
                 break;
         }
+
+        foreach (var question in Questions)
+        {
+            question.UpdateStructuralCommands();
+        }
     }
 
     private void CloneTheme_Executed(object? arg)

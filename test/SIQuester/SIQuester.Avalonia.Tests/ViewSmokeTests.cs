@@ -112,7 +112,7 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
-    public void Inspector_RoundAndThemeStructuralButtonsRouteThroughTypedCommands()
+    public void Inspector_RoundThemeAndQuestionStructuralButtonsRouteThroughTypedCommands()
     {
         using var serviceProvider = CreateServiceProvider();
         using var document = SIDocument.Create("Structural inspector", "Test author");
@@ -124,7 +124,16 @@ internal sealed class ViewSmokeTests
             for (var themeIndex = 1; themeIndex <= 3; themeIndex++)
             {
                 var theme = new Theme { Name = $"Theme {roundIndex}.{themeIndex}" };
-                theme.Questions.Add(new Question { Price = 100 });
+
+                for (var questionIndex = 1; questionIndex <= 3; questionIndex++)
+                {
+                    theme.Questions.Add(new Question
+                    {
+                        Price = questionIndex * 100,
+                        Right = { $"Answer {roundIndex}.{themeIndex}.{questionIndex}" },
+                    });
+                }
+
                 round.Themes.Add(theme);
             }
 
@@ -135,20 +144,32 @@ internal sealed class ViewSmokeTests
             .GetRequiredService<IDocumentViewModelFactory>()
             .CreateViewModelFor(document, "Structural inspector");
         var selectedRound = documentViewModel.Package.Rounds[1];
-        var inspector = new InspectorView { SelectedItem = selectedRound };
+        var inspector = new InspectorView { SelectedItem = documentViewModel.Package };
         var window = new Window { Width = 720, Height = 900, Content = inspector };
 
         try
         {
             window.Show();
             window.UpdateLayout();
+            var addRound = inspector.GetVisualDescendants().OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, documentViewModel.Package.AddRound));
+            Assert.That(addRound.Content, Is.EqualTo(UiStrings.AddRound));
+            addRound.Command!.Execute(addRound.CommandParameter);
+            Assert.That(documentViewModel.Package.Rounds, Has.Count.EqualTo(4));
+            documentViewModel.OperationsManager.Undo.Execute(null);
+            Assert.That(documentViewModel.Package.Rounds, Has.Count.EqualTo(3));
+
+            inspector.SelectedItem = selectedRound;
+            window.UpdateLayout();
             var roundButtons = inspector.GetVisualDescendants().OfType<Button>().ToArray();
+            var addTheme = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.AddTheme));
             var moveRoundEarlier = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.MoveEarlier));
             var moveRoundLater = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.MoveLater));
             var duplicateRound = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.Duplicate));
 
             Assert.Multiple(() =>
             {
+                Assert.That(addTheme.Content, Is.EqualTo(UiStrings.AddTheme));
                 Assert.That(moveRoundEarlier.Content, Is.EqualTo(UiStrings.MoveUp));
                 Assert.That(moveRoundLater.Content, Is.EqualTo(UiStrings.MoveDown));
                 Assert.That(duplicateRound.Content, Is.EqualTo(UiStrings.DuplicateItem));
@@ -156,6 +177,11 @@ internal sealed class ViewSmokeTests
                 Assert.That(moveRoundLater.IsEnabled, Is.True);
                 Assert.That(duplicateRound.IsEnabled, Is.True);
             });
+
+            addTheme.Command!.Execute(addTheme.CommandParameter);
+            Assert.That(selectedRound.Themes, Has.Count.EqualTo(4));
+            documentViewModel.OperationsManager.Undo.Execute(null);
+            Assert.That(selectedRound.Themes, Has.Count.EqualTo(3));
 
             moveRoundEarlier.Command!.Execute(moveRoundEarlier.CommandParameter);
             duplicateRound.Command!.Execute(duplicateRound.CommandParameter);
@@ -168,12 +194,14 @@ internal sealed class ViewSmokeTests
             inspector.SelectedItem = selectedTheme;
             window.UpdateLayout();
             var themeButtons = inspector.GetVisualDescendants().OfType<Button>().ToArray();
+            var addQuestion = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.AddQuestion));
             var moveThemeEarlier = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.MoveEarlier));
             var moveThemeLater = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.MoveLater));
             var duplicateTheme = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.Duplicate));
 
             Assert.Multiple(() =>
             {
+                Assert.That(addQuestion.Content, Is.EqualTo(UiStrings.AddQuestion));
                 Assert.That(moveThemeEarlier.Content, Is.EqualTo(UiStrings.MoveUp));
                 Assert.That(moveThemeLater.Content, Is.EqualTo(UiStrings.MoveDown));
                 Assert.That(duplicateTheme.Content, Is.EqualTo(UiStrings.DuplicateItem));
@@ -182,12 +210,58 @@ internal sealed class ViewSmokeTests
                 Assert.That(duplicateTheme.IsEnabled, Is.True);
             });
 
+            addQuestion.Command!.Execute(addQuestion.CommandParameter);
+            Assert.That(selectedTheme.Questions, Has.Count.EqualTo(4));
+            documentViewModel.OperationsManager.Undo.Execute(null);
+            Assert.That(selectedTheme.Questions, Has.Count.EqualTo(3));
+
             moveThemeEarlier.Command!.Execute(moveThemeEarlier.CommandParameter);
             duplicateTheme.Command!.Execute(duplicateTheme.CommandParameter);
             Dispatcher.UIThread.RunJobs();
 
             Assert.That(selectedRound.Model.Themes.Select(theme => theme.Name),
                 Is.EqualTo(new[] { "Theme 2.2", "Theme 2.2", "Theme 2.1", "Theme 2.3" }));
+
+            var selectedQuestion = selectedTheme.Questions[1];
+            inspector.SelectedItem = selectedQuestion;
+            window.UpdateLayout();
+            var questionButtons = inspector.GetVisualDescendants().OfType<Button>().ToArray();
+            var moveQuestionEarlier = questionButtons.Single(
+                button => ReferenceEquals(button.Command, selectedQuestion.MoveEarlier));
+            var moveQuestionLater = questionButtons.Single(
+                button => ReferenceEquals(button.Command, selectedQuestion.MoveLater));
+            var duplicateQuestion = questionButtons.Single(
+                button => ReferenceEquals(button.Command, selectedQuestion.Duplicate));
+            var deleteQuestion = questionButtons.Single(
+                button => ReferenceEquals(button.Command, selectedQuestion.Remove));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(moveQuestionEarlier.Content, Is.EqualTo(UiStrings.MoveUp));
+                Assert.That(moveQuestionLater.Content, Is.EqualTo(UiStrings.MoveDown));
+                Assert.That(duplicateQuestion.Content, Is.EqualTo(UiStrings.DuplicateQuestion));
+                Assert.That(moveQuestionEarlier.IsEnabled, Is.True);
+                Assert.That(moveQuestionLater.IsEnabled, Is.True);
+                Assert.That(duplicateQuestion.IsEnabled, Is.True);
+            });
+
+            moveQuestionEarlier.Command!.Execute(moveQuestionEarlier.CommandParameter);
+            duplicateQuestion.Command!.Execute(duplicateQuestion.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(selectedTheme.Questions, Has.Count.EqualTo(4));
+                Assert.That(selectedTheme.Questions[0], Is.SameAs(selectedQuestion));
+                Assert.That(selectedTheme.Questions[1], Is.Not.SameAs(selectedQuestion));
+                Assert.That(selectedTheme.Model.Questions[0], Is.SameAs(selectedQuestion.Model));
+                Assert.That(selectedTheme.Model.Questions[1], Is.Not.SameAs(selectedQuestion.Model));
+            });
+
+            deleteQuestion.Command!.Execute(deleteQuestion.CommandParameter);
+            Assert.That(selectedTheme.Questions, Has.Count.EqualTo(3));
+            documentViewModel.OperationsManager.Undo.Execute(null);
+            Assert.That(selectedTheme.Questions, Has.Count.EqualTo(4));
         }
         finally
         {

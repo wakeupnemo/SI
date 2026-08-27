@@ -132,7 +132,12 @@
             <TextBlock Text="{x:Static loc:UiStrings.ClientManagedDescription}" TextWrapping="Wrap" />
           </Border>
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
-          <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" HorizontalAlignment="Left" />
+          <WrapPanel>
+            <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveUp}" Command="{Binding MoveEarlier}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveDown}" Command="{Binding MoveLater}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.DuplicateQuestion}" AutomationProperties.Name="{x:Static loc:UiStrings.DuplicateQuestion}" Command="{Binding Duplicate}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
+          </WrapPanel>
         </StackPanel>
       </ScrollViewer>
     </DataTemplate>

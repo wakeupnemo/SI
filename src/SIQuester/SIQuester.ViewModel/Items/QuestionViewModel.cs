@@ -16,7 +16,20 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 {
     private const int DefaultAnswerDurationSeconds = 5;
 
-    public ThemeViewModel? OwnerTheme { get; set; }
+    private ThemeViewModel? _ownerTheme;
+
+    public ThemeViewModel? OwnerTheme
+    {
+        get => _ownerTheme;
+        set
+        {
+            if (!ReferenceEquals(_ownerTheme, value))
+            {
+                _ownerTheme = value;
+                UpdateStructuralCommands();
+            }
+        }
+    }
 
     public override IItemViewModel? Owner => OwnerTheme;
 
@@ -127,6 +140,15 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     public override ICommand? Remove { get; protected set; }
 
     public ICommand Clone { get; private set; }
+
+    /// <summary>Duplicates this question immediately after its current position.</summary>
+    public SimpleCommand Duplicate { get; }
+
+    /// <summary>Moves this question one position toward the start of its theme.</summary>
+    public SimpleCommand MoveEarlier { get; }
+
+    /// <summary>Moves this question one position toward the end of its theme.</summary>
+    public SimpleCommand MoveLater { get; }
 
     public ICommand SetQuestionType { get; private set; }
 
@@ -358,6 +380,9 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         ClearType = new SimpleCommand(ClearType_Executed);
 
         Clone = new SimpleCommand(CloneQuestion_Executed);
+        Duplicate = new SimpleCommand(DuplicateQuestion_Executed);
+        MoveEarlier = new SimpleCommand(_ => Move(-1));
+        MoveLater = new SimpleCommand(_ => Move(1));
         Remove = new SimpleCommand(RemoveQuestion_Executed);
 
         SetQuestionType = new SimpleCommand(SetQuestionType_Executed);
@@ -369,6 +394,7 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         Wrong.CollectionChanged += Wrong_CollectionChanged;
         Parameters.CollectionChanged += Parameters_AnswerTypeCollectionChanged;
         RefreshAnswerTypeParameterSubscription();
+        UpdateStructuralCommands();
     }
 
     private ContentItem? GetPrimaryQuestionTextItem()
@@ -720,6 +746,39 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         var newQuestionViewModel = new QuestionViewModel(quest);
         OwnerTheme.Questions.Add(newQuestionViewModel);
         ownerPackage.Document.Navigate.Execute(newQuestionViewModel);
+    }
+
+    private void DuplicateQuestion_Executed(object? arg)
+    {
+        var document = OwnerTheme?.OwnerRound?.OwnerPackage?.Document;
+
+        if (document == null || OwnerTheme?.Questions.Contains(this) != true)
+        {
+            return;
+        }
+
+        document.FlatQuestions.DuplicateAfter(this, document.Settings.ChangePriceOnMove);
+    }
+
+    private void Move(int offset)
+    {
+        var document = OwnerTheme?.OwnerRound?.OwnerPackage?.Document;
+
+        if (document == null || OwnerTheme?.Questions.Contains(this) != true)
+        {
+            return;
+        }
+
+        document.FlatQuestions.MoveWithinTheme(this, offset, document.Settings.ChangePriceOnMove);
+    }
+
+    internal void UpdateStructuralCommands()
+    {
+        var ownerTheme = OwnerTheme;
+        var index = ownerTheme?.Questions.IndexOf(this) ?? -1;
+        MoveEarlier.CanBeExecuted = index > 0;
+        MoveLater.CanBeExecuted = ownerTheme != null && index >= 0 && index + 1 < ownerTheme.Questions.Count;
+        Duplicate.CanBeExecuted = index >= 0;
     }
 
     private void RemoveQuestion_Executed(object? arg)
