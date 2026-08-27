@@ -175,7 +175,7 @@ def process_tree(root_pid: int) -> list[int]:
         result = expanded
 
 
-def process_sample(root_pid: int, cycle: int) -> dict[str, object]:
+def process_sample(root_pid: int, cycle: int, phase: str = "cycle") -> dict[str, object]:
     pids = process_tree(root_pid)
     rss_kib = 0
     threads = 0
@@ -197,6 +197,7 @@ def process_sample(root_pid: int, cycle: int) -> dict[str, object]:
     )
     return {
         "cycle": cycle,
+        "phase": phase,
         "rss_kib": rss_kib,
         "threads": threads,
         "file_descriptors": file_descriptors,
@@ -266,6 +267,9 @@ def main() -> int:
             if cycle % 10 == 0 or cycle == args.cycles:
                 time.sleep(1)
                 samples.append(process_sample(process.pid, cycle))
+
+        time.sleep(10)
+        samples.append(process_sample(process.pid, args.cycles, "settled"))
 
         controller.click(window, 75, 316)
         time.sleep(0.2)

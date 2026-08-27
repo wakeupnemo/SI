@@ -25,8 +25,19 @@ internal sealed class AvaloniaPersistentLogSink : ILogSink
     private void Write(LogEventLevel level, string area, object? source, string message)
     {
         var sourceName = source?.GetType().Name ?? "none";
+        if (IsBenignIbusShutdownDiagnostic(area, sourceName, message))
+        {
+            return;
+        }
+
         _logger.Log(MapLevel(level), "Avalonia {Area} ({Source}): {Message}", area, sourceName, message);
     }
+
+    internal static bool IsBenignIbusShutdownDiagnostic(string area, string sourceName, string message) =>
+        area == "IME"
+        && sourceName == "IBusX11TextInputMethod"
+        && message.Contains("org.freedesktop.DBus.Error.UnknownMethod", StringComparison.Ordinal)
+        && message.Contains("Method Destroy is not implemented", StringComparison.Ordinal);
 
     private static string FormatMessage(string template, object?[] values)
     {

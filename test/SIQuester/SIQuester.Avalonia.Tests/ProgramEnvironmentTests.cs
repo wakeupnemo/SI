@@ -29,6 +29,35 @@ internal sealed class ProgramEnvironmentTests
     }
 
     [Test]
+    public void PersistentAvaloniaSinkSuppressesOnlyKnownBenignIbusShutdownDiagnostic()
+    {
+        const string benignMessage = "Error while destroying the context: "
+            + "org.freedesktop.DBus.Error.UnknownMethod: Method Destroy is not implemented";
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                AvaloniaPersistentLogSink.IsBenignIbusShutdownDiagnostic(
+                    "IME",
+                    "IBusX11TextInputMethod",
+                    benignMessage),
+                Is.True);
+            Assert.That(
+                AvaloniaPersistentLogSink.IsBenignIbusShutdownDiagnostic(
+                    "IME",
+                    "IBusX11TextInputMethod",
+                    "Unexpected input-method failure"),
+                Is.False);
+            Assert.That(
+                AvaloniaPersistentLogSink.IsBenignIbusShutdownDiagnostic(
+                    "Rendering",
+                    "IBusX11TextInputMethod",
+                    benignMessage),
+                Is.False);
+        });
+    }
+
+    [Test]
     public void ConfigureLinuxWebKitEnvironment_SetsCompatibilityValueWhenUnset()
     {
         var originalValue = Environment.GetEnvironmentVariable(Program.WebKitDisableCompositingMode);
