@@ -7,7 +7,7 @@ Updated: 2026-08-27
 - Initial HEAD: `8c2bee9c38d250884a3e575809172e626448a0f9` on `feat/siquester-avalonia`; the worktree was initially clean.
 - Host: Debian 13.6, Linux x64; .NET SDK 10.0.400 at `/tmp/dotnet10` for this session.
 - Before modification, `SIPackages.Tests` had 85 passed and 5 skipped tests. `SIQuester.ViewModel.Tests` targeted `net10.0-windows` and discovered no tests on Linux.
-- The initial view-model inventory contained 84 `PlatformManager.Instance` calls and 31 `async void` methods. The current counts are 67 and 27 respectively.
+- The initial view-model inventory contained 84 `PlatformManager.Instance` calls and 31 `async void` methods. The current counts are 67 and 26 respectively.
 - Latest stable compatible Avalonia packages were verified and pinned at 12.1.1.
 
 ## Completed vertical slices
@@ -39,6 +39,7 @@ Updated: 2026-08-27
 - Added a localized recent-files section to the Avalonia empty state with full-path tooltips and the existing `OpenRecent` command.
 - Added repository-owned self-contained package builders for Linux x64/ARM64 tarballs and Debian packages plus macOS x64/ARM64 app bundles. Output is staged privately, validated before atomic publication, normalized with `SOURCE_DATE_EPOCH`, shipped with license notices and checksums, and integrated into a five-RID CI artifact matrix. Linux packages include desktop/MIME registration and complete .NET/Avalonia native dependency metadata; macOS bundles declare editable SIQ document types.
 - Added the native SIQuester icon to the Avalonia window and platform artifacts. The retained WPF release workflow now uses .NET 10 and current official action majors without changing the WPF/MSI authority boundary.
+- Replaced `QDocument`'s cancellable `async void` search with an owned debounced task. Superseded and closing-document searches cancel without surfacing false errors, only the latest query may publish, state returns through an injected framework-neutral UI dispatcher, and cancellation sources are disposed after their tasks finish. Avalonia now exposes localized search/no-result controls with previous, next, clear, Ctrl+F, and macOS Meta+F behavior through compiled bindings.
 
 ## Current verified commands and results
 
@@ -54,8 +55,8 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Fresh cross-platform Release build: passed with 0 errors and 130 existing nullable/obsolete-API warnings in `SIPackages`, `QTxtConverter`, and legacy view-model code. An incremental build can report 0 warnings because those projects are not recompiled; analyzers and warnings remain enabled. Every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 96 passed, 0 skipped, 0 failed. `Clone_PreservesQualityControlSemanticState` and `GetContent_IncludesQuestionAndScriptParameters` cover marker clone/equality/hash semantics and complete modern/legacy content discovery; script save/reload, deep-clone, reader-state, and empty-parameter coverage remains green.
-- `SIQuester.ViewModel.Tests`: 110 passed, 0 failed. Six `PackageLogoEditingTests` verify stream-only Unicode selection, one-operation import undo/redo, remove undo/redo, media-preserving SIQ reload, picker cancellation, quality rejection, staging cleanup, and byte-exact retry after canceled snapshot application. Package/round fields, quality control, point selection, script CRUD, scenario content, metadata, answers, recovery, clipboard, and settings coverage remains green.
-- `SIQuester.Avalonia.Tests`: 24 passed, 0 failed. `Inspector_PackageLogoPickerLoadsBoundedPreviewAndRemovesReference` verifies picker-to-preview compiled UI behavior and localized command visibility; `PackageLogoPreview_ExternalLinkIsNotLoadedAsApplicationMedia` verifies the controlled external-link fallback. Quality control, point selection, script CRUD, non-text answers, scenario content, metadata, recovery, clipboard, shortcuts, settings, selection, localization, and lifecycle coverage remains green.
+- `SIQuester.ViewModel.Tests`: 113 passed, 0 failed. Three `DocumentSearchTests` verify latest-only rapid-query publication through the injected dispatcher, stable package/round/theme/question result order and clear state, and close-during-debounce cancellation without affecting another document. Package logo, package/round fields, quality control, point selection, script CRUD, scenario content, metadata, answers, recovery, clipboard, and settings coverage remains green.
+- `SIQuester.Avalonia.Tests`: 25 passed, 0 failed. `DocumentEditor_SearchBarRoutesFocusAndPublishesLatestResultState` verifies compiled search bindings, found/missing states, localized feedback, 900-pixel layout, and both Ctrl+F and Meta+F focus routing. Package logo, quality control, point selection, script CRUD, non-text answers, scenario content, metadata, recovery, clipboard, shortcuts, settings, selection, localization, and lifecycle coverage remains green.
 - Existing WPF project cross-compiled on Linux with `-p:EnableWindowsTargeting=true`: passed, 0 errors and 0 warnings in the final incremental compatibility build. Native WPF execution remains a Windows-only verification.
 - Native Linux Release smoke: the self-contained x64 tar payload and the identical executable extracted from the Debian package exposed a visible `SIQuester` window at 1200x760, opened `SIGameTestNew.siq`, and exited normally through the application-owned `Ctrl+Q` path. Both logs record successful open/settings commit and no fatal or unhandled exception.
 - Recovery-center Linux receipt: the framework-dependent Release host opened a validated 2,973,900-byte recovery snapshot with Unicode display/original paths, rendered its per-entry actions, and asynchronously previewed the real package as 2 rounds, 7 themes, 35 questions, and 12 media files. The 1200x760 visual inspection found no overlap or clipping; `Ctrl+Q` exited with code 0, empty stderr, and no fatal/unhandled log entry. Receipt directory: `/tmp/siquester-recovery-smoke.w7Cnsd`.
@@ -82,7 +83,7 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 - Test: `CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia`.
 - Release output: `bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq`.
 - Receipt: adjacent `avalonia-core-roundtrip.receipt.json`.
-- Current artifact: 1,078 bytes; SHA-256 `19433f7127e4b2c67b3d1096adec773a1ca6280caf0be8abfabc4e4e692ed64f`. The 454-byte receipt SHA-256 is `7a9f905dde10bb3e6f18f4b9281daad3bdf76e2581782ee9f6aece48c98a29fa`. ZIP metadata can change the SIQ hash between generated runs; semantic and media receipts remain authoritative.
+- Current artifact: 1,078 bytes; SHA-256 `1d8825a697b419c747e5a82a7c853b31aead81a7db7fa6eb6c79083b3d477c70`. The 454-byte receipt SHA-256 is `37276273c69fec888b6f4ed009d8cd1e2c90277ed1b447fdbd643848c19f91e7`. ZIP metadata can change the SIQ hash between generated runs; semantic and media receipts remain authoritative.
 - Verified through `SIDocument.Load`: one round, one theme, one question, and one image with semantic and byte comparison.
 - Existing Windows SIQuester/SIGame runtime acceptance is not yet verified and must not be inferred from the loader receipt.
 
@@ -94,10 +95,9 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Next independent tasks
 
-1. Extract cancellable search scheduling from `QDocument` and cover rapid switching/close races.
-2. Replace clipboard media materialization paths with a bounded, stable-lifetime transfer representation and add media-rich cross-process compatibility coverage.
-3. Implement data-level flat-mode reorder operations and their move/copy/cancellation tests.
-4. Obtain hosted Linux/macOS/Windows CI receipts, including native macOS bundle signing/launch and native Windows WPF acceptance.
+1. Replace clipboard media materialization paths with a bounded, stable-lifetime transfer representation and add media-rich cross-process compatibility coverage.
+2. Implement data-level flat-mode reorder operations and their move/copy/cancellation tests.
+3. Obtain hosted Linux/macOS/Windows CI receipts, including native macOS bundle signing/launch and native Windows WPF acceptance.
 
 ## Known limitations
 
@@ -111,4 +111,4 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Review state
 
-- Latest reviewed implementation commit: `02a83082` (safe package-logo inspector), following `05dfc423`, `82e8e520`, `6908f32d`, `f662f543`, `3efc0c8b`, `be2fcb72`, and `9323b420`. Release cross-platform and WPF builds pass with 0 errors and 0 warnings in the final incremental builds; 230 tests pass with no skips. The adversarial review verified portal-stream ownership, validation/cancellation/close cleanup, failed-save retry without pending-media loss, one-operation import undo/redo, canonical remove undo/redo, Unicode media save/reload, bounded bitmap disposal, external-link isolation, compiled/localized UI, and no new global platform call, `async void`, debug print, dependency, or hardcoded user-facing XAML string. A new manual Linux screenshot receipt was not produced; the existing native Linux startup/open receipt remains valid.
+- Latest reviewed implementation commit: `37218d55` (owned cancellable document search), following `02a83082`, `05dfc423`, `82e8e520`, `6908f32d`, and the earlier typed-inspector commits. Release cross-platform and WPF builds pass with 0 errors and 0 warnings in the final incremental builds; 234 tests pass with no skips. The adversarial review fixed a search-run publication/disposal race and verified latest-only results, expected-cancellation silence, close isolation, dispatcher ownership, localized compiled UI, Ctrl/Meta focus routing, responsive minimum width, and no new global platform call, `async void`, debug print, dependency, or hardcoded user-facing XAML string. A new manual Linux screenshot receipt was not produced; the existing native Linux startup/open receipt remains valid.

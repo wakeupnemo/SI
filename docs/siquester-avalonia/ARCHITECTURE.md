@@ -37,6 +37,8 @@ Recovery uses a separate non-mutating snapshot path. Each document has a random 
 
 Contracts are introduced only for real seams: file selection, dialogs, lifetime, paths, settings/secrets, launcher, dispatcher, capabilities, persistence/materialization, preview, media preview, and export. Picker results expose neutral metadata and stream operations, not Avalonia storage objects. `IExternalLauncher` owns trusted shell reveal operations; `IPlatformCapabilities` lets Avalonia opt into the recovery center while WPF retains its compatible startup prompt without frontend-type checks in the view-model layer.
 
+`IUiDispatcher` is the narrow publication seam for background view-model work. Avalonia and WPF register their framework dispatchers; non-UI hosts receive an inline fallback. `QDocument` search owns one debounced run at a time, builds results off the UI thread, and publishes only when the run still belongs to the live document. Replacing a query or disposing the document cancels the prior run, while cancellation-token sources remain owned until the observed task completes.
+
 ## UI structure
 
 The initial shell uses Fluent theme plus semantic tokens. A command surface and document tabs surround a three-pane document editor: hierarchy, typed editor, and inspector/media context. Pane sizes and settings are persisted outside the package.
