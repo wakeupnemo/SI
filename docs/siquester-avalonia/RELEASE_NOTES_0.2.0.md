@@ -24,11 +24,28 @@ The canonical `SIPackages.Question` type, parameters, ordered question content,
 optional `answer` content, answers, and media remain the only persisted model.
 No parallel model or alternate serializer was introduced.
 
+## Release hardening
+
+- Serialized overlapping application-close requests and removed the duplicate
+  document-close pass from the close command. Settings and document close now
+  form one guarded window-close flow; any failure is persisted, shown once, and
+  leaves the window and dirty data open.
+- Failed and corrupted ordinary opens now remove loader workspaces and restore
+  selection deterministically, including default/non-cancellable token paths.
+- Persistent XDG logs now include app version, session identifier, .NET runtime,
+  OS and architecture, original operation exceptions, Avalonia Error/Fatal
+  diagnostics, and last-resort process failures. Transient binding warnings and
+  the exact benign Debian IBus `Destroy` shutdown diagnostic are excluded.
+- Added bounded managed and native stability procedures covering repeated
+  package/preview/media/edit/autosave/save/reload/close operations and settled
+  process/RSS/thread/file-descriptor measurements.
+
 ## Verification
 
-- Release test suite: 350 passed, 0 failed, 0 skipped
-  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 198,
-  `SIQuester.Avalonia.Tests` 56).
+- Release test suite: 359 passed, 0 failed, 0 skipped
+  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 203,
+  `SIQuester.Avalonia.Tests` 60). An explicit 20-warm-up/50-measured-cycle
+  managed soak also passed.
 - `DemoBehaviors_CreatedFromNewPackageCommands_SaveAndReloadCanonicalSemantics`
   creates representative demo-equivalent questions from a new package through
   the retained command/property paths, safely saves them, reloads through
@@ -45,12 +62,25 @@ No parallel model or alternate serializer was introduced.
   closed, reopened, and closed cleanly. Both saves were validated and committed;
   no error, fatal, or unhandled-exception entry was logged. The receipt is under
   `artifacts/siquester-cross-platform-v0.2.0/native-smoke/`.
+- The final tar built from hardening commit `ebf5e604` completed 50 native
+  question-preview open/close cycles plus a 10-second settle. All 51 sessions
+  were disposed, process counts remained stable, settings/document close
+  completed, and the persistent log contained no warning, error, fatal, or
+  unhandled entry. Raw evidence is under
+  `artifacts/siquester-cross-platform-v0.2.0/stability/`.
 
 ## Linux artifacts
 
 - `SIQuester-0.2.0-linux-x64.tar.gz`
 - `siquester_0.2.0_amd64.deb`
 - `SIQuester-0.2.0-linux-x64.SHA256SUMS`
+
+Final SHA-256:
+
+```text
+8cf3b750e6a0fc96551d62bb920dfd0fea14c621f4fdb1798fb0fb845ff3185d  SIQuester-0.2.0-linux-x64.tar.gz
+1040fab643fde13f3f56985356923c2b241e52d968fde2100a901ed26e2d2dcf  siquester_0.2.0_amd64.deb
+```
 
 The Debian package includes the desktop entry, icon, `.siq` MIME registration,
 license notices, native dependency metadata, and WebKit/GStreamer recommendations.

@@ -1,12 +1,18 @@
 # SIQuester Avalonia port status
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 ## Current v0.2.0 release checkpoint
 
-- Implementation commit: `fcfbfb51` (`Add demo question behavior authoring`) on
-  `feat/siquester-avalonia`. The implementation worktree was clean before this
-  documentation checkpoint.
+- Question-authoring implementation commit: `fcfbfb51`; final stability
+  implementation commit: `ebf5e604` on `feat/siquester-avalonia`.
+- All three suspected hardening defects were confirmed and fixed. Desktop close
+  now serializes overlapping requests, persists settings before document close,
+  catches and logs failures, keeps the window/data open on failure, and reports
+  one actionable error. Failed ordinary/corrupt opens now remove their loader in
+  `finally` and restore workspace selection. Persistent XDG logs now record
+  version/session/runtime/OS/architecture, original exceptions, Avalonia
+  Error/Fatal events, and last-resort failures without transient binding noise.
 - Every semantically distinct behavior in `SIGameTestNew.siq` is now authorable
   through the normal typed inspector from a new package: round default, simple,
   stake, stake-all, all Secret/public/no-question price and recipient shapes,
@@ -14,15 +20,22 @@ Updated: 2026-08-27
 - The inspector also authors answer duration and canonical post-answer
   text/image/audio/video content. Unknown/future type names and parameters are
   preserved during open/display/save and change only after explicit selection.
-- Release suite: 350 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
-  `SIQuester.ViewModel.Tests` 198, `SIQuester.Avalonia.Tests` 56).
+- Release suite: 359 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
+  `SIQuester.ViewModel.Tests` 203, `SIQuester.Avalonia.Tests` 60). The explicit
+  stability test separately passed 20 warm-up plus 50 measured cycles.
 - Native Debian 13/X11 tar smoke opened a Unicode/space-path SIQ, authored a
   Secret question with theme `NativeSecretTheme` and fixed price 700, added
   `PostAnswerSmoke`, safely saved, closed, reopened, and closed cleanly. The
   canonical XML and exact package were retained in the release receipt; the log
   records validated commits and no error/fatal/unhandled exception.
-- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass. The executable and the
-  two changed managed assemblies are byte-identical between tar and DEB.
+- The final self-contained tar completed 50 native preview open/close cycles plus
+  a 10-second settle: 51/51 sessions disposed, three stable processes, two
+  WebKit children, 79 settled threads, 339 settled file descriptors, and no
+  warning/error/fatal/unhandled log entry. RSS was non-monotonic and settled at
+  908,800 KiB versus 887,080 KiB before repeated cycles; no leak or speedup is
+  claimed from this bounded run.
+- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass. The executable and
+  changed managed payload are byte-identical between tar and DEB.
 - No v0.2.0 blocker remains. Advanced legacy parity and environment-specific
   native macOS/Windows/ARM64/installed-DEB/hosted-CI receipts remain deferred.
 
@@ -104,11 +117,28 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Cross-platform Release build: passed with 0 errors. A source rebuild reported 130 pre-existing nullable/obsolete warnings across retained projects; the final full incremental validation reported 0 warnings. Analyzers and warnings remain enabled, and every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 96 passed, 0 skipped, 0 failed. `Clone_PreservesQualityControlSemanticState` and `GetContent_IncludesQuestionAndScriptParameters` cover marker clone/equality/hash semantics and complete modern/legacy content discovery; script save/reload, deep-clone, reader-state, and empty-parameter coverage remains green.
-- `SIQuester.ViewModel.Tests`: 198 passed, 0 failed. The three new `DemoQuestionAuthoringTests` create all distinct demo behaviors from a new package through retained command/property paths, safely save/reload canonical semantics and exact media bytes, preserve unknown values, preserve compatible Secret settings, and verify one-step endpoint undo. Seven `QuestionPreviewProtocolTests` and all prior text import, SPARD, hierarchy, parameter, media, validation, recovery, clipboard, and safe-save coverage remain green.
-- `SIQuester.Avalonia.Tests`: 56 passed, 0 failed. `Inspector_QuestionBehaviorControlsCreateCanonicalSecretTimingAndPostAnswerParameters` drives the compiled selector, contextual Secret fields, answer-time/post-answer commands, automation names, and Russian resources. `ProgramEnvironmentTests`, continuous answer-entry focus, preview, accessibility, SPARD, text import, hierarchy, parameter, media, keyboard, and lifecycle receipts remain green.
+- `SIQuester.ViewModel.Tests`: 203 passed, 0 failed. Four
+  `MainLifecycleStabilityTests` cover default-token corrupt-loader cleanup,
+  overlapping closes, one-message workspace failure, and host-owned close.
+  `SaveDocument_UnwritableDirectory_ShouldLeaveExistingPackageUntouched` is a
+  real Linux permission failure. The three demo-authoring tests and all prior
+  import, SPARD, hierarchy, parameter, media, validation, recovery, clipboard,
+  and safe-save coverage remain green.
+- `SIQuester.Avalonia.Tests`: 60 passed, 0 failed. Main-window settings failure
+  keeps the window open and reports once; startup version/environment, focused
+  Error/Fatal logging, exact benign IBus shutdown filtering, continuous answer
+  entry, preview, accessibility, SPARD, text import, hierarchy, parameter,
+  media, keyboard, and lifecycle receipts remain green.
 - Existing WPF frontend cross-compiled on Linux with `dotnet build src/SIQuester/SIQuester/SIQuester.csproj --no-restore -p:EnableWindowsTargeting=true -m:1`: passed with 0 errors and 0 warnings. A broader `SIQuester.sln --no-restore` attempt failed only because the unrelated `Notions.Tests` assets file was absent in this no-restore environment; no product project failed. Native WPF execution remains a Windows-only verification.
 - Native Linux v0.1.0 smoke: the final tar and DEB contain the identical executable (SHA-256 `5ec8318c2b70972758e055ba15b6568e5d4b75bceeac8ad2f94f89fceca50a6d`). It exposed `SIQuester Cross-Platform` at 1200x760, opened `SIGameTestNew.siq`, exited through Ctrl+Q, committed settings, and logged no fatal/unhandled exception. The packaged Xdnd receipt imported `/tmp/v0.1.0 release изображение.png`, saved, closed, reopened, and matched exact source/package media SHA-256 `2f9a7766a7c9eec27946f95cb41b9acd11b1012e3338866fe4269ea00d184b50`; receipt directory: `/tmp/siquester-v0.1.0-smoke/dragdrop-receipt`.
 - Native Linux v0.2.0 authoring smoke: the extracted final tar opened `/tmp/siquester-v0.2.0-native-smoke/receipt/native authoring 例.siq` on Debian 13/X11. Through the actual compiled controls it selected Secret, entered theme `NativeSecretTheme`, fixed price 700, and post-answer text `PostAnswerSmoke`; Ctrl+S cleared dirty state after each edit. Ctrl+Q closed cleanly, the packaged application reopened the saved SIQ, and a second Ctrl+Q exited 0. `content.xml` contains canonical `type="secret"`, `selectionMode=exceptCurrent`, `numberSet(700,700,0)`, theme, and answer content. The log records two validated commits, recovery cleanup, two successful opens, and two complete close flows with no error/fatal/unhandled entry. Durable receipt: `artifacts/siquester-cross-platform-v0.2.0/native-smoke/RECEIPT.txt` (SHA-256 `b33b22e6852f91214fb47c5147465a8c54c3bb3223ae00c3ff9f21ae313fe426`).
+- Final native stability receipt: the tar built from `ebf5e604` opened
+  `SIGameTestNew.siq`, created/disposed 51/51 preview sessions across 50 repeated
+  cycles, retained exactly one SIQuester plus two WebKit processes, settled for
+  10 seconds, committed settings, closed the document, and exited 0. Latency was
+  p50 650.549 ms, p95 654.523 ms, maximum 656.041 ms. Raw JSON/log and the
+  managed-soak receipt are under
+  `artifacts/siquester-cross-platform-v0.2.0/stability/`.
 - Packaged preview fallback receipt: on this clean release host WebKitGTK is unavailable, so preview produced the localized actionable dependency state, stayed responsive, closed cleanly, committed settings, and logged no fatal/unhandled exception. Earlier WebKitGTK 2.52.6 native question and MP3/MP4 receipts remain valid implementation evidence; full playback was not re-run for v0.1.0.
 - Native Linux question-preview receipt: staged WebKitGTK 2.52.6 under Xvfb opened `avalonia-preview-options.siq`, rendered the Russian select-answer question plus embedded yellow image, reached terminal Replay in three fragments, replayed, closed, reopened, fetched the image again, and exited 0. The receipt records `created_sessions=2`, `disposed_sessions=2`, `replay_count=1`, `media_fetches=2`, and bright-pixel fraction `0.0968566`; the visually inspected 92,678-byte screenshot SHA-256 is `2b19d35abb5f955ec961b1ad44b9e5e4e7bfd3459b46b8ae905b7c5fbf3007e7`. The 2,420-byte log SHA-256 is `9d68bc04c0fd2715670524f3b601dfeb6d92e389ef3076c3102b062608fc9890` and contains no preview-host failure, fatal, or unhandled exception. Receipt directory: `/tmp/siquester-preview-options-smoke-20260827-3/receipt`.
 - Debian 13 compositing-fix acceptance: the user reproduced a blank native question surface under normal startup and a correctly rendered question with `WEBKIT_DISABLE_COMPOSITING_MODE=1`. The new startup tests pass 2/2 and prove default/preserve behavior before `AppBuilder` creation. A fresh packaged normal-start attempt opened the real preview fixture and closed cleanly, but its coordinate-driven XTest actions did not select the question and ended with `BadWindow`; it is retained only as startup evidence, not claimed as a new rendering receipt.
@@ -120,14 +150,15 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 ## Release artifacts
 
-The requested local v0.2.0 artifacts were built from implementation commit
-`fcfbfb51` with its timestamp (`1787855323`) as `SOURCE_DATE_EPOCH`. They are
+The requested local v0.2.0 artifacts were built from hardening commit
+`ebf5e604` with its timestamp (`1787867570`) as `SOURCE_DATE_EPOCH`. They are
 not pushed, tagged, published, installed, or merged.
 
-- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 58,714,115 bytes, SHA-256 `9b326e19db6fd4229484f05ccfe85a0cbb23d8fa1aca9ae1f30b09806e85a0da`.
-- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,626,512 bytes, SHA-256 `0db385c7a6fce47113547c8e42bd57506fddb2f87844ae7a87d6934cbaf6d2c2`.
+- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 58,717,512 bytes, SHA-256 `8cf3b750e6a0fc96551d62bb920dfd0fea14c621f4fdb1798fb0fb845ff3185d`.
+- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,617,628 bytes, SHA-256 `1040fab643fde13f3f56985356923c2b241e52d968fde2100a901ed26e2d2dcf`.
 - Checksum receipt: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.SHA256SUMS`; both entries pass.
 - Native authoring receipt and exact saved SIQ: `artifacts/siquester-cross-platform-v0.2.0/native-smoke/`.
+- Final native and managed stability receipt: `artifacts/siquester-cross-platform-v0.2.0/stability/`.
 
 The DEB declares version 0.2.0, architecture amd64, native dependencies,
 WebKit/GStreamer recommendations, immutable installation paths, desktop entry,
@@ -141,9 +172,9 @@ intentionally not rebuilt for this focused release.
 - Test: `CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia`.
 - Release output: `bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq`.
 - Receipt: adjacent `avalonia-core-roundtrip.receipt.json`.
-- Current Release artifact SHA-256: `7395b5deb95ba88d3b19b955d0ea1a1fbc9a9031de23c2abbda7d9a0c2e5397a`; receipt SHA-256: `c70fdc22346eb95ff79c80676fd351916f10c2bded56cf75ad9cb4db23c12f9d`. ZIP metadata can change generated SIQ hashes; semantic and media receipts remain authoritative.
+- Current Release artifact SHA-256: `8d12c63a0fcc0f86a3f4172555aa010703de76935f3c08da32869b3ae4909470`; receipt SHA-256: `69a9b3bc0388418561454b2f608e748c39625f17cf0b69864c6191a869e670d1`. ZIP metadata can change generated SIQ hashes; semantic and media receipts remain authoritative.
 - Verified through `SIDocument.Load`: one round, one theme, one question, and one referenced PNG with semantic and byte comparison.
-- Select-answer preview artifact: `avalonia-preview-options.siq`, current Release SHA-256 `2745c638e7c1c15d9103292e7af26649f2979217e72f70e00465198f15ec8c4b`; adjacent receipt SHA-256 `970367ca62a67847902774199c4e7213048a962bb0a7e95f91341dda55f7609d`. `QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia` verifies ordered labels `А`/`Б`, right option `Б`, `select` type, Unicode image reference, and exact image bytes through `SIDocument.Load`.
+- Select-answer preview artifact: `avalonia-preview-options.siq`, current Release SHA-256 `a3a63490059da05060f4a167dd52ae435d30faf09d58de6f5e4a516698b83f17`; adjacent receipt SHA-256 `a65d6017a534309bb7543566098f591e74845451e9ceabda2c2ec8d74cad273b`. `QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia` verifies ordered labels `А`/`Б`, right option `Б`, `select` type, Unicode image reference, and exact image bytes through `SIDocument.Load`.
 - Existing Windows SIQuester/SIGame runtime acceptance is not yet verified and must not be inferred from the loader receipt.
 
 ## Current blockers
@@ -161,7 +192,7 @@ The focused v0.2.0 Goal is complete and intentionally stops after its final repo
 - v0.2.0 is a usable ordinary-authoring Linux release with demo-question behavior parity, not full legacy parity. `custom` is intentionally a preserved manual type because the demo defines no canonical library behavior for it. Native same-window internal question Xdnd, macOS/Windows runtime acceptance, complete shortcut/runtime localization receipts, and advanced import/export/transform/optional integrations remain deferred. Explicit known-behavior or parameter conversion replaces incompatible structure only after a deliberate undoable user action; load, display, and save do not normalize unknown values.
 - Recovery retention is deliberately conservative: only the latest validated generation is kept per document; superseded generations are removed after pointer commit, and a successful canonical save, approved close, or explicit discard removes the recovery identity. Valid stale snapshots and malformed entries are not age-pruned silently because doing so could destroy the only recoverable user data.
 - Language changes intentionally apply after restart and communicate that boundary. System/light/dark selection is live and persisted, but visual theme snapshots and a macOS runtime Command-key receipt remain pending.
-- The retained question player now has verified native Linux text, embedded select-answer image, completion/replay, and two-session close/reopen receipts plus automated available/unavailable backend gates. The media library additionally has verified native Linux MP3/MP4 decoding through controlled per-selection routes. A longer repeated-open resource-growth measurement and native macOS/Windows codec acceptance remain pending. Package HTML is deliberately rendered as an inert localized warning until a separate restrictive HTML policy is implemented.
+- The retained question player now has verified native Linux text, embedded select-answer image, completion/replay, two-session close/reopen, and a 50-cycle resource receipt plus automated available/unavailable backend gates. The media library additionally has verified native Linux MP3/MP4 decoding through controlled per-selection routes. Native macOS/Windows codec acceptance remains pending. Package HTML is deliberately rendered as an inert localized warning until a separate restrictive HTML policy is implemented.
 - Native external Xdnd target acceptance now passes with visible dirty/Undo state, exact media persistence, safe save, and reopen. XTEST still does not reliably deliver same-window internal question Xdnd `DragOver`/`Drop`, so that narrower acceptance is deferred rather than inferred from source activation.
 - The first deterministic flat-list baseline is 1,045-1,062 ms to create and lay out a generated 2,000-question document at 1100x700 on this Debian host, with 15 question cards realized at either scroll endpoint. It is a headless realization receipt rather than a native rendering profile; no performance improvement is claimed yet.
 - Linux packages are locally executable and structurally accepted, but actual desktop/MIME cache registration after system install and native ARM64 launch remain pending. macOS bundles are cross-built only; ICNS/codesign and native launch are hosted-runner boundaries.
@@ -169,4 +200,11 @@ The focused v0.2.0 Goal is complete and intentionally stops after its final repo
 
 ## Review state
 
-- Latest reviewed implementation commit: `fcfbfb51`; this file, `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and `RELEASE_NOTES_0.2.0.md` form the final documentation checkpoint. Release build/tests pass with the retained 130-warning source baseline and 0 errors; all 350 tests pass with no skips. The retained WPF frontend cross-build passes 0/0. Fresh tar/DEB checksums, metadata/topology, payload identity, native edit/save/reopen, canonical XML, safe-save/recovery, and close-lifecycle checks pass. Review remained strictly scoped to v0.2.0 question authoring and release hardening.
+- Latest reviewed implementation commit: `ebf5e604`; this file,
+  `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
+  `RELEASE_NOTES_0.2.0.md` form the final documentation checkpoint. All 359
+  ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
+  frontend cross-build passes 0/0. Fresh tar/DEB checksums, metadata/topology,
+  managed-payload identity, native 50-cycle preview/clean close, safe-save,
+  loader cleanup, failure retention, settings failure, and close serialization
+  checks pass. Review remained strictly scoped to v0.2.0 release hardening.
