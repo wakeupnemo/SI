@@ -250,6 +250,29 @@ internal sealed class FlatQuestionOperationsTests
     }
 
     [Test]
+    public void DragDataFromAnotherDocument_IsRejectedWithoutMutation()
+    {
+        using var sourceDocument = CreateDocument(("Source", [("A", 100)]));
+        using var targetDocument = CreateDocument(("Target", [("B", 200)]));
+        var dragData = sourceDocument.FlatQuestions.CreateDragData(
+            sourceDocument.Package.Rounds[0].Themes[0].Questions[0]);
+        var targetTheme = targetDocument.Package.Rounds[0].Themes[0];
+
+        var result = targetDocument.FlatQuestions.Apply(
+            dragData,
+            new FlatQuestionLocation(0, 0, 1),
+            FlatQuestionDropMode.Copy,
+            recalculatePrices: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(FlatQuestionDropResult.InvalidSource));
+            Assert.That(Answers(targetTheme), Is.EqualTo(new[] { "B" }));
+            Assert.That(targetDocument.OperationsManager.Undo.CanExecute(null), Is.False);
+        });
+    }
+
+    [Test]
     public void DragPayload_RoundTripsWithExplicitVersionAndRejectsMalformedData()
     {
         var source = new FlatQuestionDragData(
