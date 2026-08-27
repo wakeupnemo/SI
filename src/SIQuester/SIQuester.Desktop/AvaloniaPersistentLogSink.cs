@@ -9,7 +9,7 @@ internal sealed class AvaloniaPersistentLogSink : ILogSink
 {
     private readonly NLog.Logger _logger = LogManager.GetLogger("Avalonia");
 
-    public bool IsEnabled(LogEventLevel level, string area) => level >= LogEventLevel.Warning;
+    public bool IsEnabled(LogEventLevel level, string area) => level >= LogEventLevel.Error;
 
     public void Log(LogEventLevel level, string area, object? source, string messageTemplate) =>
         Write(level, area, source, messageTemplate);

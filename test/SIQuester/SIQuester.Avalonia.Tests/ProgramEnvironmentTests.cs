@@ -15,14 +15,14 @@ internal sealed class ProgramEnvironmentTests
     }
 
     [Test]
-    public void PersistentAvaloniaSinkKeepsReleaseLogsFocusedOnWarningsAndFailures()
+    public void PersistentAvaloniaSinkKeepsReleaseLogsFocusedOnErrorsAndFailures()
     {
         var sink = new AvaloniaPersistentLogSink();
 
         Assert.Multiple(() =>
         {
             Assert.That(sink.IsEnabled(LogEventLevel.Information, "test"), Is.False);
-            Assert.That(sink.IsEnabled(LogEventLevel.Warning, "test"), Is.True);
+            Assert.That(sink.IsEnabled(LogEventLevel.Warning, "test"), Is.False);
             Assert.That(sink.IsEnabled(LogEventLevel.Error, "test"), Is.True);
             Assert.That(sink.IsEnabled(LogEventLevel.Fatal, "test"), Is.True);
         });

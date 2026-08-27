@@ -228,6 +228,7 @@ def main() -> int:
     if args.cycles < 1 or args.cycles > 100:
         parser.error("--cycles must be between 1 and 100")
     args.receipt_directory.mkdir(parents=True, exist_ok=True)
+    args.receipt_directory = args.receipt_directory.resolve()
     xdg = args.receipt_directory / "xdg"
     env = os.environ.copy()
     env["XDG_CONFIG_HOME"] = str(xdg / "config")
@@ -266,6 +267,8 @@ def main() -> int:
                 time.sleep(1)
                 samples.append(process_sample(process.pid, cycle))
 
+        controller.click(window, 75, 316)
+        time.sleep(0.2)
         controller.key("Control_L", "q")
         return_code = process.wait(timeout=20)
         if return_code != 0:
