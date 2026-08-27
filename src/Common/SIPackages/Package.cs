@@ -201,7 +201,24 @@ public sealed class Package : InfoOwner, IEquatable<Package>
     /// - limited media files size and extensions;
     /// - forbidden external links.
     /// </summary>
-    public bool HasQualityControl { get; set; }
+    private bool _hasQualityControl;
+
+    /// <summary>
+    /// Gets or sets whether the package has additional quality control.
+    /// </summary>
+    public bool HasQualityControl
+    {
+        get => _hasQualityControl;
+        set
+        {
+            if (_hasQualityControl != value)
+            {
+                var oldValue = _hasQualityControl;
+                _hasQualityControl = value;
+                OnPropertyChanged(oldValue);
+            }
+        }
+    }
 
     /// <summary>
     /// Package tags.
@@ -481,7 +498,8 @@ public sealed class Package : InfoOwner, IEquatable<Package>
             _restriction = _restriction,
             _publisher = _publisher,
             _difficulty = _difficulty,
-            _logo = _logo
+            _logo = _logo,
+            _hasQualityControl = this._hasQualityControl
         };
 
         package.Tags.AddRange(Tags);
@@ -509,6 +527,7 @@ public sealed class Package : InfoOwner, IEquatable<Package>
         && ContactUri.Equals(other.ContactUri)
         && Difficulty.Equals(other.Difficulty)
         && Logo.Equals(other.Logo)
+        && HasQualityControl == other.HasQualityControl
         && Tags.SequenceEqual(other.Tags)
         && Rounds.SequenceEqual(other.Rounds);
 
@@ -520,6 +539,7 @@ public sealed class Package : InfoOwner, IEquatable<Package>
         HashCode.Combine(base.GetHashCode(), ID, Date, Language, Version, Restriction, Publisher, ContactUri),
         Difficulty,
         Logo,
+        HasQualityControl,
         Tags.GetCollectionHashCode(),
         Rounds.GetCollectionHashCode());
 }

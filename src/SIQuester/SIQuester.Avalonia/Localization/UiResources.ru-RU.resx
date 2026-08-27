@@ -143,4 +143,9 @@
   <data name="RoundType" xml:space="preserve"><value>Тип раунда</value></data>
   <data name="StandardRound" xml:space="preserve"><value>Обычный раунд</value></data>
   <data name="FinalRound" xml:space="preserve"><value>Финальный раунд</value></data>
+  <data name="QualityControlStatus" xml:space="preserve"><value>Контроль качества</value></data>
+  <data name="QualityControlEnabled" xml:space="preserve"><value>Включён</value></data>
+  <data name="QualityControlDisabled" xml:space="preserve"><value>Выключен</value></data>
+  <data name="EnableQualityControl" xml:space="preserve"><value>Включить контроль качества</value></data>
+  <data name="DisableQualityControl" xml:space="preserve"><value>Выключить контроль качества</value></data>
 </root>

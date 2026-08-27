@@ -104,10 +104,15 @@ public sealed class PackageViewModel : ItemViewModel<Package>
                 }
 
                 Model.HasQualityControl = value;
-                OnPropertyChanged();
             }
         }
     }
+
+    public AsyncCommand EnableQualityControl { get; }
+
+    public SimpleCommand DisableQualityControl { get; }
+
+    private bool _isQualityControlUpdatePending;
 
     /// <summary>
     /// Generates themes with the help of GPT.
@@ -136,6 +141,9 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         AddTags = new SimpleCommand(AddTags_Executed);
 
         ChangeLanguage = new SimpleCommand(ChangeLanguage_Executed);
+        EnableQualityControl = new AsyncCommand(EnableQualityControl_ExecutedAsync);
+        DisableQualityControl = new SimpleCommand(DisableQualityControl_Executed);
+        UpdateQualityControlCommands();
 
         SelectLogo = new SimpleCommand(SelectLogo_Executed);
         RemoveLogo = new SimpleCommand(RemoveLogo_Executed);
@@ -347,6 +355,53 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         {
             AddRestrictions.CanBeExecuted = Model.Restriction.Length == 0;
         }
+        else if (e.PropertyName == nameof(Package.HasQualityControl))
+        {
+            OnPropertyChanged(nameof(HasQualityControl));
+            UpdateQualityControlCommands();
+        }
+    }
+
+    private async Task EnableQualityControl_ExecutedAsync(object? arg)
+    {
+        if (Model.HasQualityControl || _isQualityControlUpdatePending)
+        {
+            return;
+        }
+
+        _isQualityControlUpdatePending = true;
+        UpdateQualityControlCommands();
+
+        try
+        {
+            if (await Document.CheckPackageQualityAsync())
+            {
+                Model.HasQualityControl = true;
+            }
+        }
+        catch (Exception exc)
+        {
+            Document.OnError(exc);
+        }
+        finally
+        {
+            _isQualityControlUpdatePending = false;
+            UpdateQualityControlCommands();
+        }
+    }
+
+    private void DisableQualityControl_Executed(object? arg)
+    {
+        if (!_isQualityControlUpdatePending)
+        {
+            Model.HasQualityControl = false;
+        }
+    }
+
+    private void UpdateQualityControlCommands()
+    {
+        EnableQualityControl.CanBeExecuted = !Model.HasQualityControl && !_isQualityControlUpdatePending;
+        DisableQualityControl.CanBeExecuted = Model.HasQualityControl && !_isQualityControlUpdatePending;
     }
 
     private void Rounds_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

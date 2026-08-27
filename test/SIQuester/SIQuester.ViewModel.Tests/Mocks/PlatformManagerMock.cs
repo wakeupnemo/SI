@@ -25,6 +25,10 @@ internal sealed class PlatformManagerMock :
 
     public List<string> RevealedFiles { get; } = [];
 
+    public List<string> Messages { get; } = [];
+
+    public List<string> LegacyExclamationMessages { get; } = [];
+
     public override string[] FontFamilies => Array.Empty<string>();
 
     public override Tuple<int, int, int>? GetCurrentItemSelectionArea() => null;
@@ -77,7 +81,7 @@ internal sealed class PlatformManagerMock :
 
     public override void ShowErrorMessage(string message) { }
 
-    public override void ShowExclamationMessage(string message) { }
+    public override void ShowExclamationMessage(string message) => LegacyExclamationMessages.Add(message);
 
     public override void ShowSelectOptionDialog(string message, params UserOption[] options) { }
 
@@ -118,7 +122,12 @@ internal sealed class PlatformManagerMock :
     ValueTask<bool> IDialogService.ConfirmAsync(string message, CancellationToken cancellationToken) =>
         ValueTask.FromResult(true);
 
-    public ValueTask ShowMessageAsync(string message, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+    public ValueTask ShowMessageAsync(string message, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Messages.Add(message);
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask ShowErrorAsync(string message, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
 

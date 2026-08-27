@@ -8,6 +8,33 @@ namespace SIPackages.Tests;
 internal sealed class QuestionTests
 {
     [Test]
+    public void GetContent_IncludesQuestionAndScriptParameters()
+    {
+        var questionContent = new ContentItem { Type = ContentTypes.Image, Value = "question.png", IsRef = true };
+        var scriptContent = new ContentItem { Type = ContentTypes.Audio, Value = "script.mp3", IsRef = true };
+        var question = new Question { Script = new Script() };
+        question.Parameters[QuestionParameterNames.Question] = new StepParameter
+        {
+            Type = StepParameterTypes.Content,
+            ContentValue = [questionContent],
+        };
+        question.Script.Steps.Add(new Step
+        {
+            Type = StepTypes.ShowContent,
+            Parameters =
+            {
+                [StepParameterNames.Content] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = [scriptContent],
+                },
+            },
+        });
+
+        Assert.That(question.GetContent(), Is.EqualTo(new[] { scriptContent, questionContent }));
+    }
+
+    [Test]
     public void Clone_PreservesIndependentScriptAndEveryParameterKind()
     {
         var question = new Question

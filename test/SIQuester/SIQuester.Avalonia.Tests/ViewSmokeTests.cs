@@ -231,6 +231,64 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task Inspector_QualityControlCommandsUpdateCanonicalStateAndVisibility()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Quality inspector", "Test author");
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Quality inspector");
+        var package = documentViewModel.Package;
+        var inspector = new InspectorView { SelectedItem = package };
+        var window = new Window { Width = 720, Height = 1200, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var enableButton = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, package.EnableQualityControl));
+            var disableButton = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, package.DisableQualityControl));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(enableButton.IsEffectivelyVisible, Is.True);
+                Assert.That(disableButton.IsEffectivelyVisible, Is.False);
+                Assert.That(enableButton.Content, Is.EqualTo(UiStrings.EnableQualityControl));
+            });
+
+            await package.EnableQualityControl.ExecuteAsync(null);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(document.Package.HasQualityControl, Is.True);
+                Assert.That(enableButton.IsEffectivelyVisible, Is.False);
+                Assert.That(disableButton.IsEffectivelyVisible, Is.True);
+                Assert.That(disableButton.Content, Is.EqualTo(UiStrings.DisableQualityControl));
+            });
+
+            disableButton.Command!.Execute(disableButton.CommandParameter);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(document.Package.HasQualityControl, Is.False);
+                Assert.That(enableButton.IsEffectivelyVisible, Is.True);
+                Assert.That(disableButton.IsEffectivelyVisible, Is.False);
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void Inspector_ScenarioEditorsMutateCanonicalScriptThroughCompiledBindings()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -952,6 +1010,8 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.Options, Is.EqualTo("Настройки"));
             Assert.That(UiStrings.Authors, Is.EqualTo("Авторы"));
             Assert.That(UiStrings.ShowmanComments, Is.EqualTo("Комментарии ведущему"));
+            Assert.That(UiStrings.EnableQualityControl, Is.EqualTo("Включить контроль качества"));
+            Assert.That(UiStrings.DisableQualityControl, Is.EqualTo("Выключить контроль качества"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(

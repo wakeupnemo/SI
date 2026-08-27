@@ -154,4 +154,9 @@ public static class UiStrings
     public static string RoundType => Get(nameof(RoundType));
     public static string StandardRound => Get(nameof(StandardRound));
     public static string FinalRound => Get(nameof(FinalRound));
+    public static string QualityControlStatus => Get(nameof(QualityControlStatus));
+    public static string QualityControlEnabled => Get(nameof(QualityControlEnabled));
+    public static string QualityControlDisabled => Get(nameof(QualityControlDisabled));
+    public static string EnableQualityControl => Get(nameof(EnableQualityControl));
+    public static string DisableQualityControl => Get(nameof(DisableQualityControl));
 }

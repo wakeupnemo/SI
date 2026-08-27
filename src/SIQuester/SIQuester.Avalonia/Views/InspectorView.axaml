@@ -29,6 +29,13 @@
           <TextBox x:Name="PackageRestrictionEditor" Text="{Binding Model.Restriction, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.Restriction}" AcceptsReturn="True" Margin="{StaticResource FieldMargin}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Difficulty}" />
           <NumericUpDown x:Name="PackageDifficultyEditor" Value="{Binding Model.Difficulty, Mode=TwoWay}" Minimum="0" Maximum="10" AutomationProperties.Name="{x:Static loc:UiStrings.Difficulty}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QualityControlStatus}" />
+          <WrapPanel Margin="{StaticResource FieldMargin}">
+            <TextBlock Text="{x:Static loc:UiStrings.QualityControlEnabled}" IsVisible="{Binding HasQualityControl}" VerticalAlignment="Center" Margin="{StaticResource MetadataCommandMargin}" />
+            <TextBlock Text="{x:Static loc:UiStrings.QualityControlDisabled}" IsVisible="{Binding !HasQualityControl}" VerticalAlignment="Center" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.EnableQualityControl}" AutomationProperties.Name="{x:Static loc:UiStrings.EnableQualityControl}" Command="{Binding EnableQualityControl}" IsVisible="{Binding !HasQualityControl}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.DisableQualityControl}" AutomationProperties.Name="{x:Static loc:UiStrings.DisableQualityControl}" Command="{Binding DisableQualityControl}" IsVisible="{Binding HasQualityControl}" />
+          </WrapPanel>
           <views:StringListEditorView x:Name="PackageTagsEditor" Header="{x:Static loc:UiStrings.Tags}" Editor="{Binding Tags}" />
           <views:ItemMetadataEditorView x:Name="PackageMetadataEditor" DataContext="{Binding Info}" />
           <Button Classes="command" Content="{x:Static loc:UiStrings.AddRound}" Command="{Binding AddRound}" HorizontalAlignment="Left" />

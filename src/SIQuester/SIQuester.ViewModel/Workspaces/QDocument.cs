@@ -3363,6 +3363,43 @@ public sealed class QDocument : WorkspaceViewModel
 
     internal bool CheckPackageQuality()
     {
+        var errors = GetPackageQualityErrors();
+
+        if (errors.Count > 0)
+        {
+            PlatformManager.Instance.ShowExclamationMessage(
+                Resources.CannotEnableQuality + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, errors));
+
+            IsSideOpened = true;
+            SideIndex = 6;
+            return false;
+        }
+
+        return true;
+    }
+
+    internal async Task<bool> CheckPackageQualityAsync(CancellationToken cancellationToken = default)
+    {
+        var errors = GetPackageQualityErrors();
+
+        if (errors.Count == 0)
+        {
+            return true;
+        }
+
+        var errorMessage = Resources.CannotEnableQuality
+            + Environment.NewLine
+            + Environment.NewLine
+            + string.Join(Environment.NewLine + Environment.NewLine, errors);
+
+        await _dialogService.ShowMessageAsync(errorMessage, cancellationToken);
+        IsSideOpened = true;
+        SideIndex = 6;
+        return false;
+    }
+
+    private List<string> GetPackageQualityErrors()
+    {
         var errors = new List<string>();
 
         foreach (var round in Package.Rounds)
@@ -3415,17 +3452,7 @@ public sealed class QDocument : WorkspaceViewModel
             }
         }
 
-        if (errors.Count > 0)
-        {
-            PlatformManager.Instance.ShowExclamationMessage(
-                Resources.CannotEnableQuality + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, errors));
-
-            IsSideOpened = true;
-            SideIndex = 6;
-            return false;
-        }
-
-        return true;
+        return errors;
     }
 
     private async void ExpandAll_Executed(object? arg)

@@ -6,6 +6,24 @@ namespace SIPackages.Tests;
 internal sealed class PackageTests
 {
     [Test]
+    public void Clone_PreservesQualityControlSemanticState()
+    {
+        var package = new Package { Name = "Quality package", HasQualityControl = true };
+
+        var clone = package.Clone();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(clone.HasQualityControl, Is.True);
+            Assert.That(clone, Is.EqualTo(package));
+            Assert.That(clone.GetHashCode(), Is.EqualTo(package.GetHashCode()));
+        });
+
+        clone.HasQualityControl = false;
+        Assert.That(clone, Is.Not.EqualTo(package));
+    }
+
+    [Test]
     public void ContactUri_Serialize_Deserialize_Ok()
     {
         var package = new Package { ContactUri = "http://fakeuri" };

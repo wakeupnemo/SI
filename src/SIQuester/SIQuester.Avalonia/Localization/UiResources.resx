@@ -143,4 +143,9 @@
   <data name="RoundType" xml:space="preserve"><value>Round type</value></data>
   <data name="StandardRound" xml:space="preserve"><value>Standard round</value></data>
   <data name="FinalRound" xml:space="preserve"><value>Final round</value></data>
+  <data name="QualityControlStatus" xml:space="preserve"><value>Quality control</value></data>
+  <data name="QualityControlEnabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="QualityControlDisabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="EnableQualityControl" xml:space="preserve"><value>Enable quality control</value></data>
+  <data name="DisableQualityControl" xml:space="preserve"><value>Disable quality control</value></data>
 </root>

@@ -517,7 +517,25 @@ public sealed class Question : InfoOwner, IEquatable<Question>
     /// <summary>
     /// Gets question content parts.
     /// </summary>
-    public IEnumerable<ContentItem> GetContent() => GetContentFromParameters(Parameters);
+    /// <remarks>Script content is returned before question-parameter content.</remarks>
+    public IEnumerable<ContentItem> GetContent()
+    {
+        if (Script != null)
+        {
+            foreach (var step in Script.Steps)
+            {
+                foreach (var contentItem in GetContentFromParameters(step.Parameters))
+                {
+                    yield return contentItem;
+                }
+            }
+        }
+
+        foreach (var contentItem in GetContentFromParameters(Parameters))
+        {
+            yield return contentItem;
+        }
+    }
 
     private static IEnumerable<ContentItem> GetContentFromParameters(StepParameters parameters)
     {
