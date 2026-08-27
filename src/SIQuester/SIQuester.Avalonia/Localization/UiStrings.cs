@@ -78,4 +78,24 @@ public static class UiStrings
     public static string LanguageRestart => Get(nameof(LanguageRestart));
     public static string SettingsSavingError => Get(nameof(SettingsSavingError));
     public static string Reset => Get(nameof(Reset));
+    public static string RecoveryTitle => Get(nameof(RecoveryTitle));
+    public static string RecoveryDescription => Get(nameof(RecoveryDescription));
+    public static string RecoveryAvailable => Get(nameof(RecoveryAvailable));
+    public static string RecoveryStale => Get(nameof(RecoveryStale));
+    public static string RecoveryStaleDescription => Get(nameof(RecoveryStaleDescription));
+    public static string RecoveryOriginalPath => Get(nameof(RecoveryOriginalPath));
+    public static string RecoveryUnsavedDocument => Get(nameof(RecoveryUnsavedDocument));
+    public static string RecoverySavedAt => Get(nameof(RecoverySavedAt));
+    public static string RecoverySizeBytes => Get(nameof(RecoverySizeBytes));
+    public static string Preview => Get(nameof(Preview));
+    public static string Restore => Get(nameof(Restore));
+    public static string RestoreAsCopy => Get(nameof(RestoreAsCopy));
+    public static string RevealLocation => Get(nameof(RevealLocation));
+    public static string DiscardSnapshot => Get(nameof(DiscardSnapshot));
+    public static string ConfirmDiscardSnapshot => Get(nameof(ConfirmDiscardSnapshot));
+    public static string RecoveryPreview => Get(nameof(RecoveryPreview));
+    public static string Rounds => Get(nameof(Rounds));
+    public static string Themes => Get(nameof(Themes));
+    public static string Questions => Get(nameof(Questions));
+    public static string MediaFiles => Get(nameof(MediaFiles));
 }

@@ -38,6 +38,8 @@ internal static class TestHelper
         services.AddSingleton<IDialogService>(platformManager);
         services.AddSingleton<IApplicationLifetimeService>(platformManager);
         services.AddSingleton<IMediaMaterializationService>(platformManager);
+        services.AddSingleton<IPlatformCapabilities>(platformManager);
+        services.AddSingleton<IExternalLauncher>(platformManager);
         services.AddSingleton(Substitute.For<ISIStatisticsServiceClient>());
         services.AddSingleton<StorageContextViewModel>(sp => CreateStorageContextViewModel(sp));
         services.AddSingleton<IDocumentViewModelFactory, TestDocumentViewModelFactory>();

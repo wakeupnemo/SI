@@ -117,6 +117,13 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
     public bool HasWorkspaces => DocList.Count > 0;
 
+    /// <summary>
+    /// Validated recovery snapshots available for explicit user action in capable hosts.
+    /// </summary>
+    public ObservableCollection<RecoveryEntryViewModel> RecoveryEntries { get; } = new();
+
+    public bool HasRecoveryEntries => RecoveryEntries.Count > 0;
+
     private QDocument? _activeDocument = null;
     private WorkspaceViewModel? _activeWorkspace;
 
@@ -167,6 +174,8 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private readonly IDialogService _dialogService;
     private readonly IApplicationLifetimeService _applicationLifetimeService;
     private readonly IDocumentRecoveryService _documentRecoveryService;
+    private readonly IPlatformCapabilities _platformCapabilities;
+    private readonly IExternalLauncher _externalLauncher;
 
     public AppOptions AppOptions => _appOptions;
 
@@ -181,7 +190,9 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         IFilePickerService filePickerService,
         IDialogService dialogService,
         IApplicationLifetimeService applicationLifetimeService,
-        IDocumentRecoveryService documentRecoveryService)
+        IDocumentRecoveryService documentRecoveryService,
+        IPlatformCapabilities platformCapabilities,
+        IExternalLauncher externalLauncher)
     {
         _loggerFactory = loggerFactory;
         _clipboardService = clipboardService;
@@ -191,10 +202,13 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         _dialogService = dialogService;
         _applicationLifetimeService = applicationLifetimeService;
         _documentRecoveryService = documentRecoveryService;
+        _platformCapabilities = platformCapabilities;
+        _externalLauncher = externalLauncher;
         _logger = loggerFactory.CreateLogger<MainViewModel>();
         _appOptions = appOptions;
 
         DocList.CollectionChanged += DocList_CollectionChanged;
+        RecoveryEntries.CollectionChanged += RecoveryEntries_CollectionChanged;
 
         Open = new AsyncCommand(Open_ExecutedAsync);
         OpenRecent = new AsyncCommand(OpenRecent_ExecutedAsync);
@@ -295,6 +309,29 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
                 staleEntry.RecoveryId);
         }
 
+        if (_platformCapabilities.SupportsRecoveryManagementUi)
+        {
+            foreach (var entry in entries)
+            {
+                RecoveryEntries.Add(new RecoveryEntryViewModel(
+                    entry,
+                    _documentRecoveryService,
+                    _externalLauncher,
+                    RestoreRecoveryEntryAsync,
+                    CompleteRecoveryEntry,
+                    exception => ReportErrorAsync(exception, null)));
+            }
+
+            if (entries.Count > 0)
+            {
+                _logger.LogInformation(
+                    "{RecoveryCount} document snapshots are available in the recovery center",
+                    entries.Count);
+            }
+
+            return;
+        }
+
         if (recoverableEntries.Length == 0)
         {
             return;
@@ -314,26 +351,52 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
         foreach (var entry in recoverableEntries)
         {
-            SIDocument? document = null;
-
             try
             {
-                document = await _documentRecoveryService.LoadAsync(entry);
-                var viewModel = _documentViewModelFactory.CreateViewModelFor(document, entry.DisplayName);
-                document = null;
-                viewModel.Path = entry.OriginalPath ?? string.Empty;
-                viewModel.AdoptRecoveryId(entry.RecoveryId);
-                viewModel.Changed = true;
-                DocList.Add(viewModel);
-                _logger.LogInformation("Recovery entry {RecoveryId} was opened", entry.RecoveryId);
+                await RestoreRecoveryEntryAsync(entry, CancellationToken.None);
             }
             catch (Exception exception)
             {
-                document?.Dispose();
                 await ReportErrorAsync(exception, null);
             }
         }
     }
+
+    private async Task RestoreRecoveryEntryAsync(
+        DocumentRecoveryEntry entry,
+        CancellationToken cancellationToken)
+    {
+        SIDocument? document = null;
+
+        try
+        {
+            document = await _documentRecoveryService.LoadAsync(entry, cancellationToken);
+            var viewModel = _documentViewModelFactory.CreateViewModelFor(document, entry.DisplayName);
+            document = null;
+            // A stale snapshot must never target a newer canonical package. It is restored as
+            // an unsaved copy so the next save requires an explicit destination.
+            viewModel.Path = entry.IsStale ? string.Empty : entry.OriginalPath ?? string.Empty;
+            viewModel.AdoptRecoveryId(entry.RecoveryId);
+            viewModel.Changed = true;
+            DocList.Add(viewModel);
+            _logger.LogInformation("Recovery entry {RecoveryId} was opened", entry.RecoveryId);
+        }
+        finally
+        {
+            document?.Dispose();
+        }
+    }
+
+    private void CompleteRecoveryEntry(RecoveryEntryViewModel recoveryEntry)
+    {
+        if (RecoveryEntries.Remove(recoveryEntry))
+        {
+            recoveryEntry.Dispose();
+        }
+    }
+
+    private void RecoveryEntries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        OnPropertyChanged(nameof(HasRecoveryEntries));
 
     private bool IsDocumentPathOpen(string path)
     {
@@ -864,9 +927,17 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
     protected override void Dispose(bool disposing)
     {
+        DocList.CollectionChanged -= DocList_CollectionChanged;
+        RecoveryEntries.CollectionChanged -= RecoveryEntries_CollectionChanged;
+
         foreach (var item in DocList)
         {
             item.Dispose();
+        }
+
+        foreach (var recoveryEntry in RecoveryEntries)
+        {
+            recoveryEntry.Dispose();
         }
 
         base.Dispose(disposing);

@@ -162,7 +162,9 @@ public partial class App : Application
                 filePickerService,
                 dialogService,
                 applicationLifetimeService,
-                _host.Services.GetRequiredService<IDocumentRecoveryService>());
+                _host.Services.GetRequiredService<IDocumentRecoveryService>(),
+                _host.Services.GetRequiredService<IPlatformCapabilities>(),
+                _host.Services.GetRequiredService<IExternalLauncher>());
             DocumentCollectionController.AttachTo(_mainViewModel);
 
             var storageContextViewModel = _host.Services.GetRequiredService<StorageContextViewModel>();
@@ -251,6 +253,8 @@ public partial class App : Application
         services.AddSingleton<IDialogService>(_manager);
         services.AddSingleton<IApplicationLifetimeService>(_manager);
         services.AddSingleton<IMediaMaterializationService>(_manager);
+        services.AddSingleton<IPlatformCapabilities>(_manager);
+        services.AddSingleton<IExternalLauncher>(_manager);
 
         services.AddSIQuester();
     }

@@ -14,6 +14,7 @@
     <CornerRadius x:Key="RadiusSmall">4</CornerRadius>
     <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
     <Thickness x:Key="Space4Thickness">4</Thickness>
+    <Thickness x:Key="Space8Thickness">8</Thickness>
     <Thickness x:Key="Space12Thickness">12</Thickness>
     <Thickness x:Key="Space16Thickness">16</Thickness>
     <Thickness x:Key="Space24Thickness">24</Thickness>

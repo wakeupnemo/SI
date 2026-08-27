@@ -67,4 +67,24 @@
   <data name="LanguageRestart" xml:space="preserve"><value>Смена языка применяется после перезапуска SIQuester.</value></data>
   <data name="SettingsSavingError" xml:space="preserve"><value>Не удалось сохранить настройки.</value></data>
   <data name="Reset" xml:space="preserve"><value>Сбросить настройки</value></data>
+  <data name="RecoveryTitle" xml:space="preserve"><value>Восстановление документов</value></data>
+  <data name="RecoveryDescription" xml:space="preserve"><value>Проверьте каждую автосохранённую копию перед восстановлением или удалением.</value></data>
+  <data name="RecoveryAvailable" xml:space="preserve"><value>Можно восстановить</value></data>
+  <data name="RecoveryStale" xml:space="preserve"><value>Старее сохранённого файла</value></data>
+  <data name="RecoveryStaleDescription" xml:space="preserve"><value>Сохранённый пакет новее. Эта версия откроется как несохранённая копия и не сможет напрямую перезаписать новый файл.</value></data>
+  <data name="RecoveryOriginalPath" xml:space="preserve"><value>Исходный путь</value></data>
+  <data name="RecoveryUnsavedDocument" xml:space="preserve"><value>Ранее не сохранённый документ</value></data>
+  <data name="RecoverySavedAt" xml:space="preserve"><value>Время копии</value></data>
+  <data name="RecoverySizeBytes" xml:space="preserve"><value>Размер в байтах</value></data>
+  <data name="Preview" xml:space="preserve"><value>Просмотреть</value></data>
+  <data name="Restore" xml:space="preserve"><value>Восстановить</value></data>
+  <data name="RestoreAsCopy" xml:space="preserve"><value>Восстановить как копию</value></data>
+  <data name="RevealLocation" xml:space="preserve"><value>Показать расположение</value></data>
+  <data name="DiscardSnapshot" xml:space="preserve"><value>Удалить копию</value></data>
+  <data name="ConfirmDiscardSnapshot" xml:space="preserve"><value>Безвозвратно удалить эту копию восстановления?</value></data>
+  <data name="RecoveryPreview" xml:space="preserve"><value>Содержимое копии</value></data>
+  <data name="Rounds" xml:space="preserve"><value>Раунды</value></data>
+  <data name="Themes" xml:space="preserve"><value>Темы</value></data>
+  <data name="Questions" xml:space="preserve"><value>Вопросы</value></data>
+  <data name="MediaFiles" xml:space="preserve"><value>Медиафайлы</value></data>
 </root>

@@ -67,4 +67,24 @@
   <data name="LanguageRestart" xml:space="preserve"><value>Language changes apply after restarting SIQuester.</value></data>
   <data name="SettingsSavingError" xml:space="preserve"><value>Settings could not be saved.</value></data>
   <data name="Reset" xml:space="preserve"><value>Reset to defaults</value></data>
+  <data name="RecoveryTitle" xml:space="preserve"><value>Document recovery</value></data>
+  <data name="RecoveryDescription" xml:space="preserve"><value>Review each autosaved snapshot before restoring or discarding it.</value></data>
+  <data name="RecoveryAvailable" xml:space="preserve"><value>Available to restore</value></data>
+  <data name="RecoveryStale" xml:space="preserve"><value>Older than the saved file</value></data>
+  <data name="RecoveryStaleDescription" xml:space="preserve"><value>The saved package is newer. Restoring opens this snapshot as an unsaved copy and cannot overwrite the newer file directly.</value></data>
+  <data name="RecoveryOriginalPath" xml:space="preserve"><value>Original path</value></data>
+  <data name="RecoveryUnsavedDocument" xml:space="preserve"><value>Previously unsaved document</value></data>
+  <data name="RecoverySavedAt" xml:space="preserve"><value>Snapshot time</value></data>
+  <data name="RecoverySizeBytes" xml:space="preserve"><value>Size in bytes</value></data>
+  <data name="Preview" xml:space="preserve"><value>Preview</value></data>
+  <data name="Restore" xml:space="preserve"><value>Restore</value></data>
+  <data name="RestoreAsCopy" xml:space="preserve"><value>Restore as copy</value></data>
+  <data name="RevealLocation" xml:space="preserve"><value>Reveal location</value></data>
+  <data name="DiscardSnapshot" xml:space="preserve"><value>Discard snapshot</value></data>
+  <data name="ConfirmDiscardSnapshot" xml:space="preserve"><value>Permanently discard this recovery snapshot?</value></data>
+  <data name="RecoveryPreview" xml:space="preserve"><value>Snapshot contents</value></data>
+  <data name="Rounds" xml:space="preserve"><value>Rounds</value></data>
+  <data name="Themes" xml:space="preserve"><value>Themes</value></data>
+  <data name="Questions" xml:space="preserve"><value>Questions</value></data>
+  <data name="MediaFiles" xml:space="preserve"><value>Media files</value></data>
 </root>

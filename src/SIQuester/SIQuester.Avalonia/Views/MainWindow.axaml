@@ -79,8 +79,108 @@
       </StackPanel>
     </Border>
 
-    <Grid Grid.Row="2">
+    <Grid Grid.Row="2" RowDefinitions="Auto,*">
+      <Border
+          x:Name="RecoveryCenter"
+          Grid.Row="0"
+          Classes="card"
+          Margin="16,16,16,0"
+          IsVisible="{Binding HasRecoveryEntries}">
+        <StackPanel Spacing="{StaticResource Space12}">
+          <StackPanel Spacing="{StaticResource Space4}">
+            <TextBlock Text="{x:Static loc:UiStrings.RecoveryTitle}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{x:Static loc:UiStrings.RecoveryDescription}" TextWrapping="Wrap" />
+          </StackPanel>
+          <ScrollViewer MaxHeight="270" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding RecoveryEntries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RecoveryEntryViewModel">
+                  <Border
+                      BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{StaticResource RadiusSmall}"
+                      Padding="{StaticResource Space12Thickness}"
+                      Margin="0,0,0,8">
+                    <StackPanel Spacing="{StaticResource Space8}">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{x:Static loc:UiStrings.RecoveryAvailable}" IsVisible="{Binding !IsStale}" />
+                        <TextBlock
+                            Grid.Column="1"
+                            Text="{x:Static loc:UiStrings.RecoveryStale}"
+                            IsVisible="{Binding IsStale}"
+                            ToolTip.Tip="{x:Static loc:UiStrings.RecoveryStaleDescription}" />
+                      </Grid>
+
+                      <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="4">
+                        <TextBlock Text="{x:Static loc:UiStrings.RecoveryOriginalPath}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Text="{Binding OriginalPath}" IsVisible="{Binding HasOriginalPath}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding OriginalPath}" />
+                        <TextBlock Grid.Column="1" Text="{x:Static loc:UiStrings.RecoveryUnsavedDocument}" IsVisible="{Binding !HasOriginalPath}" />
+                        <TextBlock Grid.Row="1" Text="{x:Static loc:UiStrings.RecoverySavedAt}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SavedAt, StringFormat='{}{0:g}'}" />
+                        <TextBlock Grid.Row="2" Text="{x:Static loc:UiStrings.RecoverySizeBytes}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SnapshotLength, StringFormat='{}{0:N0}'}" />
+                      </Grid>
+
+                      <ProgressBar
+                          IsIndeterminate="True"
+                          IsVisible="{Binding IsBusy}"
+                          MinHeight="4"
+                          AutomationProperties.Name="{x:Static loc:UiStrings.Loading}" />
+
+                      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}" IsVisible="{Binding !IsDiscardPending}">
+                        <Button Classes="command" Content="{x:Static loc:UiStrings.Preview}" Command="{Binding Preview}" />
+                        <Button Classes="command accent" Content="{x:Static loc:UiStrings.Restore}" Command="{Binding Restore}" IsEnabled="{Binding CanRestore}" IsVisible="{Binding !IsStale}" />
+                        <Button Classes="command accent" Content="{x:Static loc:UiStrings.RestoreAsCopy}" Command="{Binding Restore}" IsEnabled="{Binding CanRestore}" IsVisible="{Binding IsStale}" />
+                        <Button Classes="command" Content="{x:Static loc:UiStrings.RevealLocation}" Command="{Binding Reveal}" />
+                        <Button Classes="command" Content="{x:Static loc:UiStrings.DiscardSnapshot}" Command="{Binding RequestDiscard}" />
+                      </StackPanel>
+
+                      <Border
+                          Background="{DynamicResource LayerFillColorAltBrush}"
+                          CornerRadius="{StaticResource RadiusSmall}"
+                          Padding="{StaticResource Space8Thickness}"
+                          IsVisible="{Binding IsDiscardPending}">
+                        <StackPanel Spacing="{StaticResource Space8}">
+                          <TextBlock Text="{x:Static loc:UiStrings.ConfirmDiscardSnapshot}" TextWrapping="Wrap" />
+                          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+                            <Button Classes="command" Content="{x:Static loc:UiStrings.DiscardSnapshot}" Command="{Binding ConfirmDiscard}" />
+                            <Button Classes="command" Content="{x:Static loc:UiStrings.Cancel}" Command="{Binding CancelDiscard}" />
+                          </StackPanel>
+                        </StackPanel>
+                      </Border>
+
+                      <Border
+                          Background="{DynamicResource LayerFillColorAltBrush}"
+                          CornerRadius="{StaticResource RadiusSmall}"
+                          Padding="{StaticResource Space8Thickness}"
+                          IsVisible="{Binding IsPreviewVisible}">
+                        <StackPanel Spacing="{StaticResource Space4}">
+                          <TextBlock Text="{x:Static loc:UiStrings.RecoveryPreview}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding PackageName}" TextTrimming="CharacterEllipsis" />
+                          <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6">
+                            <TextBlock Text="{x:Static loc:UiStrings.Rounds}" />
+                            <TextBlock Grid.Column="1" Text="{Binding RoundCount}" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="2" Text="{x:Static loc:UiStrings.Themes}" />
+                            <TextBlock Grid.Column="3" Text="{Binding ThemeCount}" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="4" Text="{x:Static loc:UiStrings.Questions}" />
+                            <TextBlock Grid.Column="5" Text="{Binding QuestionCount}" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="6" Text="{x:Static loc:UiStrings.MediaFiles}" />
+                            <TextBlock Grid.Column="7" Text="{Binding MediaCount}" FontWeight="SemiBold" />
+                          </Grid>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+
       <TabControl
+          Grid.Row="1"
           ItemsSource="{Binding DocList}"
           SelectedItem="{Binding ActiveWorkspace, Mode=TwoWay}"
           IsVisible="{Binding HasWorkspaces}">
@@ -101,7 +201,7 @@
         </TabControl.ItemTemplate>
       </TabControl>
 
-      <Grid IsVisible="{Binding !HasWorkspaces}">
+      <Grid Grid.Row="1" IsVisible="{Binding !HasWorkspaces}">
         <Border Classes="card" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
           <StackPanel Spacing="{StaticResource Space16}">
             <TextBlock Text="{x:Static loc:UiStrings.EmptyTitle}" FontSize="{StaticResource TypographyTitle}" FontWeight="SemiBold" TextAlignment="Center" />

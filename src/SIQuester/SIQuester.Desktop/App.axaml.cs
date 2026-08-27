@@ -104,6 +104,8 @@ public partial class App : Application
             services.AddSingleton<IDialogService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IApplicationLifetimeService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IMediaMaterializationService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
+            services.AddSingleton<IPlatformCapabilities>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
+            services.AddSingleton<IExternalLauncher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSIQuester();
 
             _serviceProvider = services.BuildServiceProvider(validateScopes: true);
@@ -141,7 +143,9 @@ public partial class App : Application
                 _serviceProvider.GetRequiredService<IFilePickerService>(),
                 _serviceProvider.GetRequiredService<IDialogService>(),
                 _serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
-                _serviceProvider.GetRequiredService<IDocumentRecoveryService>());
+                _serviceProvider.GetRequiredService<IDocumentRecoveryService>(),
+                _serviceProvider.GetRequiredService<IPlatformCapabilities>(),
+                _serviceProvider.GetRequiredService<IExternalLauncher>());
             _mainViewModel = mainViewModel;
 
             var mainWindow = new MainWindow(PersistSettingsBeforeCloseAsync) { DataContext = mainViewModel };

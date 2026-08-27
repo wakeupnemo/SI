@@ -17,8 +17,14 @@ internal sealed class PlatformManagerMock :
     IFilePickerService,
     IDialogService,
     IApplicationLifetimeService,
-    IMediaMaterializationService
+    IMediaMaterializationService,
+    IPlatformCapabilities,
+    IExternalLauncher
 {
+    public bool SupportsRecoveryManagementUi { get; set; }
+
+    public List<string> RevealedFiles { get; } = [];
+
     public override string[] FontFamilies => Array.Empty<string>();
 
     public override Tuple<int, int, int>? GetCurrentItemSelectionArea() => null;
@@ -125,6 +131,13 @@ internal sealed class PlatformManagerMock :
     public void RequestExit() { }
 
     public void ReleaseMaterializedMedia(IEnumerable<string> mediaNames) { }
+
+    public ValueTask RevealFileAsync(string path, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        RevealedFiles.Add(path);
+        return ValueTask.CompletedTask;
+    }
 
     private sealed class NullDisposable : IDisposable
     {

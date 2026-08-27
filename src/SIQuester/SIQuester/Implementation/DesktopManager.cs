@@ -40,6 +40,8 @@ internal sealed class DesktopManager :
     IDialogService,
     IApplicationLifetimeService,
     IMediaMaterializationService,
+    IPlatformCapabilities,
+    IExternalLauncher,
     IDisposable
 {
     internal const string STR_Definition = "{0}: {1}";
@@ -50,6 +52,8 @@ internal sealed class DesktopManager :
     private const int MAX_PATH = 260;
 
     public override string[] FontFamilies => Fonts.SystemFontFamilies.Select(ff => ff.Source).OrderBy(f => f).ToArray();
+
+    public bool SupportsRecoveryManagementUi => false;
 
     private static readonly Dictionary<string, string> QuestionTypeMap = new()
     {
@@ -1129,6 +1133,24 @@ internal sealed class DesktopManager :
     }
 
     public void RequestExit() => Exit();
+
+    public ValueTask RevealFileAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        cancellationToken.ThrowIfCancellationRequested();
+        var fullPath = Path.GetFullPath(path);
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException("The file to reveal does not exist.", fullPath);
+        }
+
+        var startInfo = new ProcessStartInfo("explorer.exe") { UseShellExecute = false };
+        startInfo.ArgumentList.Add($"/select,{fullPath}");
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Windows Explorer could not be started.");
+        return ValueTask.CompletedTask;
+    }
 
     private static string BuildFilePickerFilter(IReadOnlyList<FileTypeFilter> fileTypes) => string.Join(
         '|',

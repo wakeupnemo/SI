@@ -166,6 +166,82 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task RecoveryCenter_RendersPerEntryCommandsAndStaleState()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var mainViewModel = CreateMainViewModel(serviceProvider);
+        var recoveryService = Substitute.For<IDocumentRecoveryService>();
+        var externalLauncher = serviceProvider.GetRequiredService<IExternalLauncher>();
+        var entry = new DocumentRecoveryEntry(
+            Guid.NewGuid().ToString("N"),
+            Path.Combine(Path.GetTempPath(), "recovery", "document.siq"),
+            Path.Combine(Path.GetTempPath(), "packages", "saved.siq"),
+            "Recovered package",
+            DateTimeOffset.UtcNow,
+            2048,
+            new string('0', 64),
+            IsStale: true);
+        var recoveryEntry = new RecoveryEntryViewModel(
+            entry,
+            recoveryService,
+            externalLauncher,
+            (_, _) => Task.CompletedTask,
+            _ => { },
+            _ => Task.CompletedTask);
+        var previewDocument = SIDocument.Create("Preview package", "Test author");
+        recoveryService
+            .LoadAsync(entry, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult(previewDocument));
+        mainViewModel.RecoveryEntries.Add(recoveryEntry);
+        var window = new MainWindow { DataContext = mainViewModel };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var recoveryCenter = window.FindControl<Border>("RecoveryCenter")
+                ?? throw new AssertionException("Recovery center was not created.");
+            var restoreButton = recoveryCenter.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, recoveryEntry.Restore) && button.IsVisible);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(recoveryCenter.IsVisible, Is.True);
+                Assert.That(restoreButton.IsEnabled, Is.True);
+                Assert.That(restoreButton.Content, Is.EqualTo(UiStrings.RestoreAsCopy));
+                Assert.That(recoveryCenter.GetVisualDescendants().OfType<Button>()
+                    .Any(button => ReferenceEquals(button.Command, recoveryEntry.Preview)), Is.True);
+                Assert.That(recoveryCenter.GetVisualDescendants().OfType<Button>()
+                    .Any(button => ReferenceEquals(button.Command, recoveryEntry.Reveal)), Is.True);
+            });
+
+            await recoveryEntry.Preview.ExecuteAsync(null);
+            await Dispatcher.UIThread.InvokeAsync(() => { });
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(recoveryEntry.IsPreviewVisible, Is.True);
+                Assert.That(recoveryCenter.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, recoveryEntry.Preview)).IsVisible, Is.True);
+                Assert.That(recoveryCenter.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, recoveryEntry.Restore) && button.IsVisible)
+                    .Content, Is.EqualTo(UiStrings.RestoreAsCopy));
+                Assert.That(recoveryCenter.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, recoveryEntry.Reveal)).IsVisible, Is.True);
+                Assert.That(recoveryCenter.GetVisualDescendants().OfType<Button>()
+                    .Single(button => ReferenceEquals(button.Command, recoveryEntry.RequestDiscard)).IsVisible, Is.True);
+            });
+        }
+        finally
+        {
+            window.DataContext = null;
+            window.Close();
+        }
+    }
+
+    [AvaloniaTest]
     public void EmptyState_RendersRecentFilesWithOpenCommand()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -400,6 +476,10 @@ internal sealed class ViewSmokeTests
         services.AddSingleton(Substitute.For<IApplicationLifetimeService>());
         services.AddSingleton(Substitute.For<IMediaMaterializationService>());
         services.AddSingleton(Substitute.For<IPlatformService>());
+        var platformCapabilities = Substitute.For<IPlatformCapabilities>();
+        platformCapabilities.SupportsRecoveryManagementUi.Returns(true);
+        services.AddSingleton(platformCapabilities);
+        services.AddSingleton(Substitute.For<IExternalLauncher>());
         services.AddSingleton(Substitute.For<ISIStatisticsServiceClient>());
         services.AddSingleton(Substitute.For<ISIStorageServiceClient>());
 
@@ -425,5 +505,7 @@ internal sealed class ViewSmokeTests
         serviceProvider.GetRequiredService<IFilePickerService>(),
         serviceProvider.GetRequiredService<IDialogService>(),
         serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
-        serviceProvider.GetRequiredService<IDocumentRecoveryService>());
+        serviceProvider.GetRequiredService<IDocumentRecoveryService>(),
+        serviceProvider.GetRequiredService<IPlatformCapabilities>(),
+        serviceProvider.GetRequiredService<IExternalLauncher>());
 }

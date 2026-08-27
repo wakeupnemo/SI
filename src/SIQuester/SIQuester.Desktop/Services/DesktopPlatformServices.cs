@@ -14,6 +14,8 @@ internal sealed class DesktopPlatformServices :
     IDialogService,
     IApplicationLifetimeService,
     IMediaMaterializationService,
+    IPlatformCapabilities,
+    IExternalLauncher,
     IPlatformService
 {
     private const string HelpUri = "https://github.com/VladimirKhil/SI";
@@ -32,6 +34,8 @@ internal sealed class DesktopPlatformServices :
         .Select(fontFamily => fontFamily.Name)
         .OrderBy(name => name, StringComparer.CurrentCulture)
         .ToArray();
+
+    public bool SupportsRecoveryManagementUi => true;
 
     public void ShowHelp()
     {
@@ -129,6 +133,42 @@ internal sealed class DesktopPlatformServices :
     public void ReleaseMaterializedMedia(IEnumerable<string> mediaNames)
     {
         // This host currently previews package streams directly and creates no native copies.
+    }
+
+    public ValueTask RevealFileAsync(string path, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        cancellationToken.ThrowIfCancellationRequested();
+        var fullPath = Path.GetFullPath(path);
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException("The file to reveal does not exist.", fullPath);
+        }
+
+        var startInfo = new ProcessStartInfo { UseShellExecute = false };
+
+        if (OperatingSystem.IsWindows())
+        {
+            startInfo.FileName = "explorer.exe";
+            startInfo.ArgumentList.Add($"/select,{fullPath}");
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            startInfo.FileName = "open";
+            startInfo.ArgumentList.Add("-R");
+            startInfo.ArgumentList.Add(fullPath);
+        }
+        else
+        {
+            startInfo.FileName = "xdg-open";
+            startInfo.ArgumentList.Add(Path.GetDirectoryName(fullPath)
+                ?? throw new InvalidOperationException("The recovery file has no containing directory."));
+        }
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("The platform file manager could not be started.");
+        return ValueTask.CompletedTask;
     }
 
     private Window GetOwner() => _lifetime.MainWindow

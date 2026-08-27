@@ -25,6 +25,9 @@ internal sealed class DocumentRecoveryTests
     {
         AppSettings.Default = new AppSettings { AutoSave = false };
         _serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var platformManager = (PlatformManagerMock)_serviceProvider.GetRequiredService<IPlatformCapabilities>();
+        platformManager.SupportsRecoveryManagementUi = false;
+        platformManager.RevealedFiles.Clear();
         _appPaths = (TestAppPaths)_serviceProvider.GetRequiredService<IAppPaths>();
         _documentFactory = _serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
         _recoveryService = _serviceProvider.GetRequiredService<IDocumentRecoveryService>();
@@ -306,7 +309,9 @@ internal sealed class DocumentRecoveryTests
                 _serviceProvider.GetRequiredService<IFilePickerService>(),
                 _serviceProvider.GetRequiredService<IDialogService>(),
                 _serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
-                _recoveryService);
+                _recoveryService,
+                _serviceProvider.GetRequiredService<IPlatformCapabilities>(),
+                _serviceProvider.GetRequiredService<IExternalLauncher>());
         }
         finally
         {
@@ -325,6 +330,142 @@ internal sealed class DocumentRecoveryTests
                 Assert.That(recovered.FileName, Is.EqualTo("Recovered display"));
                 Assert.That(recovered.RecoveryId, Is.EqualTo(recoveryId));
                 Assert.That(recovered.Changed, Is.True);
+            });
+        }
+    }
+
+    [Test]
+    public async Task RecoveryCenter_PreviewsRestoresRevealsAndExplicitlyDiscardsEntries()
+    {
+        var platformManager = (PlatformManagerMock)_serviceProvider.GetRequiredService<IPlatformCapabilities>();
+        platformManager.SupportsRecoveryManagementUi = true;
+        var staleOriginalPath = Path.Combine(_appPaths.DataDirectory, "stale", "saved.siq");
+        var discardedOriginalPath = Path.Combine(_appPaths.DataDirectory, "stale", "discarded.siq");
+
+        using (var activeDocument = TestHelper.CreateSimpleTestPackage())
+        using (var active = _documentFactory.CreateViewModelFor(activeDocument, "Active recovery"))
+        {
+            var mediaDirectory = Path.Combine(_appPaths.CacheDirectory, "preview media");
+            Directory.CreateDirectory(mediaDirectory);
+            var mediaPath = Path.Combine(mediaDirectory, "preview image.png");
+            await File.WriteAllBytesAsync(mediaPath, [0x89, 0x50, 0x4E, 0x47]);
+            active.Images.AddFile(mediaPath);
+            active.Package.Model.Name = "Preview package";
+            active.Changed = true;
+            await active.SaveToTempAsync();
+        }
+
+        async Task CreateStaleRecoveryAsync(string displayName, string originalPath)
+        {
+            using var staleDocument = TestHelper.CreateSimpleTestPackage();
+            using var stale = _documentFactory.CreateViewModelFor(staleDocument, displayName);
+            stale.Path = originalPath;
+            stale.Package.Model.Name = displayName;
+            stale.Changed = true;
+            await stale.SaveToTempAsync();
+
+            var entry = (await _recoveryService.ListAsync())
+                .Single(recoveryEntry => recoveryEntry.DisplayName == displayName);
+            Directory.CreateDirectory(Path.GetDirectoryName(originalPath)!);
+            File.Copy(entry.SnapshotPath, originalPath);
+            File.SetLastWriteTimeUtc(originalPath, DateTime.UtcNow.AddMinutes(1));
+        }
+
+        await CreateStaleRecoveryAsync("Stale recovery", staleOriginalPath);
+        await CreateStaleRecoveryAsync("Stale discard", discardedOriginalPath);
+
+        var previousContext = SynchronizationContext.Current;
+        MainViewModel mainViewModel;
+
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(new ImmediateSynchronizationContext());
+            mainViewModel = new MainViewModel(
+                Array.Empty<string>(),
+                new AppOptions(),
+                _serviceProvider.GetRequiredService<IClipboardService>(),
+                _serviceProvider,
+                Substitute.For<IPlatformService>(),
+                _documentFactory,
+                _serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>(),
+                _serviceProvider.GetRequiredService<IFilePickerService>(),
+                _serviceProvider.GetRequiredService<IDialogService>(),
+                _serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
+                _recoveryService,
+                platformManager,
+                platformManager);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previousContext);
+        }
+
+        using (mainViewModel)
+        {
+            await mainViewModel.InitializeAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(mainViewModel.DocList, Is.Empty, "Capable hosts must not restore snapshots without an explicit per-entry action.");
+                Assert.That(mainViewModel.RecoveryEntries, Has.Count.EqualTo(3));
+                Assert.That(mainViewModel.HasRecoveryEntries, Is.True);
+            });
+
+            var activeEntry = mainViewModel.RecoveryEntries.Single(entry => !entry.IsStale);
+            var staleEntry = mainViewModel.RecoveryEntries.Single(entry => entry.DisplayName == "Stale recovery");
+            var staleDiscardEntry = mainViewModel.RecoveryEntries.Single(entry => entry.DisplayName == "Stale discard");
+            Assert.That(staleEntry.Restore.CanExecute(null), Is.True);
+
+            await activeEntry.Preview.ExecuteAsync(null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(activeEntry.IsPreviewVisible, Is.True);
+                Assert.That(activeEntry.PackageName, Is.EqualTo("Preview package"));
+                Assert.That(activeEntry.RoundCount, Is.EqualTo(1));
+                Assert.That(activeEntry.ThemeCount, Is.EqualTo(1));
+                Assert.That(activeEntry.QuestionCount, Is.EqualTo(1));
+                Assert.That(activeEntry.MediaCount, Is.EqualTo(1));
+            });
+
+            await activeEntry.Reveal.ExecuteAsync(null);
+            Assert.That(platformManager.RevealedFiles, Is.EqualTo(new[] { activeEntry.SnapshotPath }));
+
+            var activeRecoveryId = activeEntry.RecoveryId;
+            await activeEntry.Restore.ExecuteAsync(null);
+            var recoveredDocument = mainViewModel.DocList.OfType<QDocument>().Single();
+            Assert.Multiple(() =>
+            {
+                Assert.That(recoveredDocument.Package.Model.Name, Is.EqualTo("Preview package"));
+                Assert.That(recoveredDocument.RecoveryId, Is.EqualTo(activeRecoveryId));
+                Assert.That(recoveredDocument.Changed, Is.True);
+                Assert.That(mainViewModel.RecoveryEntries, Has.Count.EqualTo(2));
+            });
+
+            var staleRecoveryId = staleEntry.RecoveryId;
+            await staleEntry.Restore.ExecuteAsync(null);
+            var restoredCopy = mainViewModel.DocList
+                .OfType<QDocument>()
+                .Single(document => document.RecoveryId == staleRecoveryId);
+            Assert.Multiple(() =>
+            {
+                Assert.That(restoredCopy.Package.Model.Name, Is.EqualTo("Stale recovery"));
+                Assert.That(restoredCopy.Path, Is.Empty, "A stale recovery must not target the newer canonical file.");
+                Assert.That(restoredCopy.Changed, Is.True);
+                Assert.That(mainViewModel.RecoveryEntries, Has.Count.EqualTo(1));
+            });
+
+            staleDiscardEntry.RequestDiscard.Execute(null);
+            Assert.That(staleDiscardEntry.IsDiscardPending, Is.True);
+            await staleDiscardEntry.ConfirmDiscard.ExecuteAsync(null);
+            var remainingRecoveryIds = (await _recoveryService.ListAsync())
+                .Select(entry => entry.RecoveryId)
+                .ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(mainViewModel.RecoveryEntries, Is.Empty);
+                Assert.That(mainViewModel.HasRecoveryEntries, Is.False);
+                Assert.That(remainingRecoveryIds, Does.Not.Contain(staleDiscardEntry.RecoveryId));
             });
         }
     }
