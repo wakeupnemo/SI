@@ -186,6 +186,58 @@ public sealed class FlatQuestionOperations
         return FlatQuestionDropResult.Applied;
     }
 
+    /// <summary>
+    /// Moves a question one position backward or forward inside its current theme.
+    /// </summary>
+    /// <param name="question">Question to move.</param>
+    /// <param name="offset">Must be <c>-1</c> for backward or <c>1</c> for forward.</param>
+    /// <param name="recalculatePrices">Whether canonical question prices should remain attached to positions.</param>
+    public FlatQuestionDropResult MoveWithinTheme(
+        QuestionViewModel question,
+        int offset,
+        bool recalculatePrices)
+    {
+        if (offset is not (-1 or 1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset));
+        }
+
+        var dragData = CreateDragData(question);
+        var source = dragData.Source;
+        var theme = question.OwnerTheme!;
+
+        if ((offset < 0 && source.QuestionIndex == 0)
+            || (offset > 0 && source.QuestionIndex == theme.Questions.Count - 1))
+        {
+            return FlatQuestionDropResult.NoChange;
+        }
+
+        var insertionIndex = offset < 0
+            ? source.QuestionIndex - 1
+            : source.QuestionIndex + 2;
+
+        return Apply(
+            dragData,
+            source with { QuestionIndex = insertionIndex },
+            FlatQuestionDropMode.Move,
+            recalculatePrices);
+    }
+
+    /// <summary>
+    /// Duplicates a question immediately after the source question.
+    /// </summary>
+    public FlatQuestionDropResult DuplicateAfter(
+        QuestionViewModel question,
+        bool recalculatePrices)
+    {
+        var dragData = CreateDragData(question);
+        return Apply(
+            dragData,
+            dragData.Source with { QuestionIndex = dragData.Source.QuestionIndex + 1 },
+            FlatQuestionDropMode.Copy,
+            recalculatePrices);
+    }
+
     private bool TryResolveQuestion(
         FlatQuestionLocation location,
         out ThemeViewModel theme,

@@ -1,84 +1,204 @@
 <UserControl
     x:Class="SIQuester.Avalonia.Views.FlatDocumentView"
+    x:Name="FlatRoot"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:model="using:SIQuester.Model"
+    xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:QDocument">
-  <Grid RowDefinitions="Auto,*">
-    <TextBlock
-        Text="{x:Static loc:UiStrings.FlatViewDragHint}"
-        TextWrapping="Wrap"
-        Margin="{StaticResource FieldMargin}" />
-    <ScrollViewer
-        Grid.Row="1"
-        HorizontalScrollBarVisibility="Auto"
-        VerticalScrollBarVisibility="Auto">
-      <ItemsControl ItemsSource="{Binding Package.Rounds}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:RoundViewModel">
-            <StackPanel Margin="{StaticResource FieldMargin}">
-              <TextBlock Classes="section-title" Text="{Binding Model.Name}" />
-              <ItemsControl ItemsSource="{Binding Themes}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ThemeViewModel">
-                    <Border Classes="card" Margin="{StaticResource FieldMargin}">
-                      <StackPanel Spacing="{StaticResource Space8}">
-                        <TextBlock FontWeight="SemiBold" Text="{Binding Model.Name}" />
-                        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space4}">
-                          <ItemsControl ItemsSource="{Binding Questions}">
-                            <ItemsControl.ItemsPanel>
-                              <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space4}" />
-                              </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:QuestionViewModel">
-                                <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space4}">
-                                  <Border
-                                      Classes="flat-drop-target"
-                                      Width="{StaticResource DropIndicatorWidth}"
-                                      Background="{DynamicResource SystemAccentColor}"
-                                      Opacity="0.25"
-                                      DragDrop.AllowDrop="True"
-                                      DragDrop.DragOver="DropTarget_DragOver"
-                                      DragDrop.DragLeave="DropTarget_DragLeave"
-                                      DragDrop.Drop="QuestionDropTarget_Drop" />
-                                  <Border
-                                      Classes="card"
-                                      Width="{StaticResource FlatQuestionWidth}"
-                                      PointerPressed="Question_PointerPressed"
-                                      PointerCaptureLost="Question_PointerCaptureLost"
-                                      ToolTip.Tip="{x:Static loc:UiStrings.FlatViewDragHint}">
-                                    <StackPanel>
-                                      <TextBlock Text="{x:Static loc:UiStrings.Price}" />
-                                      <TextBlock FontSize="18" FontWeight="SemiBold" Text="{Binding Model.Price}" />
-                                    </StackPanel>
-                                  </Border>
-                                </StackPanel>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                          <Border
-                              Classes="flat-drop-target"
-                              Width="{StaticResource DropIndicatorWidth}"
-                              MinHeight="{StaticResource FlatDropTargetMinHeight}"
-                              Background="{DynamicResource SystemAccentColor}"
-                              Opacity="0.25"
-                              DragDrop.AllowDrop="True"
-                              DragDrop.DragOver="DropTarget_DragOver"
-                              DragDrop.DragLeave="DropTarget_DragLeave"
-                              DragDrop.Drop="ThemeEndDropTarget_Drop" />
-                        </StackPanel>
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+  <UserControl.Styles>
+    <Style Selector="Border.flat-question-card">
+      <Setter Property="MinWidth" Value="{StaticResource FlatQuestionWidth}" />
+      <Setter Property="MaxWidth" Value="{StaticResource FlatQuestionExpandedWidth}" />
+      <Setter Property="MinHeight" Value="{StaticResource FlatDropTargetMinHeight}" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="FlatQuestionTemplate" x:DataType="vm:QuestionViewModel">
+      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space4}">
+        <Border
+            Classes="flat-drop-target"
+            Width="{StaticResource DropIndicatorWidth}"
+            Background="{DynamicResource SystemAccentColor}"
+            Opacity="0.25"
+            DragDrop.AllowDrop="True"
+            DragDrop.DragOver="DropTarget_DragOver"
+            DragDrop.DragLeave="DropTarget_DragLeave"
+            DragDrop.Drop="QuestionDropTarget_Drop" />
+        <Border
+            Classes="card flat-question-card"
+            Focusable="True"
+            PointerPressed="Question_PointerPressed"
+            PointerCaptureLost="Question_PointerCaptureLost"
+            KeyDown="Question_KeyDown"
+            ToolTip.Tip="{x:Static loc:UiStrings.FlatViewDragHint}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.Question}">
+          <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{StaticResource Space4}">
+            <TextBlock Text="{x:Static loc:UiStrings.Price}" />
+            <TextBlock Grid.Row="1" FontSize="18" FontWeight="SemiBold" Text="{Binding Model.Price}" />
+            <TextBlock
+                Grid.Row="2"
+                Classes="question-detail"
+                IsVisible="{Binding ShowQuestionDetails, RelativeSource={RelativeSource AncestorType=views:FlatDocumentView}}"
+                Text="{Binding QuestionText}"
+                TextWrapping="Wrap"
+                TextTrimming="CharacterEllipsis"
+                MaxLines="3" />
+            <StackPanel
+                Grid.Row="3"
+                Classes="question-actions"
+                IsVisible="{Binding ShowQuestionDetails, RelativeSource={RelativeSource AncestorType=views:FlatDocumentView}}"
+                Orientation="Horizontal"
+                Spacing="{StaticResource Space4}">
+              <Button Classes="command" Content="←" Click="MoveBackward_Click" AutomationProperties.Name="{x:Static loc:UiStrings.MoveQuestionBackward}" ToolTip.Tip="{x:Static loc:UiStrings.MoveQuestionBackward}" />
+              <Button Classes="command" Content="→" Click="MoveForward_Click" AutomationProperties.Name="{x:Static loc:UiStrings.MoveQuestionForward}" ToolTip.Tip="{x:Static loc:UiStrings.MoveQuestionForward}" />
+              <Button Classes="command" Content="⧉" Click="Duplicate_Click" AutomationProperties.Name="{x:Static loc:UiStrings.DuplicateQuestion}" ToolTip.Tip="{x:Static loc:UiStrings.DuplicateQuestion}" />
             </StackPanel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </ScrollViewer>
+          </Grid>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="RoundOverviewTemplate" x:DataType="vm:RoundViewModel">
+      <Border Classes="card" Margin="{StaticResource FieldMargin}" PointerPressed="Item_PointerPressed" Focusable="True">
+        <StackPanel Spacing="{StaticResource Space8}">
+          <TextBlock Classes="section-title" Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{x:Static loc:UiStrings.Themes}" />
+            <TextBlock Grid.Column="1" Text="{Binding Themes.Count}" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding Themes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ThemeViewModel">
+                <Grid ColumnDefinitions="*,Auto" Margin="{StaticResource FieldMargin}">
+                  <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="1" Text="{Binding Questions.Count}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ThemeTableTemplate" x:DataType="vm:ThemeViewModel">
+      <Border Classes="card" Margin="{StaticResource FieldMargin}" PointerPressed="Item_PointerPressed">
+        <Grid ColumnSpacing="{StaticResource Space12}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Width="{StaticResource FlatThemeHeaderWidth}" FontWeight="SemiBold" Text="{Binding Model.Name}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{StaticResource Space4}">
+            <ItemsControl ItemsSource="{Binding Questions}" ItemTemplate="{StaticResource FlatQuestionTemplate}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="{StaticResource Space4}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <Border
+                Classes="flat-drop-target"
+                Width="{StaticResource DropIndicatorWidth}"
+                MinHeight="{StaticResource FlatDropTargetMinHeight}"
+                Background="{DynamicResource SystemAccentColor}"
+                Opacity="0.25"
+                DragDrop.AllowDrop="True"
+                DragDrop.DragOver="DropTarget_DragOver"
+                DragDrop.DragLeave="DropTarget_DragLeave"
+                DragDrop.Drop="ThemeEndDropTarget_Drop" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ThemeListTemplate" x:DataType="vm:ThemeViewModel">
+      <Border Classes="card" Margin="{StaticResource FieldMargin}" PointerPressed="Item_PointerPressed">
+        <StackPanel Spacing="{StaticResource Space8}">
+          <TextBlock FontWeight="SemiBold" Text="{Binding Model.Name}" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space4}">
+            <ItemsControl ItemsSource="{Binding Questions}" ItemTemplate="{StaticResource FlatQuestionTemplate}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            </ItemsControl>
+            <Border
+                Grid.Column="1"
+                Classes="flat-drop-target"
+                Width="{StaticResource DropIndicatorWidth}"
+                MinHeight="{StaticResource FlatDropTargetMinHeight}"
+                Background="{DynamicResource SystemAccentColor}"
+                Opacity="0.25"
+                DragDrop.AllowDrop="True"
+                DragDrop.DragOver="DropTarget_DragOver"
+                DragDrop.DragLeave="DropTarget_DragLeave"
+                DragDrop.Drop="ThemeEndDropTarget_Drop" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,Auto,*">
+    <WrapPanel Margin="{StaticResource FieldMargin}" VerticalAlignment="Center">
+      <TextBlock Text="{x:Static loc:UiStrings.FlatLayout}" VerticalAlignment="Center" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.TableLayout}" Command="{Binding SetFlatLayoutMode}" CommandParameter="{x:Static model:FlatLayoutMode.Table}" IsEnabled="{Binding IsFlatListLayout}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.ListLayout}" Command="{Binding SetFlatLayoutMode}" CommandParameter="{x:Static model:FlatLayoutMode.List}" IsEnabled="{Binding IsFlatTableLayout}" Margin="{StaticResource MetadataCommandMargin}" />
+      <TextBlock Text="{x:Static loc:UiStrings.DetailLevel}" VerticalAlignment="Center" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Package}" Command="{Binding SetFlatScale}" CommandParameter="{x:Static model:FlatScale.Package}" IsEnabled="{Binding !IsFlatPackageScale}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Round}" Command="{Binding SetFlatScale}" CommandParameter="{x:Static model:FlatScale.Round}" IsEnabled="{Binding !IsFlatRoundScale}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Theme}" Command="{Binding SetFlatScale}" CommandParameter="{x:Static model:FlatScale.Theme}" IsEnabled="{Binding !IsFlatThemeScale}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Question}" Command="{Binding SetFlatScale}" CommandParameter="{x:Static model:FlatScale.Question}" IsEnabled="{Binding !IsFlatQuestionScale}" />
+    </WrapPanel>
+
+    <TextBlock Grid.Row="1" Text="{x:Static loc:UiStrings.FlatKeyboardHint}" TextWrapping="Wrap" Margin="{StaticResource FieldMargin}" />
+
+    <Grid Grid.Row="2">
+      <ScrollViewer x:Name="PackageScaleSurface" IsVisible="{Binding IsFlatPackageScale}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="{StaticResource Space12Thickness}" Spacing="{StaticResource Space12}" PointerPressed="Item_PointerPressed" Focusable="True">
+          <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Package.Model.Name}" TextWrapping="Wrap" />
+          <Border Classes="card">
+            <StackPanel Spacing="{StaticResource Space8}">
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{x:Static loc:UiStrings.Rounds}" /><TextBlock Grid.Column="1" Text="{Binding Package.Rounds.Count}" /></Grid>
+              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{x:Static loc:UiStrings.Questions}" /><TextBlock Grid.Column="1" Text="{Binding QuestionCount}" /></Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Grid x:Name="RoundScaleSurface" IsVisible="{Binding IsFlatRoundScale}">
+        <ScrollViewer IsVisible="{Binding IsFlatTableLayout}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="RoundTableLayout" IsVisible="{Binding IsFlatTableLayout}" ItemsSource="{Binding Package.Rounds}" ItemTemplate="{StaticResource RoundOverviewTemplate}" Margin="{StaticResource Space12Thickness}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </ScrollViewer>
+        <ListBox x:Name="RoundListLayout" IsVisible="{Binding IsFlatListLayout}" ItemsSource="{Binding Package.Rounds}" ItemTemplate="{StaticResource RoundOverviewTemplate}" Margin="{StaticResource Space12Thickness}">
+          <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+        </ListBox>
+      </Grid>
+
+      <Grid x:Name="DetailedScaleSurface" IsVisible="{Binding IsFlatDetailedScale}">
+        <ScrollViewer IsVisible="{Binding IsFlatTableLayout}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="DetailedTableLayout" IsVisible="{Binding IsFlatTableLayout}" ItemsSource="{Binding Package.Rounds}" Margin="{StaticResource Space12Thickness}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RoundViewModel">
+                <StackPanel Margin="{StaticResource FieldMargin}" Spacing="{StaticResource Space8}" PointerPressed="Item_PointerPressed">
+                  <TextBlock Classes="section-title" Text="{Binding Model.Name}" />
+                  <ItemsControl ItemsSource="{Binding Themes}" ItemTemplate="{StaticResource ThemeTableTemplate}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <ListBox x:Name="DetailedListLayout" IsVisible="{Binding IsFlatListLayout}" ItemsSource="{Binding Package.Rounds}" Margin="{StaticResource Space12Thickness}">
+          <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:RoundViewModel">
+              <StackPanel Margin="{StaticResource FieldMargin}" Spacing="{StaticResource Space8}" PointerPressed="Item_PointerPressed">
+                <TextBlock Classes="section-title" Text="{Binding Model.Name}" />
+                <ItemsControl ItemsSource="{Binding Themes}" ItemTemplate="{StaticResource ThemeListTemplate}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </Grid>
   </Grid>
 </UserControl>

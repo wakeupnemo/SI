@@ -159,4 +159,12 @@
   <data name="TreeView" xml:space="preserve"><value>Дерево</value></data>
   <data name="FlatView" xml:space="preserve"><value>Плоский вид</value></data>
   <data name="FlatViewDragHint" xml:space="preserve"><value>Перетащите вопрос, чтобы переместить его. Удерживайте Ctrl или Command для копирования.</value></data>
+  <data name="FlatLayout" xml:space="preserve"><value>Компоновка</value></data>
+  <data name="TableLayout" xml:space="preserve"><value>Таблица</value></data>
+  <data name="ListLayout" xml:space="preserve"><value>Список</value></data>
+  <data name="DetailLevel" xml:space="preserve"><value>Уровень детализации</value></data>
+  <data name="MoveQuestionBackward" xml:space="preserve"><value>Переместить вопрос назад</value></data>
+  <data name="MoveQuestionForward" xml:space="preserve"><value>Переместить вопрос вперёд</value></data>
+  <data name="DuplicateQuestion" xml:space="preserve"><value>Дублировать вопрос</value></data>
+  <data name="FlatKeyboardHint" xml:space="preserve"><value>На вопросе нажмите Alt+стрелку для перемещения или Ctrl/Command+D для дублирования.</value></data>
 </root>

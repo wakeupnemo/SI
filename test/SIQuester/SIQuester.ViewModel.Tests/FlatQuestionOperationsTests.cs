@@ -159,6 +159,62 @@ internal sealed class FlatQuestionOperationsTests
     }
 
     [Test]
+    public void KeyboardCommands_MoveInBothDirectionsAndDuplicateAsUndoableCanonicalChanges()
+    {
+        using var document = CreateDocument(
+            ("Theme", [("A", 100), ("B", 200), ("C", 300)]));
+        var theme = document.Package.Rounds[0].Themes[0];
+        var question = theme.Questions[1];
+
+        document.MoveFlatQuestionBackward.Execute(question);
+        Assert.That(Answers(theme), Is.EqualTo(new[] { "B", "A", "C" }));
+
+        document.MoveFlatQuestionForward.Execute(question);
+        Assert.That(Answers(theme), Is.EqualTo(new[] { "A", "B", "C" }));
+
+        document.DuplicateFlatQuestion.Execute(question);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(Answers(theme), Is.EqualTo(new[] { "A", "B", "B", "C" }));
+            Assert.That(Prices(theme), Is.EqualTo(new[] { 100, 200, 300, 400 }));
+            Assert.That(theme.Questions[2].Model, Is.Not.SameAs(question.Model));
+            Assert.That(document.ActiveNode, Is.SameAs(theme.Questions[2]));
+        });
+
+        document.OperationsManager.Undo.Execute(null);
+        Assert.That(Answers(theme), Is.EqualTo(new[] { "A", "B", "C" }));
+    }
+
+    [Test]
+    public void MoveWithinTheme_AtBoundaryIsNoChangeAndInvalidOffsetIsRejected()
+    {
+        using var document = CreateDocument(
+            ("Theme", [("A", 100), ("B", 200)]));
+        var theme = document.Package.Rounds[0].Themes[0];
+
+        var backward = document.FlatQuestions.MoveWithinTheme(
+            theme.Questions[0],
+            -1,
+            recalculatePrices: true);
+        var forward = document.FlatQuestions.MoveWithinTheme(
+            theme.Questions[1],
+            1,
+            recalculatePrices: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(backward, Is.EqualTo(FlatQuestionDropResult.NoChange));
+            Assert.That(forward, Is.EqualTo(FlatQuestionDropResult.NoChange));
+            Assert.That(Answers(theme), Is.EqualTo(new[] { "A", "B" }));
+            Assert.That(document.OperationsManager.Undo.CanExecute(null), Is.False);
+            Assert.That(
+                () => document.FlatQuestions.MoveWithinTheme(theme.Questions[0], 2, true),
+                Throws.TypeOf<ArgumentOutOfRangeException>());
+        });
+    }
+
+    [Test]
     public void MoveWithRecalculation_DoesNotPropagateInvalidPriceIntoOrdinaryQuestions()
     {
         using var document = CreateDocument(

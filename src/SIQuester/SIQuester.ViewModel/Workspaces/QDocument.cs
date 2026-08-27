@@ -102,9 +102,48 @@ public sealed class QDocument : WorkspaceViewModel
     /// </summary>
     public ICommand SetViewMode { get; }
 
+    /// <summary>
+    /// Changes the persisted flat-editor layout.
+    /// </summary>
+    public ICommand SetFlatLayoutMode { get; }
+
+    /// <summary>
+    /// Changes the persisted flat-editor detail scale.
+    /// </summary>
+    public ICommand SetFlatScale { get; }
+
+    /// <summary>
+    /// Moves a flat-editor question one position backward in its theme.
+    /// </summary>
+    public ICommand MoveFlatQuestionBackward { get; }
+
+    /// <summary>
+    /// Moves a flat-editor question one position forward in its theme.
+    /// </summary>
+    public ICommand MoveFlatQuestionForward { get; }
+
+    /// <summary>
+    /// Duplicates a flat-editor question after its current position.
+    /// </summary>
+    public ICommand DuplicateFlatQuestion { get; }
+
     public bool IsTreeView => Settings.View == ViewMode.TreeFull;
 
     public bool IsFlatView => Settings.View == ViewMode.Flat;
+
+    public bool IsFlatTableLayout => Settings.FlatLayoutMode == FlatLayoutMode.Table;
+
+    public bool IsFlatListLayout => Settings.FlatLayoutMode == FlatLayoutMode.List;
+
+    public bool IsFlatPackageScale => Settings.FlatScale == FlatScale.Package;
+
+    public bool IsFlatRoundScale => Settings.FlatScale == FlatScale.Round;
+
+    public bool IsFlatThemeScale => Settings.FlatScale == FlatScale.Theme;
+
+    public bool IsFlatQuestionScale => Settings.FlatScale == FlatScale.Question;
+
+    public bool IsFlatDetailedScale => Settings.FlatScale is FlatScale.Theme or FlatScale.Question;
 
     private IItemViewModel? _activeNode = null;
 
@@ -1646,6 +1685,11 @@ public sealed class QDocument : WorkspaceViewModel
         PreviousSearchResult = new SimpleCommand(PreviousSearchResult_Executed) { CanBeExecuted = false };
         ClearSearchText = new SimpleCommand(ClearSearchText_Executed) { CanBeExecuted = false };
         SetViewMode = new SimpleCommand(SetViewMode_Executed);
+        SetFlatLayoutMode = new SimpleCommand(SetFlatLayoutMode_Executed);
+        SetFlatScale = new SimpleCommand(SetFlatScale_Executed);
+        MoveFlatQuestionBackward = new SimpleCommand(value => MoveFlatQuestion(value, -1));
+        MoveFlatQuestionForward = new SimpleCommand(value => MoveFlatQuestion(value, 1));
+        DuplicateFlatQuestion = new SimpleCommand(DuplicateFlatQuestion_Executed);
 
         _filename = "";
         _path = "";
@@ -4028,12 +4072,57 @@ public sealed class QDocument : WorkspaceViewModel
         }
     }
 
+    private void SetFlatLayoutMode_Executed(object? value)
+    {
+        if (value is FlatLayoutMode layoutMode)
+        {
+            Settings.FlatLayoutMode = layoutMode;
+        }
+    }
+
+    private void SetFlatScale_Executed(object? value)
+    {
+        if (value is FlatScale scale)
+        {
+            Settings.FlatScale = scale;
+        }
+    }
+
+    private void MoveFlatQuestion(object? value, int offset)
+    {
+        if (value is QuestionViewModel question)
+        {
+            FlatQuestions.MoveWithinTheme(question, offset, Settings.ChangePriceOnMove);
+        }
+    }
+
+    private void DuplicateFlatQuestion_Executed(object? value)
+    {
+        if (value is QuestionViewModel question)
+        {
+            FlatQuestions.DuplicateAfter(question, Settings.ChangePriceOnMove);
+        }
+    }
+
     private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AppSettings.View))
         {
             OnPropertyChanged(nameof(IsTreeView));
             OnPropertyChanged(nameof(IsFlatView));
+        }
+        else if (e.PropertyName == nameof(AppSettings.FlatLayoutMode))
+        {
+            OnPropertyChanged(nameof(IsFlatTableLayout));
+            OnPropertyChanged(nameof(IsFlatListLayout));
+        }
+        else if (e.PropertyName == nameof(AppSettings.FlatScale))
+        {
+            OnPropertyChanged(nameof(IsFlatPackageScale));
+            OnPropertyChanged(nameof(IsFlatRoundScale));
+            OnPropertyChanged(nameof(IsFlatThemeScale));
+            OnPropertyChanged(nameof(IsFlatQuestionScale));
+            OnPropertyChanged(nameof(IsFlatDetailedScale));
         }
     }
 

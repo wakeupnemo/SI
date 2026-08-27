@@ -1,9 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using SIQuester.ViewModel;
 using SIQuester.ViewModel.Serializers;
 using SIQuester.ViewModel.Services;
+using System.ComponentModel;
 
 namespace SIQuester.Avalonia.Views;
 
@@ -18,12 +21,92 @@ public partial class FlatDocumentView : UserControl
     private QuestionViewModel? _pendingQuestion;
     private Point _dragStart;
     private bool _isDragging;
+    private QDocument? _subscribedDocument;
+    private bool _showQuestionDetails;
+
+    public static readonly DirectProperty<FlatDocumentView, bool> ShowQuestionDetailsProperty =
+        AvaloniaProperty.RegisterDirect<FlatDocumentView, bool>(
+            nameof(ShowQuestionDetails),
+            view => view.ShowQuestionDetails);
+
+    /// <summary>
+    /// Gets whether question text and keyboard-equivalent actions are shown by the current scale.
+    /// </summary>
+    public bool ShowQuestionDetails
+    {
+        get => _showQuestionDetails;
+        private set => SetAndRaise(ShowQuestionDetailsProperty, ref _showQuestionDetails, value);
+    }
 
     public FlatDocumentView()
     {
         InitializeComponent();
         PointerMoved += FlatDocumentView_PointerMoved;
         PointerReleased += FlatDocumentView_PointerReleased;
+        DataContextChanged += FlatDocumentView_DataContextChanged;
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        SubscribeToDocument(DataContext as QDocument);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        SubscribeToDocument(null);
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void FlatDocumentView_DataContextChanged(object? sender, EventArgs e)
+    {
+        if (VisualRoot != null)
+        {
+            SubscribeToDocument(DataContext as QDocument);
+        }
+    }
+
+    private void SubscribeToDocument(QDocument? document)
+    {
+        if (ReferenceEquals(_subscribedDocument, document))
+        {
+            return;
+        }
+
+        if (_subscribedDocument != null)
+        {
+            _subscribedDocument.PropertyChanged -= Document_PropertyChanged;
+        }
+
+        _subscribedDocument = document;
+
+        if (_subscribedDocument != null)
+        {
+            _subscribedDocument.PropertyChanged += Document_PropertyChanged;
+        }
+
+        ShowQuestionDetails = document?.IsFlatQuestionScale == true;
+    }
+
+    private void Document_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QDocument.IsFlatQuestionScale))
+        {
+            ShowQuestionDetails = _subscribedDocument?.IsFlatQuestionScale == true;
+        }
+    }
+
+    private void Item_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not QDocument document || sender is not Control control)
+        {
+            return;
+        }
+
+        var item = control.DataContext as IItemViewModel ?? document.Package;
+        Select(document, item);
+        control.Focus();
+        e.Handled = true;
     }
 
     private void Question_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -35,12 +118,91 @@ public partial class FlatDocumentView : UserControl
             return;
         }
 
-        document.ActiveNode = question;
+        Select(document, question);
+        ((Border)sender).Focus();
         _pendingPointerPress = e;
         _pendingQuestion = question;
         _dragStart = e.GetPosition(this);
         e.Pointer.Capture(this);
         e.Handled = true;
+    }
+
+    private void MoveBackward_Click(object? sender, RoutedEventArgs e) =>
+        ExecuteQuestionCommand(sender, document => document.MoveFlatQuestionBackward);
+
+    private void MoveForward_Click(object? sender, RoutedEventArgs e) =>
+        ExecuteQuestionCommand(sender, document => document.MoveFlatQuestionForward);
+
+    private void Duplicate_Click(object? sender, RoutedEventArgs e) =>
+        ExecuteQuestionCommand(sender, document => document.DuplicateFlatQuestion);
+
+    private void Question_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not QDocument document || sender is not Border { DataContext: QuestionViewModel question })
+        {
+            return;
+        }
+
+        var command = e.Key == Key.D
+                && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+            ? document.DuplicateFlatQuestion
+            : e.KeyModifiers.HasFlag(KeyModifiers.Alt)
+                ? GetMoveCommand(document, e.Key)
+                : null;
+
+        if (command == null)
+        {
+            return;
+        }
+
+        command.Execute(question);
+        e.Handled = true;
+    }
+
+    private static System.Windows.Input.ICommand? GetMoveCommand(QDocument document, Key key)
+    {
+        if (document.IsFlatTableLayout)
+        {
+            return key switch
+            {
+                Key.Left => document.MoveFlatQuestionBackward,
+                Key.Right => document.MoveFlatQuestionForward,
+                _ => null,
+            };
+        }
+
+        return key switch
+        {
+            Key.Up => document.MoveFlatQuestionBackward,
+            Key.Down => document.MoveFlatQuestionForward,
+            _ => null,
+        };
+    }
+
+    private void ExecuteQuestionCommand(
+        object? sender,
+        Func<QDocument, System.Windows.Input.ICommand> commandSelector)
+    {
+        if (DataContext is QDocument document && sender is Button { DataContext: QuestionViewModel question })
+        {
+            commandSelector(document).Execute(question);
+        }
+    }
+
+    private static void Select(QDocument document, IItemViewModel item)
+    {
+        if (ReferenceEquals(document.ActiveNode, item))
+        {
+            return;
+        }
+
+        if (document.ActiveNode != null)
+        {
+            document.ActiveNode.IsSelected = false;
+        }
+
+        item.IsSelected = true;
+        document.ActiveNode = item;
     }
 
     private async void FlatDocumentView_PointerMoved(object? sender, PointerEventArgs e)

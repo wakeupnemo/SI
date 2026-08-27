@@ -7,133 +7,9 @@
     xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:QDocument">
-  <Grid RowDefinitions="Auto,*,Auto">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="{Binding Settings.NavigatorPaneWidth, Mode=TwoWay}" MinWidth="180" MaxWidth="600" />
-      <ColumnDefinition Width="5" />
-      <ColumnDefinition Width="*" MinWidth="320" />
-      <ColumnDefinition Width="5" />
-      <ColumnDefinition Width="{Binding Settings.InspectorPaneWidth, Mode=TwoWay}" MinWidth="220" MaxWidth="600" />
-    </Grid.ColumnDefinitions>
-    <Border
-        Grid.ColumnSpan="5"
-        Padding="{StaticResource CommandBarPadding}"
-        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-        BorderThickness="0,0,0,1">
-      <Grid ColumnSpacing="{StaticResource Space8}">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" MinWidth="120" MaxWidth="420" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="{x:Static loc:UiStrings.Search}" VerticalAlignment="Center" />
-        <TextBox
-            x:Name="SearchBox"
-            Grid.Column="1"
-            Text="{Binding SearchText, Mode=TwoWay}"
-            PlaceholderText="{x:Static loc:UiStrings.Search}"
-            AutomationProperties.Name="{x:Static loc:UiStrings.Search}" />
-        <TextBlock
-            x:Name="NoSearchResultsText"
-            Grid.Column="2"
-            Text="{x:Static loc:UiStrings.NoSearchResults}"
-            IsVisible="{Binding SearchFailed}"
-            TextWrapping="Wrap"
-            VerticalAlignment="Center" />
-        <Button
-            Grid.Column="3"
-            Classes="command"
-            Content="◀"
-            AutomationProperties.Name="{x:Static loc:UiStrings.PreviousSearchResult}"
-            ToolTip.Tip="{x:Static loc:UiStrings.PreviousSearchResult}"
-            IsEnabled="{Binding HasSearchResults}"
-            Command="{Binding PreviousSearchResult}" />
-        <Button
-            Grid.Column="4"
-            Classes="command"
-            Content="▶"
-            AutomationProperties.Name="{x:Static loc:UiStrings.NextSearchResult}"
-            ToolTip.Tip="{x:Static loc:UiStrings.NextSearchResult}"
-            IsEnabled="{Binding HasSearchResults}"
-            Command="{Binding NextSearchResult}" />
-        <Button
-            Grid.Column="5"
-            Classes="command"
-            Content="×"
-            AutomationProperties.Name="{x:Static loc:UiStrings.ClearSearch}"
-            ToolTip.Tip="{x:Static loc:UiStrings.ClearSearch}"
-            IsEnabled="{Binding HasSearchText}"
-            Command="{Binding ClearSearchText}" />
-      </Grid>
-    </Border>
-
-    <Border Grid.Row="1" Grid.Column="0" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
-      <Grid RowDefinitions="Auto,Auto,*">
-        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Navigator}" />
-        <WrapPanel Grid.Row="1" Margin="{StaticResource FieldMargin}">
-          <Button
-              Classes="command"
-              Content="{x:Static loc:UiStrings.TreeView}"
-              Command="{Binding SetViewMode}"
-              CommandParameter="{x:Static model:ViewMode.TreeFull}"
-              Margin="{StaticResource MetadataCommandMargin}"
-              IsEnabled="{Binding IsFlatView}" />
-          <Button
-              Classes="command"
-              Content="{x:Static loc:UiStrings.FlatView}"
-              Command="{Binding SetViewMode}"
-              CommandParameter="{x:Static model:ViewMode.Flat}"
-              IsEnabled="{Binding IsTreeView}" />
-        </WrapPanel>
-        <TreeView
-            x:Name="Navigator"
-            Grid.Row="2"
-            IsVisible="{Binding IsTreeView}"
-            ItemsSource="{Binding Packages}"
-            SelectedItem="{Binding ActiveNode, Mode=OneWay}"
-            SelectionChanged="Navigator_SelectionChanged"
-            AutomationProperties.Name="{x:Static loc:UiStrings.Navigator}">
-          <TreeView.Styles>
-            <Style Selector="TreeViewItem" x:DataType="vm:IItemViewModel">
-              <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-            </Style>
-          </TreeView.Styles>
-          <TreeView.DataTemplates>
-            <TreeDataTemplate DataType="{x:Type vm:PackageViewModel}" ItemsSource="{Binding Rounds}">
-              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
-            </TreeDataTemplate>
-            <TreeDataTemplate DataType="{x:Type vm:RoundViewModel}" ItemsSource="{Binding Themes}">
-              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
-            </TreeDataTemplate>
-            <TreeDataTemplate DataType="{x:Type vm:ThemeViewModel}" ItemsSource="{Binding Questions}">
-              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
-            </TreeDataTemplate>
-            <TreeDataTemplate DataType="{x:Type vm:QuestionViewModel}">
-              <TextBlock Text="{Binding Model.Price}" />
-            </TreeDataTemplate>
-          </TreeView.DataTemplates>
-        </TreeView>
-        <views:FlatDocumentView Grid.Row="2" IsVisible="{Binding IsFlatView}" />
-      </Grid>
-    </Border>
-
-    <GridSplitter Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" />
-
-    <Border Grid.Row="1" Grid.Column="2" Padding="{StaticResource Space16Thickness}">
-      <Grid RowDefinitions="Auto,*">
-        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Editor}" />
-        <views:InspectorView x:Name="Inspector" Grid.Row="1" SelectedItem="{Binding ActiveNode}" />
-      </Grid>
-    </Border>
-
-    <GridSplitter Grid.Row="1" Grid.Column="3" ResizeDirection="Columns" />
-
-    <Border Grid.Row="1" Grid.Column="4" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
+  <UserControl.Resources>
+    <DataTemplate x:Key="MediaSummary" x:DataType="vm:QDocument">
       <StackPanel Spacing="{StaticResource Space12}">
-        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Media}" />
         <Border Classes="card">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="{x:Static loc:UiStrings.Images}" />
@@ -159,6 +35,148 @@
           </Grid>
         </Border>
       </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{Binding Settings.NavigatorPaneWidth, Mode=TwoWay}" MinWidth="180" MaxWidth="600" />
+      <ColumnDefinition Width="5" />
+      <ColumnDefinition Width="*" MinWidth="320" />
+      <ColumnDefinition Width="5" />
+      <ColumnDefinition Width="{Binding Settings.InspectorPaneWidth, Mode=TwoWay}" MinWidth="220" MaxWidth="600" />
+    </Grid.ColumnDefinitions>
+    <Border
+        Grid.ColumnSpan="5"
+        Padding="{StaticResource CommandBarPadding}"
+        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+        BorderThickness="0,0,0,1">
+      <Grid ColumnSpacing="{StaticResource Space8}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" MinWidth="120" MaxWidth="420" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <WrapPanel>
+          <Button
+              Classes="command"
+              Content="{x:Static loc:UiStrings.TreeView}"
+              Command="{Binding SetViewMode}"
+              CommandParameter="{x:Static model:ViewMode.TreeFull}"
+              Margin="{StaticResource MetadataCommandMargin}"
+              IsEnabled="{Binding IsFlatView}" />
+          <Button
+              Classes="command"
+              Content="{x:Static loc:UiStrings.FlatView}"
+              Command="{Binding SetViewMode}"
+              CommandParameter="{x:Static model:ViewMode.Flat}"
+              IsEnabled="{Binding IsTreeView}" />
+        </WrapPanel>
+        <TextBlock Grid.Column="1" Text="{x:Static loc:UiStrings.Search}" VerticalAlignment="Center" />
+        <TextBox
+            x:Name="SearchBox"
+            Grid.Column="2"
+            Text="{Binding SearchText, Mode=TwoWay}"
+            PlaceholderText="{x:Static loc:UiStrings.Search}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.Search}" />
+        <TextBlock
+            x:Name="NoSearchResultsText"
+            Grid.Column="3"
+            Text="{x:Static loc:UiStrings.NoSearchResults}"
+            IsVisible="{Binding SearchFailed}"
+            TextWrapping="Wrap"
+            VerticalAlignment="Center" />
+        <Button
+            Grid.Column="4"
+            Classes="command"
+            Content="◀"
+            AutomationProperties.Name="{x:Static loc:UiStrings.PreviousSearchResult}"
+            ToolTip.Tip="{x:Static loc:UiStrings.PreviousSearchResult}"
+            IsEnabled="{Binding HasSearchResults}"
+            Command="{Binding PreviousSearchResult}" />
+        <Button
+            Grid.Column="5"
+            Classes="command"
+            Content="▶"
+            AutomationProperties.Name="{x:Static loc:UiStrings.NextSearchResult}"
+            ToolTip.Tip="{x:Static loc:UiStrings.NextSearchResult}"
+            IsEnabled="{Binding HasSearchResults}"
+            Command="{Binding NextSearchResult}" />
+        <Button
+            Grid.Column="6"
+            Classes="command"
+            Content="×"
+            AutomationProperties.Name="{x:Static loc:UiStrings.ClearSearch}"
+            ToolTip.Tip="{x:Static loc:UiStrings.ClearSearch}"
+            IsEnabled="{Binding HasSearchText}"
+            Command="{Binding ClearSearchText}" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Grid.Column="0" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Navigator}" />
+        <TreeView
+            x:Name="Navigator"
+            Grid.Row="1"
+            ItemsSource="{Binding Packages}"
+            SelectedItem="{Binding ActiveNode, Mode=OneWay}"
+            SelectionChanged="Navigator_SelectionChanged"
+            AutomationProperties.Name="{x:Static loc:UiStrings.Navigator}">
+          <TreeView.Styles>
+            <Style Selector="TreeViewItem" x:DataType="vm:IItemViewModel">
+              <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            </Style>
+          </TreeView.Styles>
+          <TreeView.DataTemplates>
+            <TreeDataTemplate DataType="{x:Type vm:PackageViewModel}" ItemsSource="{Binding Rounds}">
+              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+            </TreeDataTemplate>
+            <TreeDataTemplate DataType="{x:Type vm:RoundViewModel}" ItemsSource="{Binding Themes}">
+              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+            </TreeDataTemplate>
+            <TreeDataTemplate DataType="{x:Type vm:ThemeViewModel}" ItemsSource="{Binding Questions}">
+              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+            </TreeDataTemplate>
+            <TreeDataTemplate DataType="{x:Type vm:QuestionViewModel}">
+              <TextBlock Text="{Binding Model.Price}" />
+            </TreeDataTemplate>
+          </TreeView.DataTemplates>
+        </TreeView>
+      </Grid>
+    </Border>
+
+    <GridSplitter Grid.Row="1" Grid.Column="1" ResizeDirection="Columns" />
+
+    <Border Grid.Row="1" Grid.Column="2" Padding="{StaticResource Space16Thickness}">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Editor}" />
+        <views:InspectorView x:Name="Inspector" Grid.Row="1" SelectedItem="{Binding ActiveNode}" IsVisible="{Binding IsTreeView}" />
+        <views:FlatDocumentView x:Name="FlatWorkspace" Grid.Row="1" IsVisible="{Binding IsFlatView}" />
+      </Grid>
+    </Border>
+
+    <GridSplitter Grid.Row="1" Grid.Column="3" ResizeDirection="Columns" />
+
+    <Border Grid.Row="1" Grid.Column="4" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
+      <Grid>
+        <StackPanel Spacing="{StaticResource Space12}" IsVisible="{Binding IsTreeView}">
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Media}" />
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MediaSummary}" />
+        </StackPanel>
+        <Grid RowDefinitions="*,Auto" IsVisible="{Binding IsFlatView}">
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Inspector}" />
+            <views:InspectorView x:Name="FlatInspector" Grid.Row="1" SelectedItem="{Binding ActiveNode}" />
+          </Grid>
+          <Expander Grid.Row="1" Header="{x:Static loc:UiStrings.Media}" Margin="{StaticResource FieldMargin}">
+            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MediaSummary}" />
+          </Expander>
+        </Grid>
+      </Grid>
     </Border>
 
     <Border Grid.Row="2" Grid.ColumnSpan="5" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="{StaticResource StatusBarPadding}">

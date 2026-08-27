@@ -170,4 +170,12 @@ public static class UiStrings
     public static string TreeView => Get(nameof(TreeView));
     public static string FlatView => Get(nameof(FlatView));
     public static string FlatViewDragHint => Get(nameof(FlatViewDragHint));
+    public static string FlatLayout => Get(nameof(FlatLayout));
+    public static string TableLayout => Get(nameof(TableLayout));
+    public static string ListLayout => Get(nameof(ListLayout));
+    public static string DetailLevel => Get(nameof(DetailLevel));
+    public static string MoveQuestionBackward => Get(nameof(MoveQuestionBackward));
+    public static string MoveQuestionForward => Get(nameof(MoveQuestionForward));
+    public static string DuplicateQuestion => Get(nameof(DuplicateQuestion));
+    public static string FlatKeyboardHint => Get(nameof(FlatKeyboardHint));
 }

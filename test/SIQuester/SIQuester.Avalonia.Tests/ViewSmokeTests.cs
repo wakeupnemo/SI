@@ -1,7 +1,9 @@
 using Avalonia.Headless.NUnit;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -797,7 +799,7 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
-    public void DocumentEditor_FlatModeRealizesTypedQuestionRowsAndPersistsModeSelection()
+    public void DocumentEditor_FlatWorkspacePersistsLayoutAndScaleAndRoutesKeyboardOperations()
     {
         using var serviceProvider = CreateServiceProvider();
         var package = SIDocument.Create("Flat view", "Test author");
@@ -811,7 +813,11 @@ internal sealed class ViewSmokeTests
             .GetRequiredService<IDocumentViewModelFactory>()
             .CreateViewModelFor(package, "Flat view");
         var previousView = AppSettings.Default.View;
+        var previousLayout = AppSettings.Default.FlatLayoutMode;
+        var previousScale = AppSettings.Default.FlatScale;
         AppSettings.Default.View = ViewMode.TreeFull;
+        AppSettings.Default.FlatLayoutMode = FlatLayoutMode.Table;
+        AppSettings.Default.FlatScale = FlatScale.Theme;
         var view = new DocumentEditorView { DataContext = documentViewModel };
         var window = new Window { Width = 1100, Height = 700, Content = view };
 
@@ -823,7 +829,9 @@ internal sealed class ViewSmokeTests
                 .OfType<Button>()
                 .Single(button => Equals(button.CommandParameter, ViewMode.Flat));
             var tree = view.FindControl<TreeView>("Navigator")!;
-            var flatView = view.GetVisualDescendants().OfType<FlatDocumentView>().Single();
+            var flatView = view.FindControl<FlatDocumentView>("FlatWorkspace")!;
+            var treeInspector = view.FindControl<InspectorView>("Inspector")!;
+            var flatInspector = view.FindControl<InspectorView>("FlatInspector")!;
 
             flatButton.Command!.Execute(flatButton.CommandParameter);
             Dispatcher.UIThread.RunJobs();
@@ -833,11 +841,14 @@ internal sealed class ViewSmokeTests
             {
                 Assert.That(AppSettings.Default.View, Is.EqualTo(ViewMode.Flat));
                 Assert.That(documentViewModel.IsFlatView, Is.True);
-                Assert.That(tree.IsVisible, Is.False);
+                Assert.That(tree.IsVisible, Is.True, "the hierarchy remains available beside the main flat workspace");
                 Assert.That(flatView.IsVisible, Is.True);
+                Assert.That(treeInspector.IsVisible, Is.False);
+                Assert.That(flatInspector.IsVisible, Is.True);
                 Assert.That(flatView.GetVisualDescendants()
                     .OfType<Border>()
-                    .Count(border => border.DataContext is QuestionViewModel), Is.GreaterThanOrEqualTo(4));
+                    .Count(border => border.DataContext is QuestionViewModel && border.Classes.Contains("flat-question-card")),
+                    Is.EqualTo(2));
                 Assert.That(flatView.GetVisualDescendants()
                     .OfType<Border>()
                     .Count(border => border.Classes.Contains("flat-drop-target")), Is.EqualTo(3));
@@ -846,12 +857,98 @@ internal sealed class ViewSmokeTests
                     .Any(text => Equals(text.Text, "Unicode Раунд")), Is.True);
                 Assert.That(flatView.GetVisualDescendants()
                     .OfType<TextBlock>()
-                    .Any(text => Equals(text.Text, UiStrings.FlatViewDragHint)), Is.True);
+                    .Any(text => Equals(text.Text, UiStrings.FlatKeyboardHint)), Is.True);
             });
+
+            var layoutButtons = flatView.GetVisualDescendants()
+                .OfType<Button>()
+                .Where(button => button.CommandParameter is FlatLayoutMode)
+                .ToDictionary(button => (FlatLayoutMode)button.CommandParameter!);
+            var scaleButtons = flatView.GetVisualDescendants()
+                .OfType<Button>()
+                .Where(button => button.CommandParameter is FlatScale)
+                .ToDictionary(button => (FlatScale)button.CommandParameter!);
+
+            Assert.That(scaleButtons.Keys, Is.EquivalentTo(Enum.GetValues<FlatScale>()));
+
+            layoutButtons[FlatLayoutMode.List].Command!.Execute(FlatLayoutMode.List);
+            scaleButtons[FlatScale.Package].Command!.Execute(FlatScale.Package);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Assert.Multiple(() =>
+            {
+                Assert.That(AppSettings.Default.FlatLayoutMode, Is.EqualTo(FlatLayoutMode.List));
+                Assert.That(flatView.FindControl<ScrollViewer>("PackageScaleSurface")!.IsVisible, Is.True);
+                Assert.That(flatView.FindControl<Grid>("RoundScaleSurface")!.IsVisible, Is.False);
+            });
+
+            scaleButtons[FlatScale.Round].Command!.Execute(FlatScale.Round);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Assert.Multiple(() =>
+            {
+                Assert.That(flatView.FindControl<Grid>("RoundScaleSurface")!.IsVisible, Is.True);
+                Assert.That(flatView.FindControl<ListBox>("RoundListLayout")!.IsVisible, Is.True);
+            });
+
+            scaleButtons[FlatScale.Theme].Command!.Execute(FlatScale.Theme);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Assert.That(flatView.FindControl<Grid>("DetailedScaleSurface")!.IsVisible, Is.True);
+
+            scaleButtons[FlatScale.Question].Command!.Execute(FlatScale.Question);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var firstQuestion = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+            var firstQuestionCard = flatView.GetVisualDescendants()
+                .OfType<Border>()
+                .Single(border => ReferenceEquals(border.DataContext, firstQuestion)
+                    && border.Classes.Contains("flat-question-card")
+                    && border.IsEffectivelyVisible);
+            firstQuestionCard.Focus();
+            window.KeyPress(Key.Down, RawInputModifiers.Alt, PhysicalKey.ArrowDown, null);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.That(documentViewModel.Package.Rounds[0].Themes[0].Questions[1], Is.SameAs(firstQuestion));
+
+            firstQuestionCard = flatView.GetVisualDescendants()
+                .OfType<Border>()
+                .Single(border => ReferenceEquals(border.DataContext, firstQuestion)
+                    && border.Classes.Contains("flat-question-card")
+                    && border.IsEffectivelyVisible);
+            firstQuestionCard.Focus();
+            window.KeyPress(Key.D, RawInputModifiers.Control, PhysicalKey.D, "d");
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(AppSettings.Default.FlatScale, Is.EqualTo(FlatScale.Question));
+                Assert.That(documentViewModel.Package.Rounds[0].Themes[0].Questions, Has.Count.EqualTo(3));
+                Assert.That(flatInspector.SelectedItem, Is.SameAs(documentViewModel.ActiveNode));
+                Assert.That(flatView.GetVisualDescendants().OfType<VirtualizingStackPanel>().Any(), Is.True);
+                Assert.That(flatView.GetVisualDescendants().OfType<Button>()
+                    .Count(button => button.IsEffectivelyVisible
+                        && Equals(button.GetValue(AutomationProperties.NameProperty), UiStrings.DuplicateQuestion)),
+                    Is.EqualTo(3));
+            });
+
+            var duplicateButton = flatView.GetVisualDescendants().OfType<Button>()
+                .First(button => button.IsEffectivelyVisible
+                    && Equals(button.GetValue(AutomationProperties.NameProperty), UiStrings.DuplicateQuestion));
+            duplicateButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.That(documentViewModel.Package.Rounds[0].Themes[0].Questions, Has.Count.EqualTo(4),
+                "the visible action routes through the document command instead of mutating in code-behind");
         }
         finally
         {
             AppSettings.Default.View = previousView;
+            AppSettings.Default.FlatLayoutMode = previousLayout;
+            AppSettings.Default.FlatScale = previousScale;
             window.Close();
             documentViewModel.Dispose();
         }
@@ -971,7 +1068,9 @@ internal sealed class ViewSmokeTests
         mainViewModel.DocList.Add(documentViewModel);
         window.UpdateLayout();
 
-        var inspector = window.GetVisualDescendants().OfType<InspectorView>().Single();
+        var inspector = window.GetVisualDescendants()
+            .OfType<InspectorView>()
+            .Single(candidate => candidate.Name == "Inspector");
         Assert.Multiple(() =>
         {
             Assert.That(mainViewModel.ActiveDocument, Is.SameAs(documentViewModel));

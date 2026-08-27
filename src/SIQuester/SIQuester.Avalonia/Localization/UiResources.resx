@@ -159,4 +159,12 @@
   <data name="TreeView" xml:space="preserve"><value>Tree</value></data>
   <data name="FlatView" xml:space="preserve"><value>Flat</value></data>
   <data name="FlatViewDragHint" xml:space="preserve"><value>Drag a question to move it. Hold Ctrl or Command to copy.</value></data>
+  <data name="FlatLayout" xml:space="preserve"><value>Layout</value></data>
+  <data name="TableLayout" xml:space="preserve"><value>Table</value></data>
+  <data name="ListLayout" xml:space="preserve"><value>List</value></data>
+  <data name="DetailLevel" xml:space="preserve"><value>Detail level</value></data>
+  <data name="MoveQuestionBackward" xml:space="preserve"><value>Move question backward</value></data>
+  <data name="MoveQuestionForward" xml:space="preserve"><value>Move question forward</value></data>
+  <data name="DuplicateQuestion" xml:space="preserve"><value>Duplicate question</value></data>
+  <data name="FlatKeyboardHint" xml:space="preserve"><value>On a question, use Alt+Arrow to reorder or Ctrl/Command+D to duplicate.</value></data>
 </root>
