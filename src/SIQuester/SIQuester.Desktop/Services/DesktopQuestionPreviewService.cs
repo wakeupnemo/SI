@@ -68,6 +68,19 @@ internal sealed class DesktopQuestionPreviewService : IQuestionPreviewService, I
         }
     }
 
+    public IQuestionPreviewSession CreateSession()
+    {
+        var host = GetHostDescriptor();
+
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return host.IsAvailable && _contentServer is not null
+                ? _contentServer.CreateMediaSession(host)
+                : new QuestionPreviewHostSession(host);
+        }
+    }
+
     private static BackendProbe ProbeBackend()
     {
         try

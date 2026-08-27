@@ -1061,6 +1061,56 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
                 return collection.GetFileLength(link);
             });
 
+    /// <summary>
+    /// Captures a framework-neutral stream factory for controlled question preview without materializing a platform path.
+    /// </summary>
+    internal QuestionPreviewMediaSource CreateQuestionPreviewSource(
+        QuestionPreviewMediaKind kind,
+        string link)
+    {
+        var requestedLink = link;
+
+        // Preserve the established pending-rename lookup semantics while capturing an immutable source factory.
+        foreach (var item in _renamed)
+        {
+            if (item.Item2 == link)
+            {
+                link = item.Item1;
+                break;
+            }
+        }
+
+        var pendingStream = _streams.FirstOrDefault(item => item.Key.Model.Name == link);
+        if (pendingStream.Key is not null)
+        {
+            var path = pendingStream.Value.Path;
+            return new QuestionPreviewMediaSource(
+                kind,
+                requestedLink,
+                () =>
+                {
+                    var file = new FileInfo(path);
+                    return file.Exists
+                        ? new QuestionPreviewMediaStream(File.OpenRead(file.FullName), file.Length)
+                        : null;
+                });
+        }
+
+        var storageLink = link;
+        return new QuestionPreviewMediaSource(
+            kind,
+            requestedLink,
+            () => _document.Lock.WithLock(
+                () =>
+                {
+                    var collection = _document.GetInternalCollection(_name);
+                    var streamInfo = collection.GetFile(storageLink);
+                    return streamInfo is null
+                        ? null
+                        : new QuestionPreviewMediaStream(streamInfo.Stream, streamInfo.Length);
+                }));
+    }
+
     // TODO: switch from IMedia to MediaInfo struct
     internal IMedia Wrap(string link)
     {

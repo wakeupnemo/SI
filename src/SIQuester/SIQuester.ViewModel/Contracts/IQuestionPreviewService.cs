@@ -33,6 +33,92 @@ public enum QuestionPreviewBackendRequirement
     UnsupportedPlatform,
 }
 
+/// <summary>Identifies media that the application-owned player may request from a preview session.</summary>
+public enum QuestionPreviewMediaKind
+{
+    /// <summary>Image content rendered by the retained player.</summary>
+    Image,
+
+    /// <summary>Audio content rendered by the retained player.</summary>
+    Audio,
+
+    /// <summary>Video content rendered by the retained player.</summary>
+    Video,
+}
+
+/// <summary>Owns one readable package-media stream opened for a preview request.</summary>
+public sealed class QuestionPreviewMediaStream : IDisposable
+{
+    /// <summary>Initializes a readable stream with its authoritative uncompressed length.</summary>
+    public QuestionPreviewMediaStream(Stream stream, long length)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        if (!stream.CanRead)
+        {
+            throw new ArgumentException("Question-preview media must be readable.", nameof(stream));
+        }
+
+        if (length < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
+        Stream = stream;
+        Length = length;
+    }
+
+    /// <summary>Gets the owned readable stream.</summary>
+    public Stream Stream { get; }
+
+    /// <summary>Gets the authoritative uncompressed length.</summary>
+    public long Length { get; }
+
+    /// <inheritdoc />
+    public void Dispose() => Stream.Dispose();
+}
+
+/// <summary>
+/// Describes one package-owned media source without exposing package containers or UI-framework objects.
+/// </summary>
+public sealed class QuestionPreviewMediaSource
+{
+    private const int MaxNameLength = 1024;
+
+    /// <summary>Initializes a package-media source whose factory returns a newly owned stream per request.</summary>
+    public QuestionPreviewMediaSource(
+        QuestionPreviewMediaKind kind,
+        string name,
+        Func<QuestionPreviewMediaStream?> openRead)
+    {
+        if (!Enum.IsDefined(kind))
+        {
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(openRead);
+
+        if (name.Length > MaxNameLength)
+        {
+            throw new ArgumentException("The question-preview media name exceeds the allowed length.", nameof(name));
+        }
+
+        Kind = kind;
+        Name = name;
+        OpenRead = openRead;
+    }
+
+    /// <summary>Gets the semantic player media kind.</summary>
+    public QuestionPreviewMediaKind Kind { get; }
+
+    /// <summary>Gets the canonical package media name.</summary>
+    public string Name { get; }
+
+    /// <summary>Gets a factory that opens a new owned stream for each request.</summary>
+    public Func<QuestionPreviewMediaStream?> OpenRead { get; }
+}
+
 /// <summary>
 /// Describes the current question-preview host without exposing UI-framework objects.
 /// </summary>
@@ -111,6 +197,41 @@ public sealed record QuestionPreviewHostDescriptor
     }
 }
 
+/// <summary>Owns the host and package-media registrations for one question-preview dialog.</summary>
+public interface IQuestionPreviewSession : IDisposable
+{
+    /// <summary>Gets the native host capability captured for this session.</summary>
+    QuestionPreviewHostDescriptor Host { get; }
+
+    /// <summary>
+    /// Resolves package-owned media to a host-controlled player source.
+    /// Returns false when the host cannot safely expose the media.
+    /// </summary>
+    bool TryGetMediaSource(QuestionPreviewMediaSource media, out string source);
+}
+
+/// <summary>Provides host capability without exposing package media.</summary>
+public sealed class QuestionPreviewHostSession : IQuestionPreviewSession
+{
+    /// <summary>Initializes a host-only preview session.</summary>
+    public QuestionPreviewHostSession(QuestionPreviewHostDescriptor host) =>
+        Host = host ?? throw new ArgumentNullException(nameof(host));
+
+    /// <inheritdoc />
+    public QuestionPreviewHostDescriptor Host { get; }
+
+    /// <inheritdoc />
+    public bool TryGetMediaSource(QuestionPreviewMediaSource media, out string source)
+    {
+        ArgumentNullException.ThrowIfNull(media);
+        source = string.Empty;
+        return false;
+    }
+
+    /// <inheritdoc />
+    public void Dispose() { }
+}
+
 /// <summary>
 /// Resolves host-owned question-preview capability and application source.
 /// </summary>
@@ -118,4 +239,9 @@ public interface IQuestionPreviewService
 {
     /// <summary>Gets the current host descriptor.</summary>
     QuestionPreviewHostDescriptor GetHostDescriptor();
+
+    /// <summary>
+    /// Creates one owned dialog session. Hosts that do not expose package media retain the safe host-only behavior.
+    /// </summary>
+    IQuestionPreviewSession CreateSession() => new QuestionPreviewHostSession(GetHostDescriptor());
 }

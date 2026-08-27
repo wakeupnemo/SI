@@ -374,6 +374,11 @@ public sealed class QDocument : WorkspaceViewModel
                 if (_dialog is WorkspaceViewModel previousWorkspace)
                 {
                     previousWorkspace.Closed -= Workspace_Closed;
+
+                    if (previousWorkspace is QuestionPlayViewModel)
+                    {
+                        previousWorkspace.Dispose();
+                    }
                 }
 
                 _dialog = value;

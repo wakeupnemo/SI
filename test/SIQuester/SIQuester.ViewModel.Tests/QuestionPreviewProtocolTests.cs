@@ -107,6 +107,10 @@ internal sealed class QuestionPreviewProtocolTests
             Assert.Throws<ArgumentException>(() => QuestionPreviewHostDescriptor.Unavailable(
                 QuestionPreviewAvailability.AssetsUnavailable,
                 QuestionPreviewBackendRequirement.LinuxWebKit));
+            Assert.Throws<ArgumentException>(() => new QuestionPreviewMediaSource(
+                QuestionPreviewMediaKind.Image,
+                new string('x', 1025) + ".png",
+                () => null));
             Assert.Throws<ArgumentOutOfRangeException>(() => new QuestionPreviewSignalMessage("unknown"));
         });
     }
@@ -138,6 +142,68 @@ internal sealed class QuestionPreviewProtocolTests
             Assert.That(preview.Play.CanExecute(null), Is.False);
             Assert.That(preview.Replay.CanExecute(null), Is.False);
         });
+    }
+
+    [Test]
+    public void EmbeddedMedia_UsesOwnedSessionAndHtmlIsNeverExposed()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var mediaName = "изображение 例.png";
+        var expectedBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 1, 2, 3 };
+        using var temporaryMedia = new TemporaryMediaFile(mediaName, expectedBytes);
+        using var document = TestHelper.CreateDocumentViewModelFactory(serviceProvider)
+            .CreateViewModelFor(TestHelper.CreateSimpleTestPackage());
+        document.Images.AddFile(temporaryMedia.Path, mediaName);
+        var service = new TrackingPreviewService(
+            QuestionPreviewHostDescriptor.Available(new Uri("http://127.0.0.1:52731/index.html")),
+            "http://127.0.0.1:52731/private/media-token.png");
+        using var preview = new QuestionPlayViewModel(
+            document.Package.Rounds[0].Themes[0].Questions[0],
+            document,
+            service);
+        var messages = new List<JsonElement>();
+        preview.SendJsonMessage += message => messages.Add(Parse(message));
+
+        preview.OnQuestionContent(
+            [
+                new ContentItem
+                {
+                    Placement = ContentPlacements.Screen,
+                    Type = ContentTypes.Image,
+                    Value = mediaName,
+                    IsRef = true,
+                },
+                new ContentItem
+                {
+                    Placement = ContentPlacements.Screen,
+                    Type = ContentTypes.Html,
+                    Value = "unsafe.html",
+                    IsRef = true,
+                },
+            ],
+            false);
+
+        var session = service.Sessions.Single();
+        using var opened = session.Media!.OpenRead();
+        using var buffer = new MemoryStream();
+        opened!.Stream.CopyTo(buffer);
+        var content = messages.Single().GetProperty("content");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(session.Media.Kind, Is.EqualTo(QuestionPreviewMediaKind.Image));
+            Assert.That(session.Media.Name, Is.EqualTo(mediaName));
+            Assert.That(opened.Length, Is.EqualTo(expectedBytes.Length));
+            Assert.That(buffer.ToArray(), Is.EqualTo(expectedBytes));
+            Assert.That(content.GetArrayLength(), Is.EqualTo(2));
+            Assert.That(content[0].GetProperty("type").GetString(), Is.EqualTo("image"));
+            Assert.That(content[0].GetProperty("value").GetString(), Is.EqualTo(service.ResolvedSource));
+            Assert.That(content[1].GetProperty("type").GetString(), Is.EqualTo("text"));
+            Assert.That(content[1].GetProperty("value").GetString(), Does.StartWith("HTML:"));
+        });
+
+        preview.Dispose();
+        Assert.That(session.IsDisposed, Is.True);
     }
 
     [Test]
@@ -220,7 +286,10 @@ internal sealed class QuestionPreviewProtocolTests
     [Test]
     public async Task DocumentPreview_UsesSafeUnavailableDefaultAndIgnoresClosedReplacedDialog()
     {
-        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var previewService = new TrackingPreviewService(
+            QuestionPreviewHostDescriptor.Unavailable(QuestionPreviewAvailability.BackendUnavailable));
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider(
+            questionPreviewService: previewService);
         var document = TestHelper.CreateDocumentViewModelFactory(serviceProvider)
             .CreateViewModelFor(TestHelper.CreateSimpleTestPackage());
         var question = document.Package.Rounds[0].Themes[0].Questions[0];
@@ -230,6 +299,7 @@ internal sealed class QuestionPreviewProtocolTests
 
         document.PlayQuestion.Execute(question);
         var secondPreview = (QuestionPlayViewModel)document.Dialog!;
+        Assert.That(previewService.Sessions[0].IsDisposed, Is.True);
         await firstPreview.Close.ExecuteAsync(null);
 
         Assert.Multiple(() =>
@@ -243,11 +313,13 @@ internal sealed class QuestionPreviewProtocolTests
 
         await secondPreview.Close.ExecuteAsync(null);
         Assert.That(document.Dialog, Is.Null);
+        Assert.That(previewService.Sessions[1].IsDisposed, Is.True);
 
         document.PlayQuestion.Execute(question);
         Assert.That(document.Dialog, Is.TypeOf<QuestionPlayViewModel>());
         document.Dispose();
         Assert.That(document.Dialog, Is.Null);
+        Assert.That(previewService.Sessions[2].IsDisposed, Is.True);
     }
 
     private static JsonElement Parse(string json)
@@ -260,5 +332,80 @@ internal sealed class QuestionPreviewProtocolTests
     {
         public QuestionPreviewHostDescriptor GetHostDescriptor() => QuestionPreviewHostDescriptor.Available(
             new Uri("http://127.0.0.1:52731/index.html"));
+    }
+
+    private sealed class TrackingPreviewService : IQuestionPreviewService
+    {
+        private readonly QuestionPreviewHostDescriptor _host;
+
+        public TrackingPreviewService(
+            QuestionPreviewHostDescriptor host,
+            string? resolvedSource = null)
+        {
+            _host = host;
+            ResolvedSource = resolvedSource;
+        }
+
+        public string? ResolvedSource { get; }
+
+        public List<TrackingPreviewSession> Sessions { get; } = [];
+
+        public QuestionPreviewHostDescriptor GetHostDescriptor() => _host;
+
+        public IQuestionPreviewSession CreateSession()
+        {
+            var session = new TrackingPreviewSession(_host, ResolvedSource);
+            Sessions.Add(session);
+            return session;
+        }
+    }
+
+    private sealed class TrackingPreviewSession : IQuestionPreviewSession
+    {
+        private readonly string? _resolvedSource;
+
+        public TrackingPreviewSession(QuestionPreviewHostDescriptor host, string? resolvedSource)
+        {
+            Host = host;
+            _resolvedSource = resolvedSource;
+        }
+
+        public QuestionPreviewHostDescriptor Host { get; }
+
+        public QuestionPreviewMediaSource? Media { get; private set; }
+
+        public bool IsDisposed { get; private set; }
+
+        public bool TryGetMediaSource(QuestionPreviewMediaSource media, out string source)
+        {
+            Media = media;
+            source = _resolvedSource ?? string.Empty;
+            return _resolvedSource is not null;
+        }
+
+        public void Dispose() => IsDisposed = true;
+    }
+
+    private sealed class TemporaryMediaFile : IDisposable
+    {
+        private readonly string _directory;
+
+        public TemporaryMediaFile(string name, byte[] content)
+        {
+            _directory = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "siquester-preview-test-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_directory);
+            Path = System.IO.Path.Combine(_directory, name);
+            File.WriteAllBytes(Path, content);
+        }
+
+        public string Path { get; }
+
+        public void Dispose()
+        {
+            File.Delete(Path);
+            Directory.Delete(_directory);
+        }
     }
 }

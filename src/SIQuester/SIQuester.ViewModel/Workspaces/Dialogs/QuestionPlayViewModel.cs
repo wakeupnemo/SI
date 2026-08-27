@@ -21,6 +21,7 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     private readonly QDocument _qDocument;
     private readonly QuestionViewModel _originalQuestion;
     private readonly ILogger<QuestionPlayViewModel> _logger;
+    private readonly IQuestionPreviewSession _previewSession;
 
     private bool _singleAnswerer = true;
     private bool _isFinished;
@@ -31,6 +32,7 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     private string _rightAnswer = "";
     private bool _isPreviewReady;
     private bool _hasPreviewFailure;
+    private bool _isDisposed;
 
     public override string Header => Resources.QuestionPlay;
 
@@ -110,14 +112,24 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
         _originalQuestion = question;
         _qDocument = document;
         _logger = logger ?? NullLogger<QuestionPlayViewModel>.Instance;
-        PreviewHost = questionPreviewService.GetHostDescriptor();
+        _previewSession = questionPreviewService.CreateSession()
+            ?? throw new InvalidOperationException("The question-preview service returned no session.");
+        PreviewHost = _previewSession.Host;
         _isPreviewReady = IsPreviewAvailable;
 
         Play = new SimpleCommand(Play_Executed);
         Replay = new SimpleCommand(Replay_Executed);
         CloseDialog = Close;
 
-        InitializeQuestionEngine();
+        try
+        {
+            InitializeQuestionEngine();
+        }
+        catch
+        {
+            _previewSession.Dispose();
+            throw;
+        }
     }
 
     [MemberNotNull(nameof(_questionEngine))]
@@ -262,19 +274,30 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
                         case ContentTypes.Image:
                             screenContent.Add(new QuestionPreviewContentItem(
                                 "image",
-                                contentItem.IsRef ? _qDocument.Images.Wrap(contentItem.Value).Uri : contentItem.Value));
+                                contentItem.IsRef
+                                    ? ResolvePackageMedia(
+                                        _qDocument.Images,
+                                        QuestionPreviewMediaKind.Image,
+                                        contentItem.Value)
+                                    : contentItem.Value));
                             break;
 
                         case ContentTypes.Video:
                             screenContent.Add(new QuestionPreviewContentItem(
                                 "video",
-                                contentItem.IsRef ? _qDocument.Video.Wrap(contentItem.Value).Uri : contentItem.Value));
+                                contentItem.IsRef
+                                    ? ResolvePackageMedia(
+                                        _qDocument.Video,
+                                        QuestionPreviewMediaKind.Video,
+                                        contentItem.Value)
+                                    : contentItem.Value));
                             break;
 
                         case ContentTypes.Html:
+                            _logger.LogInformation("HTML content was excluded from the controlled question preview");
                             screenContent.Add(new QuestionPreviewContentItem(
-                                "html",
-                                contentItem.IsRef ? _qDocument.Html.Wrap(contentItem.Value).Uri : contentItem.Value));
+                                "text",
+                                $"{Resources.Html}: {Resources.ExternalLinksAreForbidden}"));
                             break;
 
                         default:
@@ -283,7 +306,12 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
                     break;
 
                 case ContentPlacements.Background:
-                    var sound = contentItem.IsRef ? _qDocument.Audio.Wrap(contentItem.Value).Uri : contentItem.Value;
+                    var sound = contentItem.IsRef
+                        ? ResolvePackageMedia(
+                            _qDocument.Audio,
+                            QuestionPreviewMediaKind.Audio,
+                            contentItem.Value)
+                        : contentItem.Value;
 
                     OnMessage(new QuestionPreviewContentMessage(
                         "background",
@@ -386,7 +414,12 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
                         option.Label,
                         new ContentInfo(
                             ContentType.Image,
-                            option.Content.IsRef ? _qDocument.Images.Wrap(option.Content.Value).Uri : option.Content.Value)));
+                            option.Content.IsRef
+                                ? ResolvePackageMedia(
+                                    _qDocument.Images,
+                                    QuestionPreviewMediaKind.Image,
+                                    option.Content.Value)
+                                : option.Content.Value)));
                     break;
 
                 default:
@@ -440,9 +473,44 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     private void OnMessage(QuestionPreviewMessage message) =>
         SendJsonMessage?.Invoke(QuestionPreviewProtocol.Serialize(message));
 
+    private string ResolvePackageMedia(
+        MediaStorageViewModel storage,
+        QuestionPreviewMediaKind kind,
+        string name)
+    {
+        var media = storage.CreateQuestionPreviewSource(kind, name);
+        if (_previewSession.TryGetMediaSource(media, out var source)
+            && !string.IsNullOrWhiteSpace(source))
+        {
+            return source;
+        }
+
+        throw new InvalidOperationException("Package media could not be exposed through the controlled preview host.");
+    }
+
     public bool OnNumericAnswerType(int deviation) => false;
 
     public bool OnPointAnswerType(double deviation) => false;
 
     public bool OnClientAnswerType() => false;
+
+    protected override Task Close_Executed(object? arg)
+    {
+        Dispose();
+        return base.Close_Executed(arg);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        Play.CanBeExecuted = false;
+        Replay.CanBeExecuted = false;
+        _previewSession.Dispose();
+        base.Dispose(disposing);
+    }
 }

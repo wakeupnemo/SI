@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SIPackages;
+using SIPackages.Core;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Services;
 using SIQuester.ViewModel.Tests.Helpers;
@@ -325,10 +326,21 @@ internal sealed class DocumentSavingTests
         question.PrimaryRightAnswer = "Полный семантический текст";
         question.PrimaryWrongAnswer = "Потерянные данные";
 
-        var mediaBytes = "SIQuester Avalonia media compatibility"u8.ToArray();
+        var mediaBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAIAAAACAAQMAAAD58POIAAAAA1BMVEX1xUI6Ko9WAAAAGUlEQVRIx2NgGAWjYBSMglEwCkbBKKAvAAAIgAABbisdVAAAAABJRU5ErkJggg==");
         var mediaSource = Path.Combine(_testDirectory, "медиа 例.png");
         await File.WriteAllBytesAsync(mediaSource, mediaBytes);
         qDocument.Images.AddFile(mediaSource);
+        var previewContent = question.Model.Script!.Steps[0]
+            .Parameters[StepParameterNames.Content].ContentValue!;
+        previewContent[0].WaitForFinish = false;
+        previewContent.Add(new ContentItem
+        {
+            Placement = ContentPlacements.Screen,
+            Type = ContentTypes.Image,
+            Value = "медиа 例.png",
+            IsRef = true,
+        });
 
         await qDocument.Save.ExecuteAsync(null);
 
@@ -349,6 +361,12 @@ internal sealed class DocumentSavingTests
             Assert.That(reloadedQuestion.Right[0], Is.EqualTo("Полный семантический текст"));
             Assert.That(reloadedQuestion.Wrong[0], Is.EqualTo("Потерянные данные"));
             Assert.That(reloaded.Images, Does.Contain("медиа 例.png"));
+            Assert.That(
+                reloadedQuestion.GetContent().Any(item =>
+                    item.Type == ContentTypes.Image
+                    && item.IsRef
+                    && item.Value == "медиа 例.png"),
+                Is.True);
         });
 
         var mediaInfo = reloaded.Images.GetFile("медиа 例.png");

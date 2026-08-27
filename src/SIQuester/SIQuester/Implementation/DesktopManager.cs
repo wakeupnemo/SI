@@ -66,6 +66,8 @@ internal sealed class DesktopManager :
             : QuestionPreviewHostDescriptor.Unavailable(QuestionPreviewAvailability.AssetsUnavailable);
     }
 
+    public IQuestionPreviewSession CreateSession() => new WpfQuestionPreviewSession(GetHostDescriptor());
+
     public async ValueTask InvokeAsync(Action action, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1274,6 +1276,181 @@ internal sealed class DesktopManager :
         private readonly Action _dispose;
         public Disposable(Action dispose) => _dispose = dispose;
         public void Dispose() => _dispose();
+    }
+
+    private sealed class WpfQuestionPreviewSession : IQuestionPreviewSession
+    {
+        private const int MaxMediaCount = 256;
+        private const long MaxMediaLength = 512L * 1024 * 1024;
+        private readonly System.Threading.Lock _sync = new();
+        private readonly Dictionary<(QuestionPreviewMediaKind Kind, string Name), string> _sources = [];
+        private readonly string? _directory;
+        private bool _disposed;
+
+        public WpfQuestionPreviewSession(QuestionPreviewHostDescriptor host)
+        {
+            Host = host;
+
+            if (host.IsAvailable)
+            {
+                _directory = Path.Combine(
+                    Path.GetTempPath(),
+                    AppSettings.ProductName,
+                    AppSettings.MediaFolderName,
+                    "question-preview-" + Guid.NewGuid().ToString("N"));
+            }
+        }
+
+        public QuestionPreviewHostDescriptor Host { get; }
+
+        public bool TryGetMediaSource(QuestionPreviewMediaSource media, out string source)
+        {
+            ArgumentNullException.ThrowIfNull(media);
+
+            lock (_sync)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                var key = (media.Kind, media.Name);
+                if (_sources.TryGetValue(key, out source!))
+                {
+                    return true;
+                }
+
+                if (_sources.Count >= MaxMediaCount)
+                {
+                    source = string.Empty;
+                    return false;
+                }
+
+                if (_directory is null || !TryGetSafeExtension(media.Kind, media.Name, out var extension))
+                {
+                    source = string.Empty;
+                    return false;
+                }
+
+                string? path = null;
+
+                try
+                {
+                    Directory.CreateDirectory(_directory);
+                    path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + extension);
+                    using var content = media.OpenRead();
+                    if (content is null || content.Length > MaxMediaLength)
+                    {
+                        source = string.Empty;
+                        return false;
+                    }
+
+                    using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+                    {
+                        CopyExactly(content.Stream, output, content.Length);
+                        output.Flush(true);
+                    }
+
+                    source = path;
+                    _sources.Add(key, source);
+                    return true;
+                }
+                catch (Exception exception) when (exception is IOException
+                    or UnauthorizedAccessException
+                    or InvalidDataException
+                    or ObjectDisposedException)
+                {
+                    Trace.TraceError(exception.ToString());
+                    if (path is not null)
+                    {
+                        TryDeleteFile(path);
+                    }
+
+                    source = string.Empty;
+                    return false;
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_sync)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                foreach (var path in _sources.Values)
+                {
+                    TryDeleteFile(path);
+                }
+
+                _sources.Clear();
+                if (_directory is not null)
+                {
+                    try
+                    {
+                        if (Directory.Exists(_directory)
+                            && !Directory.EnumerateFileSystemEntries(_directory).Any())
+                        {
+                            Directory.Delete(_directory);
+                        }
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        Trace.TraceError(exception.ToString());
+                    }
+                }
+            }
+        }
+
+        private static bool TryGetSafeExtension(
+            QuestionPreviewMediaKind kind,
+            string name,
+            out string extension)
+        {
+            extension = Path.GetExtension(name).ToLowerInvariant();
+            return kind switch
+            {
+                QuestionPreviewMediaKind.Image => extension is ".jpg" or ".jpe" or ".jpeg"
+                    or ".png" or ".gif" or ".webp" or ".avif",
+                QuestionPreviewMediaKind.Audio => extension is ".mp3" or ".opus" or ".ogg"
+                    or ".wav" or ".m4a" or ".aac" or ".flac",
+                QuestionPreviewMediaKind.Video => extension is ".mp4" or ".webm" or ".ogv" or ".mov",
+                _ => false,
+            };
+        }
+
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Trace.TraceError(exception.ToString());
+            }
+        }
+
+        private static void CopyExactly(Stream source, Stream destination, long length)
+        {
+            var buffer = new byte[64 * 1024];
+            var remaining = length;
+            while (remaining > 0)
+            {
+                var read = source.Read(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+                if (read == 0)
+                {
+                    throw new InvalidDataException(
+                        "Question-preview media ended before its declared length.");
+                }
+
+                destination.Write(buffer, 0, read);
+                remaining -= read;
+            }
+        }
     }
 
     [ComImport]

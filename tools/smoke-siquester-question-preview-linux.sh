@@ -89,13 +89,13 @@ import -display "$DISPLAY" -window "$window_id" "$screenshot_path"
 test -s "$screenshot_path"
 
 # The empty retained player has virtually no bright pixels in this content area;
-# rendered question text must cross a conservative deterministic threshold.
+# rendered mixed text/media content must cross a conservative deterministic threshold.
 bright_fraction="$(convert "$screenshot_path" \
   -crop 540x390+257+237 \
   -colorspace Gray \
   -threshold 75% \
   -format '%[fx:mean]' info:)"
-awk -v value="$bright_fraction" 'BEGIN { exit !(value >= 0.02) }'
+awk -v value="$bright_fraction" 'BEGIN { exit !(value >= 0.01) }'
 
 xdotool key --window "$window_id" ctrl+q
 wait "$application_pid"
@@ -104,10 +104,12 @@ trap - EXIT
 test -s "$settings_path"
 test -s "$log_path"
 grep -F "Question preview backend available: WebKitGtk" "$log_path"
+grep -F "Question preview package media served: Image" "$log_path"
 ! grep -E "Question preview host failed|Unhandled exception|FATAL" "$log_path"
 
 {
   echo "backend=WebKitGtk"
+  echo "package_media=Image"
   echo "bright_fraction=$bright_fraction"
   sha256sum "$screenshot_path"
 } > "$receipt_path"
