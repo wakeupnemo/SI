@@ -22,13 +22,13 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Data | Save failure preserves destination | VERIFIED | cancellation-before-write and injected post-commit validation-failure byte-rollback tests |
 | Data | Versioned settings persistence | VERIFIED | Nine `SettingsStoreTests`: legacy/current/corrupt/invalid/future/cancel/replacement; graceful Linux exit produced validated XDG JSON |
 | Security | ZIP traversal / malformed packages | NOT_STARTED | SIPackages container audit pending |
-| Editor | Package fields and metadata | IN_PROGRESS | Name/comments inspector works; complete metadata pending |
-| Editor | Round fields and metadata | IN_PROGRESS | Name/comments inspector and add/delete commands implemented |
-| Editor | Theme fields and metadata | IN_PROGRESS | Name/comments inspector and add/delete commands implemented |
+| Editor | Package fields and metadata | IN_PROGRESS | Name plus authors/sources/tags/comments/showman-comments inspector fields are verified; publisher/contact/date/language/restriction/difficulty/quality-control UI remains |
+| Editor | Round fields and metadata | IN_PROGRESS | Name plus authors/sources/comments/showman-comments are verified; round type and remaining typed fields are pending |
+| Editor | Theme fields and metadata | IN_PROGRESS | Name plus authors/sources/comments/showman-comments are verified; remaining typed fields are pending |
 | Editor | Question text, price, answers | VERIFIED | Typed inspector plus semantic edit/save/reload test; runtime package inspector visually verified |
 | Editor | Scenarios/content items | NOT_STARTED | Full typed editor pending |
 | Editor | Parameters / answer types | NOT_STARTED | Full typed editor pending |
-| Editor | Authors/sources/tags/comments/showman comments | IN_PROGRESS | Comments exposed; remaining typed metadata editors pending |
+| Editor | Authors/sources/tags/comments/showman comments | VERIFIED | `TypedMetadataEdits_SaveAndReloadAtEveryPackageLevel`, duplicate/index command and last-package-author tests, plus `Inspector_MetadataEditorsMutateExistingViewModelsThroughCompiledBindings` cover add/edit/move/delete, Unicode SIQ reload, all package levels, compiled bindings, and Russian resources |
 | Editor | Add/delete/rename/duplicate/move | IN_PROGRESS | Basic add/delete wired; duplicate/move and focused tests pending |
 | Editor | Undo/redo | IN_PROGRESS | script-question text value and structural-add undo/redo verified; broader editor coverage pending |
 | Editor | Search/navigation | NOT_STARTED | Existing cancellable `async void` search requires extraction |
