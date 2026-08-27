@@ -1,10 +1,10 @@
 ﻿using SIPackages;
 using SIPackages.Core;
+using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Helpers;
 using SIQuester.ViewModel.Properties;
 using SIQuester.ViewModel.Workspaces.Sidebar;
 using System.Text;
-using System.Windows.Input;
 using Utils.Commands;
 
 namespace SIQuester.ViewModel;
@@ -12,6 +12,13 @@ namespace SIQuester.ViewModel;
 public sealed class StatisticsViewModel : WorkspaceViewModel
 {
     private readonly QDocument _document;
+    private readonly IUiDispatcher _uiDispatcher;
+    private readonly object _refreshSync = new();
+    private CancellationTokenSource? _refreshCancellation;
+    private Task _refreshTask = Task.CompletedTask;
+    private CancellationTokenSource? _removeUnusedCancellation;
+    private Task _removeUnusedTask = Task.CompletedTask;
+    private bool _isDisposed;
 
     public override string Header => Resources.Statistic;
 
@@ -26,7 +33,7 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
             {
                 _checkEmptyAuthors = value;
                 OnPropertyChanged();
-                Create_Executed();
+                QueueRefresh();
             }
         }
     }
@@ -42,7 +49,7 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
             {
                 _checkEmptySources = value;
                 OnPropertyChanged();
-                Create_Executed();
+                QueueRefresh();
             }
         }
     }
@@ -58,7 +65,7 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
             {
                 _checkBrackets = value;
                 OnPropertyChanged();
-                Create_Executed();
+                QueueRefresh();
             }
         }
     }
@@ -88,35 +95,95 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
             {
                 _warnings = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(WarningCount));
+                OnPropertyChanged(nameof(HasWarnings));
             }
         }
     }
 
-    public ICommand Create { get; private set; }
+    public int RoundCount { get; private set; }
 
-    public ICommand RemoveUnusedFiles { get; private set; }
+    public int ThemeCount { get; private set; }
 
-    public StatisticsViewModel(QDocument document)
+    public int QuestionCount { get; private set; }
+
+    public int MediaFileCount { get; private set; }
+
+    public int WarningCount => Warnings.Length;
+
+    public bool HasWarnings => WarningCount > 0;
+
+    private bool _isRefreshing;
+
+    public bool IsRefreshing
     {
-        _document = document;
-
-        Create = new SimpleCommand(Create_Executed);
-        RemoveUnusedFiles = new SimpleCommand(RemoveUnusedFiles_Executed);
-        Create_Executed();
+        get => _isRefreshing;
+        private set
+        {
+            if (_isRefreshing != value)
+            {
+                _isRefreshing = value;
+                OnPropertyChanged();
+            }
+        }
     }
 
-    private async void Create_Executed(object? arg = null)
+    public AsyncCommand Create { get; }
+
+    public AsyncCommand RemoveUnusedFiles { get; }
+
+    public StatisticsViewModel(QDocument document, IUiDispatcher uiDispatcher)
     {
+        _document = document;
+        _uiDispatcher = uiDispatcher;
+
+        Create = new AsyncCommand(_ => QueueRefreshAsync());
+        RemoveUnusedFiles = new AsyncCommand(RemoveUnusedFiles_ExecutedAsync);
+        QueueRefresh();
+    }
+
+    private void QueueRefresh() => _ = QueueRefreshAsync();
+
+    private Task QueueRefreshAsync()
+    {
+        CancellationTokenSource cancellation;
+        Task refreshTask;
+
+        lock (_refreshSync)
+        {
+            if (_isDisposed)
+            {
+                return Task.CompletedTask;
+            }
+
+            if (_removeUnusedCancellation != null)
+            {
+                return Task.CompletedTask;
+            }
+
+            _refreshCancellation?.Cancel();
+            cancellation = new CancellationTokenSource();
+            _refreshCancellation = cancellation;
+            refreshTask = RefreshAsync(cancellation);
+            _refreshTask = refreshTask;
+        }
+
+        return refreshTask;
+    }
+
+    private async Task RefreshAsync(CancellationTokenSource cancellation)
+    {
+        var cancellationToken = cancellation.Token;
+        SetRefreshState(cancellation, true);
+
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var warnings = new List<WarningViewModel>();
-
             var stats = new StringBuilder();
-            stats.Append(Resources.NumOfRounds);
-            stats.Append(": ");
-            stats.AppendLine(_document.Document.Package.Rounds.Count.ToString());
-
-            int themeCount = 0, questionCount = 0;
+            var roundCount = _document.Document.Package.Rounds.Count;
+            var themeCount = 0;
+            var questionCount = 0;
 
             _document.Document.Package.Rounds.ForEach(round =>
             {
@@ -124,23 +191,53 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
                 round.Themes.ForEach(theme => questionCount += theme.Questions.Count);
             });
 
-            stats.AppendLine(string.Format("{0}: {1}", Resources.NumOfThemes, themeCount));
-            stats.AppendLine(string.Format("{0}: {1}", Resources.NumOfQuests, questionCount));
+            stats.AppendLine($"{Resources.NumOfRounds}: {roundCount}");
+            stats.AppendLine($"{Resources.NumOfThemes}: {themeCount}");
+            stats.AppendLine($"{Resources.NumOfQuests}: {questionCount}");
             stats.AppendLine();
-
             CheckText(stats, warnings);
 
-            var checkResult = await _document.CheckLinksAsync();
+            var checkResult = await _document.CheckLinksAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
             warnings.AddRange(checkResult.Item1);
             stats.Append(checkResult.Item2);
 
-            Result = stats.ToString();
-            Warnings = warnings.ToArray();
+            await _uiDispatcher.InvokeAsync(
+                () =>
+                {
+                    if (!IsCurrentRefresh(cancellation))
+                    {
+                        return;
+                    }
+
+                    RoundCount = roundCount;
+                    ThemeCount = themeCount;
+                    QuestionCount = questionCount;
+                    MediaFileCount = _document.Images.Files.Count
+                        + _document.Audio.Files.Count
+                        + _document.Video.Files.Count
+                        + _document.Html.Files.Count;
+                    OnPropertyChanged(nameof(RoundCount));
+                    OnPropertyChanged(nameof(ThemeCount));
+                    OnPropertyChanged(nameof(QuestionCount));
+                    OnPropertyChanged(nameof(MediaFileCount));
+                    Result = stats.ToString();
+                    Warnings = warnings.ToArray();
+                },
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception exc)
         {
             OnError(exc);
+        }
+        finally
+        {
+            SetRefreshState(cancellation, false);
+            cancellation.Dispose();
         }
     }
 
@@ -158,7 +255,8 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
 
                 var unrecognizedText = theme.Info.Comments.Text.Contains(Resources.Undefined);
                 var noAuthors = theme.Info.Authors.Count == 0 && _checkEmptyAuthors;
-                var invalidBrackets = !Utils.ValidateTextBrackets(theme.Model.Name) || !Utils.ValidateTextBrackets(theme.Info.Comments.Text);
+                var invalidBrackets = _checkBrackets
+                    && (!Utils.ValidateTextBrackets(theme.Model.Name) || !Utils.ValidateTextBrackets(theme.Info.Comments.Text));
 
                 if (unrecognizedText || noAuthors || invalidBrackets)
                 {
@@ -171,11 +269,19 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
                     if (unrecognizedText)
                     {
                         themeData.AppendLine(Resources.Unrecognized);
+                        warnings.Add(CreateWarning(Resources.Unrecognized, theme));
                     }
 
                     if (noAuthors)
                     {
                         themeData.AppendLine(Resources.NoAuthors);
+                        warnings.Add(CreateWarning(Resources.NoAuthors, theme));
+                    }
+
+                    if (invalidBrackets)
+                    {
+                        themeData.AppendLine(Resources.WrongBrackets);
+                        warnings.Add(CreateWarning(Resources.WrongBrackets, theme));
                     }
                 }
 
@@ -257,28 +363,34 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
                     if (emptyQuestion)
                     {
                         themeData.AppendLine(string.Format("{0}: {1}", question.Model.Price, Resources.NoQuestion));
+                        warnings.Add(CreateQuestionWarning(question, Resources.NoQuestion));
                     }
 
                     if (noAnswer)
                     {
                         themeData.AppendLine(string.Format("{0}: {1}", question.Model.Price, Resources.NoAnswer));
+                        warnings.Add(CreateQuestionWarning(question, Resources.NoAnswer));
                     }
 
                     if (emptySources)
                     {
                         themeData.AppendLine(string.Format("{0}: {1}", question.Model.Price, Resources.NoSource));
+                        warnings.Add(CreateQuestionWarning(question, Resources.NoSource));
                     }
 
                     if (hasBracketsIssues)
                     {
                         themeData.Append(bracketsData);
+                        warnings.Add(CreateQuestionWarning(question, Resources.WrongBrackets));
                     }
 
                     foreach (var content in question.GetContent())
                     {
                         if (content.Type == ContentTypes.Audio && content.Model.Placement != ContentPlacements.Background)
                         {
-                            themeData.AppendLine($"{question.Model.Price}: {string.Format(Resources.AudioIsNotOnBackground, content.Model.Value)}");
+                            var title = string.Format(Resources.AudioIsNotOnBackground, content.Model.Value);
+                            themeData.AppendLine($"{question.Model.Price}: {title}");
+                            warnings.Add(CreateQuestionWarning(question, title));
                         }
                     }
                 }
@@ -293,15 +405,134 @@ public sealed class StatisticsViewModel : WorkspaceViewModel
         }
     }
 
-    private async void RemoveUnusedFiles_Executed(object? arg)
+    private WarningViewModel CreateWarning(string title, IItemViewModel source) =>
+        new(title, () => _document.Navigate.Execute(source));
+
+    private WarningViewModel CreateQuestionWarning(QuestionViewModel question, string title) =>
+        CreateWarning($"{question.Model.Price}: {title}", question);
+
+    private async Task RemoveUnusedFiles_ExecutedAsync(object? arg)
     {
+        CancellationTokenSource cancellation;
+        Task refreshTask;
+
+        lock (_refreshSync)
+        {
+            if (_isDisposed || _removeUnusedCancellation != null)
+            {
+                return;
+            }
+
+            cancellation = new CancellationTokenSource();
+            _removeUnusedCancellation = cancellation;
+            _refreshCancellation?.Cancel();
+            refreshTask = _refreshTask;
+            Create.CanBeExecuted = false;
+            RemoveUnusedFiles.CanBeExecuted = false;
+            _removeUnusedTask = RemoveUnusedFilesCoreAsync(cancellation, refreshTask);
+        }
+
+        await _removeUnusedTask;
+    }
+
+    private async Task RemoveUnusedFilesCoreAsync(CancellationTokenSource cancellation, Task refreshTask)
+    {
+        var refreshAfterRemoval = false;
+
         try
         {
-            await _document.RemoveUnusedFilesAsync();
+            await refreshTask;
+            cancellation.Token.ThrowIfCancellationRequested();
+            await _document.RemoveUnusedFilesAsync(cancellation.Token);
+            refreshAfterRemoval = true;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
         }
         catch (Exception exc)
         {
             OnError(exc);
+        }
+        finally
+        {
+            lock (_refreshSync)
+            {
+                if (ReferenceEquals(_removeUnusedCancellation, cancellation))
+                {
+                    _removeUnusedCancellation = null;
+                    Create.CanBeExecuted = !_isDisposed;
+                    RemoveUnusedFiles.CanBeExecuted = !_isDisposed;
+                }
+            }
+
+            cancellation.Dispose();
+        }
+
+        if (refreshAfterRemoval)
+        {
+            await QueueRefreshAsync();
+        }
+    }
+
+    private bool IsCurrentRefresh(CancellationTokenSource cancellation)
+    {
+        lock (_refreshSync)
+        {
+            return !_isDisposed && ReferenceEquals(_refreshCancellation, cancellation);
+        }
+    }
+
+    private void SetRefreshState(CancellationTokenSource cancellation, bool isRefreshing)
+    {
+        lock (_refreshSync)
+        {
+            if (_isDisposed || !ReferenceEquals(_refreshCancellation, cancellation))
+            {
+                return;
+            }
+
+            IsRefreshing = isRefreshing;
+            Create.CanBeExecuted = !isRefreshing;
+
+            if (!isRefreshing)
+            {
+                _refreshCancellation = null;
+            }
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        Task refreshTask;
+        Task removeUnusedTask;
+
+        lock (_refreshSync)
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _isDisposed = true;
+            _refreshCancellation?.Cancel();
+            _removeUnusedCancellation?.Cancel();
+            refreshTask = _refreshTask;
+            removeUnusedTask = _removeUnusedTask;
+        }
+
+        _ = ObserveRefreshCompletionAsync(refreshTask);
+        _ = ObserveRefreshCompletionAsync(removeUnusedTask);
+        base.Dispose(disposing);
+    }
+
+    private static async Task ObserveRefreshCompletionAsync(Task refreshTask)
+    {
+        try
+        {
+            await refreshTask;
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 }

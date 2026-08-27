@@ -174,4 +174,16 @@
   <data name="MoveQuestionForward" xml:space="preserve"><value>Move question forward</value></data>
   <data name="DuplicateQuestion" xml:space="preserve"><value>Duplicate question</value></data>
   <data name="FlatKeyboardHint" xml:space="preserve"><value>On a question, use Alt+Arrow to reorder or Ctrl/Command+D to duplicate.</value></data>
+  <data name="Validation" xml:space="preserve"><value>Validation</value></data>
+  <data name="ValidationOptions" xml:space="preserve"><value>Validation options</value></data>
+  <data name="CheckMissingAuthors" xml:space="preserve"><value>Report missing authors</value></data>
+  <data name="CheckMissingSources" xml:space="preserve"><value>Report missing sources</value></data>
+  <data name="CheckBrackets" xml:space="preserve"><value>Check matching brackets</value></data>
+  <data name="RefreshValidation" xml:space="preserve"><value>Refresh</value></data>
+  <data name="RemoveUnusedFiles" xml:space="preserve"><value>Remove unused files</value></data>
+  <data name="ValidationIssues" xml:space="preserve"><value>Issues</value></data>
+  <data name="NoValidationIssues" xml:space="preserve"><value>No issues found with the selected checks.</value></data>
+  <data name="Warning" xml:space="preserve"><value>Warning</value></data>
+  <data name="GoToIssue" xml:space="preserve"><value>Go to</value></data>
+  <data name="ValidationDetails" xml:space="preserve"><value>Detailed report</value></data>
 </root>

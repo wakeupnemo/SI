@@ -24,7 +24,8 @@ internal static class TestHelper
     /// </summary>
     public static IServiceProvider CreateServiceProvider(
         IFilePickerService? filePickerService = null,
-        IUiDispatcher? uiDispatcher = null)
+        IUiDispatcher? uiDispatcher = null,
+        IDialogService? dialogService = null)
     {
         // Ensure PlatformManager.Instance is initialized before creating documents.
         var platformManager = EnsurePlatformManager();
@@ -37,7 +38,7 @@ internal static class TestHelper
         services.AddSingleton<IClipboardService, ClipboardServiceMock>();
         services.AddSingleton<IPackageTemplatesRepository, PackageTemplatesRepositoryMock>();
         services.AddSingleton(filePickerService ?? platformManager);
-        services.AddSingleton<IDialogService>(platformManager);
+        services.AddSingleton(dialogService ?? platformManager);
         services.AddSingleton<IApplicationLifetimeService>(platformManager);
         services.AddSingleton<IMediaMaterializationService>(platformManager);
         services.AddSingleton<IPlatformCapabilities>(platformManager);

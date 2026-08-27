@@ -506,6 +506,82 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task DocumentEditor_ValidationSidebarShowsTypedCountsAndNavigatesIssue()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Validation", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        theme.Questions.Add(new Question { Price = 300 });
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var viewModel = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Validation");
+        var previousView = AppSettings.Default.View;
+        AppSettings.Default.View = ViewMode.TreeFull;
+        await viewModel.Statistics.Create.ExecuteAsync(null);
+        var view = new DocumentEditorView { DataContext = viewModel };
+        var window = new Window { Width = 1200, Height = 760, Content = view };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var toolTabs = view.GetVisualDescendants().OfType<TabControl>()
+                .Single(control => control.IsEffectivelyVisible && control.ItemCount == 2);
+            toolTabs.SelectedIndex = 1;
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var statisticsView = view.GetVisualDescendants().OfType<StatisticsView>()
+                .Single(candidate => candidate.IsEffectivelyVisible);
+            var statistics = viewModel.Statistics;
+            var goToButton = statisticsView.GetVisualDescendants().OfType<Button>()
+                .First(button => statistics.Warnings.Any(warning => ReferenceEquals(button.Command, warning.NavigateToSource)));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(statisticsView.FindControl<TextBlock>("RoundCountText")!.Text, Is.EqualTo("1"));
+                Assert.That(statisticsView.FindControl<TextBlock>("ThemeCountText")!.Text, Is.EqualTo("1"));
+                Assert.That(statisticsView.FindControl<TextBlock>("QuestionCountText")!.Text, Is.EqualTo("1"));
+                Assert.That(statisticsView.FindControl<TextBlock>("MediaFileCountText")!.Text, Is.EqualTo("0"));
+                Assert.That(statisticsView.FindControl<Button>("RefreshButton")!.Content, Is.EqualTo(UiStrings.RefreshValidation));
+                Assert.That(statisticsView.FindControl<TextBlock>("NoIssuesText")!.IsVisible, Is.False);
+                Assert.That(goToButton.Content, Is.EqualTo(UiStrings.GoToIssue));
+            });
+
+            goToButton.Command!.Execute(goToButton.CommandParameter);
+            for (var i = 0; i < 100 && viewModel.ActiveNode is not QuestionViewModel; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            Assert.That(viewModel.ActiveNode, Is.SameAs(viewModel.Package.Rounds[0].Themes[0].Questions[0]));
+
+            viewModel.SideIndex = 3;
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var mediaTabs = view.GetVisualDescendants().OfType<MediaLibraryView>()
+                .Single(candidate => candidate.IsEffectivelyVisible)
+                .GetVisualDescendants().OfType<TabControl>().Single();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(toolTabs.SelectedIndex, Is.Zero,
+                    "A media warning must reveal the Media tool instead of leaving Validation selected.");
+                Assert.That(mediaTabs.SelectedIndex, Is.EqualTo(1),
+                    "Legacy audio sidebar index 3 must reveal the Avalonia Audio tab.");
+            });
+        }
+        finally
+        {
+            window.Close();
+            viewModel.Dispose();
+            AppSettings.Default.View = previousView;
+        }
+    }
+
+    [AvaloniaTest]
     public void Inspector_ScenarioEditorsMutateCanonicalScriptThroughCompiledBindings()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -1592,6 +1668,8 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.NextSearchResult, Is.EqualTo("Следующее совпадение"));
             Assert.That(UiStrings.ClearSearch, Is.EqualTo("Очистить поиск"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
+            Assert.That(UiStrings.Validation, Is.EqualTo("Проверка"));
+            Assert.That(UiStrings.GoToIssue, Is.EqualTo("Перейти"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

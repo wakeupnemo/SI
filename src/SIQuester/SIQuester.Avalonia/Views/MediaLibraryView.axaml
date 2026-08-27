@@ -6,7 +6,10 @@
     xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:QDocument">
-  <TabControl>
+  <UserControl.Resources>
+    <views:DocumentSidebarIndexConverter x:Key="DocumentSidebarIndexConverter" />
+  </UserControl.Resources>
+  <TabControl SelectedIndex="{Binding SideIndex, Mode=OneWay, Converter={StaticResource DocumentSidebarIndexConverter}, ConverterParameter=Media}">
     <TabItem Header="{x:Static loc:UiStrings.Images}">
       <views:MediaStorageEditorView DataContext="{Binding Images}" />
     </TabItem>

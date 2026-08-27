@@ -185,4 +185,16 @@ public static class UiStrings
     public static string MoveQuestionForward => Get(nameof(MoveQuestionForward));
     public static string DuplicateQuestion => Get(nameof(DuplicateQuestion));
     public static string FlatKeyboardHint => Get(nameof(FlatKeyboardHint));
+    public static string Validation => Get(nameof(Validation));
+    public static string ValidationOptions => Get(nameof(ValidationOptions));
+    public static string CheckMissingAuthors => Get(nameof(CheckMissingAuthors));
+    public static string CheckMissingSources => Get(nameof(CheckMissingSources));
+    public static string CheckBrackets => Get(nameof(CheckBrackets));
+    public static string RefreshValidation => Get(nameof(RefreshValidation));
+    public static string RemoveUnusedFiles => Get(nameof(RemoveUnusedFiles));
+    public static string ValidationIssues => Get(nameof(ValidationIssues));
+    public static string NoValidationIssues => Get(nameof(NoValidationIssues));
+    public static string Warning => Get(nameof(Warning));
+    public static string GoToIssue => Get(nameof(GoToIssue));
+    public static string ValidationDetails => Get(nameof(ValidationDetails));
 }

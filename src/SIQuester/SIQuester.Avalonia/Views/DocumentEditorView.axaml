@@ -8,34 +8,7 @@
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:QDocument">
   <UserControl.Resources>
-    <DataTemplate x:Key="MediaSummary" x:DataType="vm:QDocument">
-      <StackPanel Spacing="{StaticResource Space12}">
-        <Border Classes="card">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{x:Static loc:UiStrings.Images}" />
-            <TextBlock Grid.Column="1" Text="{Binding Images.Files.Count}" />
-          </Grid>
-        </Border>
-        <Border Classes="card">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{x:Static loc:UiStrings.Audio}" />
-            <TextBlock Grid.Column="1" Text="{Binding Audio.Files.Count}" />
-          </Grid>
-        </Border>
-        <Border Classes="card">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{x:Static loc:UiStrings.Video}" />
-            <TextBlock Grid.Column="1" Text="{Binding Video.Files.Count}" />
-          </Grid>
-        </Border>
-        <Border Classes="card">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{x:Static loc:UiStrings.Html}" />
-            <TextBlock Grid.Column="1" Text="{Binding Html.Files.Count}" />
-          </Grid>
-        </Border>
-      </StackPanel>
-    </DataTemplate>
+    <views:DocumentSidebarIndexConverter x:Key="DocumentSidebarIndexConverter" />
   </UserControl.Resources>
   <Grid RowDefinitions="Auto,*,Auto">
     <Grid.ColumnDefinitions>
@@ -163,19 +136,29 @@
 
     <Border Grid.Row="1" Grid.Column="4" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
       <Grid>
-        <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource Space12}" IsVisible="{Binding IsTreeView}">
-          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Media}" />
-          <views:MediaLibraryView Grid.Row="1" />
-        </Grid>
-        <Grid RowDefinitions="*,Auto" IsVisible="{Binding IsFlatView}">
-          <Grid RowDefinitions="Auto,*">
-            <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Inspector}" />
-            <views:InspectorView x:Name="FlatInspector" Grid.Row="1" SelectedItem="{Binding ActiveNode}" />
-          </Grid>
-          <Expander Grid.Row="1" Header="{x:Static loc:UiStrings.Media}" Margin="{StaticResource FieldMargin}">
-            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MediaSummary}" />
-          </Expander>
-        </Grid>
+        <TabControl
+            IsVisible="{Binding IsTreeView}"
+            SelectedIndex="{Binding SideIndex, Mode=OneWay, Converter={StaticResource DocumentSidebarIndexConverter}, ConverterParameter=TreeTools}">
+          <TabItem Header="{x:Static loc:UiStrings.Media}">
+            <views:MediaLibraryView />
+          </TabItem>
+          <TabItem Header="{x:Static loc:UiStrings.Validation}">
+            <views:StatisticsView DataContext="{Binding Statistics}" />
+          </TabItem>
+        </TabControl>
+        <TabControl
+            IsVisible="{Binding IsFlatView}"
+            SelectedIndex="{Binding SideIndex, Mode=OneWay, Converter={StaticResource DocumentSidebarIndexConverter}, ConverterParameter=FlatTools}">
+          <TabItem Header="{x:Static loc:UiStrings.Inspector}">
+            <views:InspectorView x:Name="FlatInspector" SelectedItem="{Binding ActiveNode}" />
+          </TabItem>
+          <TabItem Header="{x:Static loc:UiStrings.Media}">
+            <views:MediaLibraryView />
+          </TabItem>
+          <TabItem Header="{x:Static loc:UiStrings.Validation}">
+            <views:StatisticsView DataContext="{Binding Statistics}" />
+          </TabItem>
+        </TabControl>
       </Grid>
     </Border>
 

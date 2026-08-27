@@ -1013,7 +1013,7 @@ public sealed class QDocument : WorkspaceViewModel
     {
         get
         {
-            _statistics ??= new StatisticsViewModel(this);
+            _statistics ??= new StatisticsViewModel(this, _uiDispatcher);
             return _statistics;
         }
     }
@@ -2062,7 +2062,8 @@ public sealed class QDocument : WorkspaceViewModel
     /// <summary>
     /// Checks missing and unused files in document.
     /// </summary>
-    internal async Task<(IEnumerable<WarningViewModel>, string)> CheckLinksAsync()
+    internal async Task<(IEnumerable<WarningViewModel>, string)> CheckLinksAsync(
+        CancellationToken cancellationToken = default)
     {
         var warnings = new List<WarningViewModel>();
         var errors = new List<string>();
@@ -2075,7 +2076,7 @@ public sealed class QDocument : WorkspaceViewModel
 
         CheckCommonFiles(images, audio, video, html, errors);
 
-        var (usedImages, usedAudio, usedVideo, usedHtml) = await CollectUsedFilesAsync(images, warnings);
+        var (usedImages, usedAudio, usedVideo, usedHtml) = await CollectUsedFilesAsync(images, warnings, cancellationToken);
 
         foreach (var item in images.Except(usedImages))
         {
@@ -2088,21 +2089,21 @@ public sealed class QDocument : WorkspaceViewModel
         {
             warnings.Add(
                 new WarningViewModel(string.Format(Resources.UnusedFile, item),
-                () => NavigateToStorageItem(Audio, Images.Files.FirstOrDefault(f => f.Model.Name == item))));
+                () => NavigateToStorageItem(Audio, Audio.Files.FirstOrDefault(f => f.Model.Name == item))));
         }
 
         foreach (var item in video.Except(usedVideo))
         {
             warnings.Add(
                 new WarningViewModel(string.Format(Resources.UnusedFile, item),
-                () => NavigateToStorageItem(Video, Images.Files.FirstOrDefault(f => f.Model.Name == item))));
+                () => NavigateToStorageItem(Video, Video.Files.FirstOrDefault(f => f.Model.Name == item))));
         }
 
         foreach (var item in html.Except(usedHtml))
         {
             warnings.Add(
                 new WarningViewModel(string.Format(Resources.UnusedFile, item),
-                () => NavigateToStorageItem(Html, Images.Files.FirstOrDefault(f => f.Model.Name == item))));
+                () => NavigateToStorageItem(Html, Html.Files.FirstOrDefault(f => f.Model.Name == item))));
         }
 
         return (warnings, string.Join(Environment.NewLine, errors));
@@ -2114,7 +2115,8 @@ public sealed class QDocument : WorkspaceViewModel
         ICollection<string> usedHtml)>
         CollectUsedFilesAsync(
         ICollection<string> images,
-        List<WarningViewModel> warnings)
+        List<WarningViewModel> warnings,
+        CancellationToken cancellationToken)
     {
         var usedImages = new HashSet<string>();
         var usedAudio = new HashSet<string>();
@@ -2139,6 +2141,8 @@ public sealed class QDocument : WorkspaceViewModel
 
         foreach (var round in Package.Rounds)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             foreach (var theme in round.Themes)
             {
                 foreach (var question in theme.Questions)
@@ -2194,12 +2198,13 @@ public sealed class QDocument : WorkspaceViewModel
                         {
                             try
                             {
-                                var response = await HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, contentItem.Value));
+                                using var request = new HttpRequestMessage(HttpMethod.Head, contentItem.Value);
+                                using var response = await HttpClient.SendAsync(request, cancellationToken);
 
                                 if (!response.IsSuccessStatusCode)
                                 {
                                     warnings.Add(new WarningViewModel(
-                                        $"{Resources.MissingLink} \"{contentItem.Value}\" ({await response.Content.ReadAsStringAsync()})",
+                                        $"{Resources.MissingLink} \"{contentItem.Value}\" ({await response.Content.ReadAsStringAsync(cancellationToken)})",
                                         navigateToItem));
                                 }
                             }
@@ -4293,6 +4298,8 @@ public sealed class QDocument : WorkspaceViewModel
             _ = DisposeSearchRunWhenCompleteAsync(searchRun);
         }
 
+        _statistics?.Dispose();
+
         _mediaMaterializationService.ReleaseMaterializedMedia(Document.Images);
         _mediaMaterializationService.ReleaseMaterializedMedia(Document.Audio);
         _mediaMaterializationService.ReleaseMaterializedMedia(Document.Video);
@@ -4508,7 +4515,7 @@ public sealed class QDocument : WorkspaceViewModel
     /// <summary>
     /// Confirms and removes unused files from document.
     /// </summary>
-    internal async Task RemoveUnusedFilesAsync()
+    internal async Task RemoveUnusedFilesAsync(CancellationToken cancellationToken = default)
     {
         var warnings = new List<WarningViewModel>();
         var errors = new List<string>();
@@ -4521,12 +4528,12 @@ public sealed class QDocument : WorkspaceViewModel
 
         CheckCommonFiles(images, audio, video, html, errors);
 
-        var (usedImages, usedAudio, usedVideo, usedHtml) = await CollectUsedFilesAsync(images, warnings);
+        var (usedImages, usedAudio, usedVideo, usedHtml) = await CollectUsedFilesAsync(images, warnings, cancellationToken);
 
-        var unusedImages = images.Except(usedImages);
-        var unusedAudio = audio.Except(usedAudio);
-        var unusedVideo = video.Except(usedVideo);
-        var unusedHtml = html.Except(usedHtml);
+        var unusedImages = images.Except(usedImages).ToArray();
+        var unusedAudio = audio.Except(usedAudio).ToArray();
+        var unusedVideo = video.Except(usedVideo).ToArray();
+        var unusedHtml = html.Except(usedHtml).ToArray();
 
         var unusedFiles = new StringBuilder();
 
@@ -4575,30 +4582,49 @@ public sealed class QDocument : WorkspaceViewModel
             return;
         }
 
-        if (!PlatformManager.Instance.ConfirmExclamationWithWindow($"{Resources.ConfirmFilesRemoval}: {string.Join(", ", unusedFiles)}?"))
+        if (!await _dialogService.ConfirmAsync(
+            $"{Resources.ConfirmFilesRemoval}: {unusedFiles}?",
+            cancellationToken))
         {
             return;
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        using var change = OperationsManager.BeginComplexChange();
+
         foreach (var item in unusedImages)
         {
-            RemoveFileByName(Images, item);
+            if (!HasMediaReference(CollectionNames.ImagesStorageName, item))
+            {
+                RemoveFileByName(Images, item);
+            }
         }
 
         foreach (var item in unusedAudio)
         {
-            RemoveFileByName(Audio, item);
+            if (!HasMediaReference(CollectionNames.AudioStorageName, item))
+            {
+                RemoveFileByName(Audio, item);
+            }
         }
 
         foreach (var item in unusedVideo)
         {
-            RemoveFileByName(Video, item);
+            if (!HasMediaReference(CollectionNames.VideoStorageName, item))
+            {
+                RemoveFileByName(Video, item);
+            }
         }
 
         foreach (var item in unusedHtml)
         {
-            RemoveFileByName(Html, item);
+            if (!HasMediaReference(CollectionNames.HtmlStorageName, item))
+            {
+                RemoveFileByName(Html, item);
+            }
         }
+
+        change.Commit();
     }
 
     internal TimeSpan GetDurationByContentType(string contentType)

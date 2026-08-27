@@ -1,0 +1,99 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.StatisticsView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:sidebar="using:SIQuester.ViewModel.Workspaces.Sidebar"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:StatisticsViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="{StaticResource Space12}">
+      <UniformGrid Columns="2" Rows="2">
+        <Border Classes="card" Margin="0,0,4,4">
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Rounds}" />
+            <TextBlock x:Name="RoundCountText" Classes="section-title" Text="{Binding RoundCount}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Margin="4,0,0,4">
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Themes}" />
+            <TextBlock x:Name="ThemeCountText" Classes="section-title" Text="{Binding ThemeCount}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Margin="0,4,4,0">
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Questions}" />
+            <TextBlock x:Name="QuestionCountText" Classes="section-title" Text="{Binding QuestionCount}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="card" Margin="4,4,0,0">
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.MediaFiles}" />
+            <TextBlock x:Name="MediaFileCountText" Classes="section-title" Text="{Binding MediaFileCount}" />
+          </StackPanel>
+        </Border>
+      </UniformGrid>
+
+      <Border Classes="card">
+        <StackPanel Spacing="{StaticResource Space8}">
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ValidationOptions}" />
+          <CheckBox Content="{x:Static loc:UiStrings.CheckMissingAuthors}" IsChecked="{Binding CheckEmptyAuthors}" />
+          <CheckBox Content="{x:Static loc:UiStrings.CheckMissingSources}" IsChecked="{Binding CheckEmptySources}" />
+          <CheckBox Content="{x:Static loc:UiStrings.CheckBrackets}" IsChecked="{Binding CheckBrackets}" />
+          <WrapPanel>
+            <Button
+                x:Name="RefreshButton"
+                Classes="command"
+                Content="{x:Static loc:UiStrings.RefreshValidation}"
+                AutomationProperties.Name="{x:Static loc:UiStrings.RefreshValidation}"
+                Command="{Binding Create}"
+                Margin="{StaticResource MetadataCommandMargin}" />
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.RemoveUnusedFiles}"
+                AutomationProperties.Name="{x:Static loc:UiStrings.RemoveUnusedFiles}"
+                Command="{Binding RemoveUnusedFiles}" />
+          </WrapPanel>
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsRefreshing}" />
+        </StackPanel>
+      </Border>
+
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.ValidationIssues}" />
+        <TextBlock Grid.Column="1" Text="{Binding WarningCount}" />
+      </Grid>
+      <TextBlock
+          x:Name="NoIssuesText"
+          Text="{x:Static loc:UiStrings.NoValidationIssues}"
+          IsVisible="{Binding !HasWarnings}"
+          TextWrapping="Wrap" />
+      <ListBox
+          x:Name="WarningsList"
+          ItemsSource="{Binding Warnings}"
+          MaxHeight="360"
+          AutomationProperties.Name="{x:Static loc:UiStrings.ValidationIssues}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="sidebar:WarningViewModel">
+            <Border Classes="card" Margin="0,0,0,8">
+              <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Space8}">
+                <TextBlock Text="⚠" AutomationProperties.Name="{x:Static loc:UiStrings.Warning}" />
+                <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button
+                    Grid.Column="2"
+                    Classes="command"
+                    Content="{x:Static loc:UiStrings.GoToIssue}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.GoToIssue}"
+                    Command="{Binding NavigateToSource}" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <Expander Header="{x:Static loc:UiStrings.ValidationDetails}">
+        <TextBox Text="{Binding Result}" IsReadOnly="True" TextWrapping="Wrap" />
+      </Expander>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

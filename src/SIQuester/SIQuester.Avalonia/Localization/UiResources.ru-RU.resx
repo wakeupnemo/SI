@@ -174,4 +174,16 @@
   <data name="MoveQuestionForward" xml:space="preserve"><value>Переместить вопрос вперёд</value></data>
   <data name="DuplicateQuestion" xml:space="preserve"><value>Дублировать вопрос</value></data>
   <data name="FlatKeyboardHint" xml:space="preserve"><value>На вопросе нажмите Alt+стрелку для перемещения или Ctrl/Command+D для дублирования.</value></data>
+  <data name="Validation" xml:space="preserve"><value>Проверка</value></data>
+  <data name="ValidationOptions" xml:space="preserve"><value>Параметры проверки</value></data>
+  <data name="CheckMissingAuthors" xml:space="preserve"><value>Сообщать об отсутствующих авторах</value></data>
+  <data name="CheckMissingSources" xml:space="preserve"><value>Сообщать об отсутствующих источниках</value></data>
+  <data name="CheckBrackets" xml:space="preserve"><value>Проверять парность скобок</value></data>
+  <data name="RefreshValidation" xml:space="preserve"><value>Обновить</value></data>
+  <data name="RemoveUnusedFiles" xml:space="preserve"><value>Удалить неиспользуемые файлы</value></data>
+  <data name="ValidationIssues" xml:space="preserve"><value>Замечания</value></data>
+  <data name="NoValidationIssues" xml:space="preserve"><value>При выбранных проверках замечаний не найдено.</value></data>
+  <data name="Warning" xml:space="preserve"><value>Предупреждение</value></data>
+  <data name="GoToIssue" xml:space="preserve"><value>Перейти</value></data>
+  <data name="ValidationDetails" xml:space="preserve"><value>Подробный отчёт</value></data>
 </root>
