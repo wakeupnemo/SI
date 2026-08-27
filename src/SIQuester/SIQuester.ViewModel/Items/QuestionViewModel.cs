@@ -262,6 +262,12 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         }
     }
 
+    /// <summary>
+    /// Gets whether right and wrong answers are represented by plain text collections.
+    /// </summary>
+    public bool UsesSimpleAnswerCollections =>
+        Parameters.AnswerType == StepParameterValues.SetAnswerTypeType_Text;
+
     private int? _triesPercent;
 
     /// <summary>
@@ -826,6 +832,7 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         OnPropertyChanged(nameof(IsPointAnswer));
         OnPropertyChanged(nameof(PointAnswer));
         OnPropertyChanged(nameof(IsManagedByClient));
+        OnPropertyChanged(nameof(UsesSimpleAnswerCollections));
     }
 
     private void SwitchEmpty_Executed(object? arg)

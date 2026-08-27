@@ -44,8 +44,8 @@
   <data name="Question" xml:space="preserve"><value>Вопрос</value></data>
   <data name="QuestionText" xml:space="preserve"><value>Текст вопроса</value></data>
   <data name="Price" xml:space="preserve"><value>Стоимость</value></data>
-  <data name="RightAnswer" xml:space="preserve"><value>Основной правильный ответ</value></data>
-  <data name="WrongAnswer" xml:space="preserve"><value>Основной неправильный ответ</value></data>
+  <data name="RightAnswers" xml:space="preserve"><value>Правильные ответы</value></data>
+  <data name="WrongAnswers" xml:space="preserve"><value>Неправильные ответы</value></data>
   <data name="Comments" xml:space="preserve"><value>Комментарии</value></data>
   <data name="Metadata" xml:space="preserve"><value>Метаданные</value></data>
   <data name="Authors" xml:space="preserve"><value>Авторы</value></data>

@@ -61,10 +61,10 @@
           <NumericUpDown Value="{Binding Model.Price, Mode=TwoWay}" Minimum="-1" Maximum="1000000" Margin="{StaticResource FieldMargin}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QuestionText}" />
           <TextBox Text="{Binding QuestionText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="140" Margin="{StaticResource FieldMargin}" />
-          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.RightAnswer}" />
-          <TextBox Text="{Binding PrimaryRightAnswer, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
-          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.WrongAnswer}" />
-          <TextBox Text="{Binding PrimaryWrongAnswer, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <StackPanel IsVisible="{Binding UsesSimpleAnswerCollections}">
+            <views:StringListEditorView Header="{x:Static loc:UiStrings.RightAnswers}" Editor="{Binding Right}" />
+            <views:StringListEditorView Header="{x:Static loc:UiStrings.WrongAnswers}" Editor="{Binding Wrong}" />
+          </StackPanel>
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" HorizontalAlignment="Left" />
         </StackPanel>

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NUnit.Framework;
 using SIPackages;
+using SIPackages.Core;
 using SIQuester.Avalonia.Localization;
 using SIQuester.Avalonia.Services;
 using SIQuester.Avalonia.Views;
@@ -90,9 +91,37 @@ internal sealed class ViewSmokeTests
             inspector.SelectedItem = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
             window.UpdateLayout();
 
-            Assert.That(
-                inspector.GetVisualDescendants().OfType<StringListEditorView>().Select(editor => editor.Header),
-                Is.EquivalentTo(new[] { UiStrings.Authors, UiStrings.Sources }));
+            var questionEditors = inspector.GetVisualDescendants().OfType<StringListEditorView>().ToArray();
+            var rightAnswersEditor = questionEditors.Single(editor => editor.Header == UiStrings.RightAnswers);
+            var wrongAnswersEditor = questionEditors.Single(editor => editor.Header == UiStrings.WrongAnswers);
+            rightAnswersEditor.Editor!.AddItem.Execute("Right answer");
+            wrongAnswersEditor.Editor!.AddItem.Execute("Wrong answer");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionEditors.Select(editor => editor.Header), Is.EquivalentTo(new[]
+                {
+                    UiStrings.RightAnswers,
+                    UiStrings.WrongAnswers,
+                    UiStrings.Authors,
+                    UiStrings.Sources,
+                }));
+                Assert.That(documentViewModel.Package.Rounds[0].Themes[0].Questions[0].Right,
+                    Is.EqualTo(new[] { "Right answer" }));
+                Assert.That(documentViewModel.Package.Rounds[0].Themes[0].Questions[0].Wrong,
+                    Is.EqualTo(new[] { "Wrong answer" }));
+            });
+
+            var question = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+            question.SetAnswerType.Execute(StepParameterValues.SetAnswerTypeType_ManagedByClient);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(question.UsesSimpleAnswerCollections, Is.False);
+                Assert.That(rightAnswersEditor.IsEffectivelyVisible, Is.False);
+                Assert.That(wrongAnswersEditor.IsEffectivelyVisible, Is.False);
+            });
         }
         finally
         {
@@ -505,6 +534,7 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.Options, Is.EqualTo("Настройки"));
             Assert.That(UiStrings.Authors, Is.EqualTo("Авторы"));
             Assert.That(UiStrings.ShowmanComments, Is.EqualTo("Комментарии ведущему"));
+            Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

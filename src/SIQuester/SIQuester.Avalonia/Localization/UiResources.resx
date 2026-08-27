@@ -44,8 +44,8 @@
   <data name="Question" xml:space="preserve"><value>Question</value></data>
   <data name="QuestionText" xml:space="preserve"><value>Question text</value></data>
   <data name="Price" xml:space="preserve"><value>Price</value></data>
-  <data name="RightAnswer" xml:space="preserve"><value>Primary right answer</value></data>
-  <data name="WrongAnswer" xml:space="preserve"><value>Primary wrong answer</value></data>
+  <data name="RightAnswers" xml:space="preserve"><value>Right answers</value></data>
+  <data name="WrongAnswers" xml:space="preserve"><value>Wrong answers</value></data>
   <data name="Comments" xml:space="preserve"><value>Comments</value></data>
   <data name="Metadata" xml:space="preserve"><value>Metadata</value></data>
   <data name="Authors" xml:space="preserve"><value>Authors</value></data>

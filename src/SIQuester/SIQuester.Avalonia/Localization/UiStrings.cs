@@ -55,8 +55,8 @@ public static class UiStrings
     public static string Question => Get(nameof(Question));
     public static string QuestionText => Get(nameof(QuestionText));
     public static string Price => Get(nameof(Price));
-    public static string RightAnswer => Get(nameof(RightAnswer));
-    public static string WrongAnswer => Get(nameof(WrongAnswer));
+    public static string RightAnswers => Get(nameof(RightAnswers));
+    public static string WrongAnswers => Get(nameof(WrongAnswers));
     public static string Comments => Get(nameof(Comments));
     public static string Metadata => Get(nameof(Metadata));
     public static string Authors => Get(nameof(Authors));
