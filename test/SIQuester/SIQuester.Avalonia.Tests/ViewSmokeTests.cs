@@ -428,6 +428,84 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task DocumentEditor_MediaLibraryPreviewsAndLinksExistingImageWithGuardedRemove()
+    {
+        var imageBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZqxQAAAAASUVORK5CYII=");
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Media library", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        theme.Questions.Add(new Question { Price = 100 });
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        await document.Images.AddFileAsync("изображение 例.png", new MemoryStream(imageBytes, writable: false));
+        var viewModel = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Media library");
+        var previousView = AppSettings.Default.View;
+        AppSettings.Default.View = ViewMode.TreeFull;
+        var view = new DocumentEditorView { DataContext = viewModel };
+        var window = new Window { Width = 1200, Height = 760, Content = view };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var library = view.GetVisualDescendants().OfType<MediaLibraryView>().Single();
+            var editor = library.GetVisualDescendants().OfType<MediaStorageEditorView>().Single();
+            var preview = editor.GetVisualDescendants().OfType<MediaItemPreview>().Single();
+            var image = preview.FindControl<Image>("PreviewImage")!;
+            var status = preview.FindControl<TextBlock>("StatusText")!;
+            var media = viewModel.Images.Files.Single();
+            viewModel.ActiveNode = viewModel.Package;
+            viewModel.Images.CurrentFile = media;
+            window.UpdateLayout();
+
+            for (var i = 0; i < 100 && image.Source == null; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            var addButton = editor.GetVisualDescendants().OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, viewModel.Images.AddFiles));
+            var linkButton = editor.GetVisualDescendants().OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, viewModel.Images.LinkCurrentToQuestion));
+            var removeButton = editor.GetVisualDescendants().OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, viewModel.Images.RemoveCurrentFile));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(image.Source, Is.Not.Null);
+                Assert.That(status.Text, Is.Null);
+                Assert.That(addButton.Content, Is.EqualTo(UiStrings.AddMediaFiles));
+                Assert.That(removeButton.IsEnabled, Is.True);
+            });
+
+            viewModel.ActiveNode = viewModel.Package.Rounds[0].Themes[0].Questions[0];
+            window.UpdateLayout();
+            Assert.That(linkButton.IsEnabled, Is.True);
+            linkButton.Command!.Execute(linkButton.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(viewModel.Images.IsCurrentFileReferenced, Is.True);
+                Assert.That(removeButton.IsEnabled, Is.False);
+                Assert.That(editor.GetVisualDescendants().OfType<TextBlock>()
+                    .Any(text => text.IsEffectivelyVisible && text.Text == UiStrings.MediaFileReferenced), Is.True);
+            });
+        }
+        finally
+        {
+            window.Close();
+            viewModel.Dispose();
+            AppSettings.Default.View = previousView;
+        }
+    }
+
+    [AvaloniaTest]
     public void Inspector_ScenarioEditorsMutateCanonicalScriptThroughCompiledBindings()
     {
         using var serviceProvider = CreateServiceProvider();

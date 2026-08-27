@@ -109,13 +109,29 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             {
                 _currentFile = value;
                 OnPropertyChanged();
+                UpdateCurrentFileCommands();
             }
         }
     }
 
     public ICommand AddItem { get; private set; }
 
+    /// <summary>
+    /// Adds files through the platform-neutral picker.
+    /// </summary>
+    public AsyncCommand AddFiles { get; }
+
     public ICommand DeleteItem { get; private set; }
+
+    /// <summary>
+    /// Removes the selected file when it has no package references.
+    /// </summary>
+    public SimpleCommand RemoveCurrentFile { get; }
+
+    /// <summary>
+    /// Links the selected file to the active question.
+    /// </summary>
+    public SimpleCommand LinkCurrentToQuestion { get; }
 
     /// <summary>
     /// Compresses media item.
@@ -138,6 +154,31 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     public override string Header => _header;
 
     public event Action? HasChanged;
+
+    private bool _isAddingFiles;
+    private CancellationTokenSource? _addFilesCancellation;
+
+    public bool IsAddingFiles
+    {
+        get => _isAddingFiles;
+        private set
+        {
+            if (_isAddingFiles != value)
+            {
+                _isAddingFiles = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool HasCurrentFile => CurrentFile != null;
+
+    public bool IsCurrentFileReferenced => CurrentFile != null
+        && _document.HasMediaReference(_name, CurrentFile.Model.Name);
+
+    public bool CanRemoveCurrentFile => CurrentFile != null && !IsCurrentFileReferenced;
+
+    public bool CanLinkCurrentToQuestion => CurrentFile != null && _document.ActiveNode is QuestionViewModel;
 
     private readonly ILogger<MediaStorageViewModel> _logger;
 
@@ -221,9 +262,13 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         FillFiles(collection);
 
         AddItem = new SimpleCommand(AddItem_Executed);
+        AddFiles = new AsyncCommand(AddFiles_ExecutedAsync);
         DeleteItem = new SimpleCommand(Delete_Executed);
+        RemoveCurrentFile = new SimpleCommand(RemoveCurrentFile_Executed);
+        LinkCurrentToQuestion = new SimpleCommand(LinkCurrentToQuestion_Executed);
         CompressItem = new SimpleCommand(CompressItem_Executed) { CanBeExecuted = canCompress };
         NavigateToUsage = new SimpleCommand(NavigateToUsage_Executed);
+        UpdateCurrentFileCommands();
     }
 
     private void FillFiles(DataCollection collection)
@@ -240,7 +285,12 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
     private MediaItemViewModel CreateItem(string item)
     {
-        var named = new MediaItemViewModel(new Named(item), _name, () => Wrap(item));
+        var model = new Named(item);
+        var named = new MediaItemViewModel(
+            model,
+            _name,
+            () => Wrap(model.Name),
+            () => TryGetStreamInfo(model.Name));
         AttachItem(named);
         return named;
     }
@@ -419,6 +469,122 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         {
             OnError(exc);
         }
+    }
+
+    private async Task AddFiles_ExecutedAsync(object? arg)
+    {
+        if (_isAddingFiles)
+        {
+            return;
+        }
+
+        IsAddingFiles = true;
+        UpdateCurrentFileCommands();
+        var cancellation = new CancellationTokenSource();
+        _addFilesCancellation = cancellation;
+
+        try
+        {
+            var extensions = Quality.FileExtensions[_name]
+                .Select(extension => extension.TrimStart('.'))
+                .ToArray();
+            var pickedFiles = await _document.FilePickerService.PickOpenFilesAsync(new OpenFilePickerRequest(
+                Header,
+                [new FileTypeFilter(Header, extensions)],
+                AllowMultiple: true), cancellation.Token);
+
+            if (pickedFiles.Count == 0)
+            {
+                return;
+            }
+
+            var stagedFiles = new List<StagedMediaFile>();
+
+            try
+            {
+                foreach (var pickedFile in pickedFiles)
+                {
+                    stagedFiles.Add(await StageFileAsync(pickedFile, cancellation.Token));
+                }
+
+                cancellation.Token.ThrowIfCancellationRequested();
+                using var change = _document.OperationsManager.BeginComplexChange();
+                MediaItemViewModel? lastAdded = null;
+
+                foreach (var stagedFile in stagedFiles)
+                {
+                    lastAdded = AddFile(stagedFile);
+                }
+
+                change.Commit();
+                CurrentFile = lastAdded;
+            }
+            finally
+            {
+                foreach (var stagedFile in stagedFiles)
+                {
+                    stagedFile.Dispose();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exc)
+        {
+            OnError(exc);
+        }
+        finally
+        {
+            if (ReferenceEquals(_addFilesCancellation, cancellation))
+            {
+                _addFilesCancellation = null;
+            }
+
+            cancellation.Dispose();
+            IsAddingFiles = false;
+            UpdateCurrentFileCommands();
+        }
+    }
+
+    private void RemoveCurrentFile_Executed(object? arg)
+    {
+        var item = CurrentFile;
+
+        if (item == null || IsCurrentFileReferenced)
+        {
+            return;
+        }
+
+        CurrentFile = null;
+        Delete_Executed(item);
+    }
+
+    private void LinkCurrentToQuestion_Executed(object? arg)
+    {
+        if (CurrentFile != null && _document.LinkMediaReferenceToActiveQuestion(this, CurrentFile))
+        {
+            RefreshReferenceState();
+        }
+    }
+
+    internal void RefreshReferenceState()
+    {
+        OnPropertyChanged(nameof(IsCurrentFileReferenced));
+        UpdateCurrentFileCommands();
+    }
+
+    internal void RefreshActiveQuestionState() => UpdateCurrentFileCommands();
+
+    private void UpdateCurrentFileCommands()
+    {
+        AddFiles.CanBeExecuted = !_isAddingFiles;
+        RemoveCurrentFile.CanBeExecuted = CanRemoveCurrentFile;
+        LinkCurrentToQuestion.CanBeExecuted = CanLinkCurrentToQuestion;
+        OnPropertyChanged(nameof(HasCurrentFile));
+        OnPropertyChanged(nameof(IsCurrentFileReferenced));
+        OnPropertyChanged(nameof(CanRemoveCurrentFile));
+        OnPropertyChanged(nameof(CanLinkCurrentToQuestion));
     }
 
     private void CompressItem_Executed(object? arg)
@@ -1167,6 +1333,14 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     {
         if (disposing)
         {
+            _addFilesCancellation?.Cancel();
+
+            foreach (var item in Files.Concat(_removed).Distinct())
+            {
+                item.Model.PropertyChanged -= Named_PropertyChanged;
+                item.PropertyChanged -= MediaItem_PropertyChanged;
+            }
+
             foreach (var pendingFile in _streams.Values
                 .Concat(_removedStreams.Values)
                 .Distinct())

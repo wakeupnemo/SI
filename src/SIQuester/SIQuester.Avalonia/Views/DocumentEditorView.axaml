@@ -163,10 +163,10 @@
 
     <Border Grid.Row="1" Grid.Column="4" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
       <Grid>
-        <StackPanel Spacing="{StaticResource Space12}" IsVisible="{Binding IsTreeView}">
+        <Grid RowDefinitions="Auto,*" RowSpacing="{StaticResource Space12}" IsVisible="{Binding IsTreeView}">
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Media}" />
-          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MediaSummary}" />
-        </StackPanel>
+          <views:MediaLibraryView Grid.Row="1" />
+        </Grid>
         <Grid RowDefinitions="*,Auto" IsVisible="{Binding IsFlatView}">
           <Grid RowDefinitions="Auto,*">
             <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Inspector}" />

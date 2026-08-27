@@ -1,4 +1,5 @@
-﻿using SIPackages.Core;
+﻿using SIPackages;
+using SIPackages.Core;
 using SIQuester.ViewModel.Contracts;
 
 namespace SIQuester.ViewModel;
@@ -8,6 +9,8 @@ namespace SIQuester.ViewModel;
 /// </summary>
 public sealed class MediaItemViewModel : MediaOwnerViewModel
 {
+    private readonly Func<StreamInfo?> _streamGetter;
+
     /// <summary>
     /// Media item type.
     /// </summary>
@@ -20,14 +23,29 @@ public sealed class MediaItemViewModel : MediaOwnerViewModel
 
     public string Name => Model.Name;
 
+    /// <summary>
+    /// Gets whether this item belongs to the package image collection.
+    /// </summary>
+    public bool IsImage => Type == CollectionNames.ImagesStorageName;
+
     private readonly Func<IMedia> _mediaGetter;
 
-    public MediaItemViewModel(Named named, string type, Func<IMedia> mediaGetter)
+    public MediaItemViewModel(
+        Named named,
+        string type,
+        Func<IMedia> mediaGetter,
+        Func<StreamInfo?> streamGetter)
     {
         Model = named;
         Type = type;
         _mediaGetter = mediaGetter;
+        _streamGetter = streamGetter;
     }
+
+    /// <summary>
+    /// Opens the original package bytes without invoking a platform media backend.
+    /// </summary>
+    public StreamInfo? OpenStream() => _streamGetter();
 
     protected override IMedia GetMedia() => _mediaGetter();
 

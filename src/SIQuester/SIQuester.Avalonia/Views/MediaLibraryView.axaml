@@ -1,0 +1,23 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.MediaLibraryView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:QDocument">
+  <TabControl>
+    <TabItem Header="{x:Static loc:UiStrings.Images}">
+      <views:MediaStorageEditorView DataContext="{Binding Images}" />
+    </TabItem>
+    <TabItem Header="{x:Static loc:UiStrings.Audio}">
+      <views:MediaStorageEditorView DataContext="{Binding Audio}" />
+    </TabItem>
+    <TabItem Header="{x:Static loc:UiStrings.Video}">
+      <views:MediaStorageEditorView DataContext="{Binding Video}" />
+    </TabItem>
+    <TabItem Header="{x:Static loc:UiStrings.Html}">
+      <views:MediaStorageEditorView DataContext="{Binding Html}" />
+    </TabItem>
+  </TabControl>
+</UserControl>

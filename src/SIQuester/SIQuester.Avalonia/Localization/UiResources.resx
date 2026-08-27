@@ -64,6 +64,13 @@
   <data name="Audio" xml:space="preserve"><value>Audio</value></data>
   <data name="Video" xml:space="preserve"><value>Video</value></data>
   <data name="Html" xml:space="preserve"><value>HTML</value></data>
+  <data name="AddMediaFiles" xml:space="preserve"><value>Add files</value></data>
+  <data name="RemoveMediaFile" xml:space="preserve"><value>Remove file</value></data>
+  <data name="LinkToSelectedQuestion" xml:space="preserve"><value>Link to selected question</value></data>
+  <data name="FindMediaUsage" xml:space="preserve"><value>Find usage</value></data>
+  <data name="MediaFileReferenced" xml:space="preserve"><value>This file is referenced. Remove its links before deleting it.</value></data>
+  <data name="NoMediaSelected" xml:space="preserve"><value>Select a media file</value></data>
+  <data name="PreviewUnavailable" xml:space="preserve"><value>Preview is not available for this media type</value></data>
   <data name="NoSelection" xml:space="preserve"><value>Select a package item to edit it.</value></data>
   <data name="Saving" xml:space="preserve"><value>Saving…</value></data>
   <data name="Loading" xml:space="preserve"><value>Loading…</value></data>

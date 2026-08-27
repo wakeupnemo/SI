@@ -166,6 +166,8 @@ public sealed class QDocument : WorkspaceViewModel
 
     public MediaStorageViewModel Html { get; private set; }
 
+    private bool _mediaStoragesInitialized;
+
     public AppSettings Settings => AppSettings.Default;
 
     public MediaStorageViewModel? TryGetCollectionByMediaType(string mediaType) => mediaType switch
@@ -272,6 +274,83 @@ public sealed class QDocument : WorkspaceViewModel
 
     private bool OwnsQuestion(QuestionViewModel? question) =>
         question?.OwnerTheme?.OwnerRound?.OwnerPackage?.Document == this;
+
+    internal bool HasMediaReference(string collectionName, string mediaName)
+    {
+        var contentType = CollectionNames.TryGetContentType(collectionName);
+
+        if (contentType == null)
+        {
+            return false;
+        }
+
+        if (contentType == ContentTypes.Image && Package.Model.Logo == $"@{mediaName}")
+        {
+            return true;
+        }
+
+        return Package.Rounds
+            .SelectMany(round => round.Themes)
+            .SelectMany(theme => theme.Questions)
+            .SelectMany(question => question.Model.GetContent())
+            .Any(content => content.IsRef && content.Type == contentType && content.Value == mediaName);
+    }
+
+    internal bool LinkMediaReferenceToActiveQuestion(MediaStorageViewModel storage, MediaItemViewModel mediaItem)
+    {
+        var contentType = CollectionNames.TryGetContentType(storage.Name);
+
+        if (contentType == null
+            || ActiveNode is not QuestionViewModel question
+            || !OwnsQuestion(question)
+            || !ReferenceEquals(storage, TryGetCollectionByMediaType(contentType))
+            || !storage.Files.Contains(mediaItem))
+        {
+            return false;
+        }
+
+        using var change = OperationsManager.BeginComplexChange();
+        var content = question.GetOrCreatePrimaryContent();
+
+        if (content.Count > 0 && string.IsNullOrWhiteSpace(content[^1].Model.Value))
+        {
+            content.RemoveAt(content.Count - 1);
+        }
+
+        content.Add(new ContentItemViewModel(new ContentItem
+        {
+            Type = contentType,
+            IsRef = true,
+            Value = mediaItem.Model.Name,
+            Placement = contentType == ContentTypes.Audio
+                ? ContentPlacements.Background
+                : ContentPlacements.Screen,
+            Duration = GetDurationByContentType(contentType),
+        }));
+        change.Commit();
+        return true;
+    }
+
+    private void RefreshMediaReferenceStates()
+    {
+        if (!_mediaStoragesInitialized)
+        {
+            return;
+        }
+
+        Images.RefreshReferenceState();
+        Audio.RefreshReferenceState();
+        Video.RefreshReferenceState();
+        Html.RefreshReferenceState();
+    }
+
+    private void RefreshMediaActiveQuestionStates()
+    {
+        Images.RefreshActiveQuestionState();
+        Audio.RefreshActiveQuestionState();
+        Video.RefreshActiveQuestionState();
+        Html.RefreshActiveQuestionState();
+    }
 
     private readonly ILogger<QDocument> _logger;
 
@@ -685,6 +764,11 @@ public sealed class QDocument : WorkspaceViewModel
                 _activeNode = value;
                 OnPropertyChanged();
                 SetActiveChain();
+
+                if (_mediaStoragesInitialized)
+                {
+                    RefreshMediaActiveQuestionStates();
+                }
                 
                 if (_activeItem is ContentItemsViewModel contentItems && contentItems.Owner != _activeNode)
                 {
@@ -1132,6 +1216,13 @@ public sealed class QDocument : WorkspaceViewModel
 
     private void Object_PropertyValueChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_mediaStoragesInitialized
+            && (sender is ContentItem
+                || sender is SIPackages.Package && e.PropertyName == nameof(SIPackages.Package.Logo)))
+        {
+            RefreshMediaReferenceStates();
+        }
+
         if (OperationsManager.IsMakingUndo || sender == null || e.PropertyName == null)
         {
             return;
@@ -1452,6 +1543,11 @@ public sealed class QDocument : WorkspaceViewModel
                 // On reset, recompute the entire count
                 QuestionCount = CountTotalQuestions();
 
+                if (IsMediaContentCollectionChange(sender, e))
+                {
+                    RefreshMediaReferenceStates();
+                }
+
                 if (IsFlatDetailStructureCollection(sender))
                 {
                     RebuildFlatDetailRows();
@@ -1469,7 +1565,17 @@ public sealed class QDocument : WorkspaceViewModel
         {
             RebuildFlatDetailRows();
         }
+
+        if (IsMediaContentCollectionChange(sender, e))
+        {
+            RefreshMediaReferenceStates();
+        }
     }
+
+    private static bool IsMediaContentCollectionChange(object sender, NotifyCollectionChangedEventArgs e) =>
+        sender is ContentItemsViewModel
+        || e.NewItems?.OfType<ContentItemViewModel>().Any() == true
+        || e.OldItems?.OfType<ContentItemViewModel>().Any() == true;
 
     private bool IsFlatDetailStructureCollection(object sender) =>
         ReferenceEquals(sender, Package.Rounds)
@@ -1861,6 +1967,7 @@ public sealed class QDocument : WorkspaceViewModel
         Audio = new MediaStorageViewModel(this, Document.Audio, Resources.Audio, _appPaths.TemporaryMediaDirectory, msvmLogger);
         Video = new MediaStorageViewModel(this, Document.Video, Resources.Video, _appPaths.TemporaryMediaDirectory, msvmLogger);
         Html = new MediaStorageViewModel(this, Document.Html, Resources.Html, _appPaths.TemporaryMediaDirectory, msvmLogger);
+        _mediaStoragesInitialized = true;
 
         Images.Changed += OperationsManager.AddChange;
         Audio.Changed += OperationsManager.AddChange;

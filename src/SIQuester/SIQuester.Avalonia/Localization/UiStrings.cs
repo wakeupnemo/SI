@@ -75,6 +75,13 @@ public static class UiStrings
     public static string Audio => Get(nameof(Audio));
     public static string Video => Get(nameof(Video));
     public static string Html => Get(nameof(Html));
+    public static string AddMediaFiles => Get(nameof(AddMediaFiles));
+    public static string RemoveMediaFile => Get(nameof(RemoveMediaFile));
+    public static string LinkToSelectedQuestion => Get(nameof(LinkToSelectedQuestion));
+    public static string FindMediaUsage => Get(nameof(FindMediaUsage));
+    public static string MediaFileReferenced => Get(nameof(MediaFileReferenced));
+    public static string NoMediaSelected => Get(nameof(NoMediaSelected));
+    public static string PreviewUnavailable => Get(nameof(PreviewUnavailable));
     public static string NoSelection => Get(nameof(NoSelection));
     public static string Saving => Get(nameof(Saving));
     public static string Loading => Get(nameof(Loading));

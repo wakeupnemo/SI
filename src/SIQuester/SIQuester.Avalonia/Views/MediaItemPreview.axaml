@@ -1,0 +1,20 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.MediaItemPreview"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:SIQuester.Avalonia.Localization">
+  <Border Classes="card" Height="{StaticResource LogoPreviewHeight}" ClipToBounds="True">
+    <Grid>
+      <Image
+          x:Name="PreviewImage"
+          Stretch="Uniform"
+          AutomationProperties.Name="{x:Static loc:UiStrings.Images}" />
+      <TextBlock
+          x:Name="StatusText"
+          TextWrapping="Wrap"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          TextAlignment="Center" />
+    </Grid>
+  </Border>
+</UserControl>

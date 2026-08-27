@@ -1,0 +1,35 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.MediaStorageEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:MediaStorageViewModel">
+  <Grid RowDefinitions="*,Auto,Auto,Auto" RowSpacing="{StaticResource Space8}">
+    <ListBox
+        x:Name="MediaFilesList"
+        ItemsSource="{Binding Files}"
+        SelectedItem="{Binding CurrentFile, Mode=TwoWay}"
+        MinHeight="100"
+        AutomationProperties.Name="{x:Static loc:UiStrings.MediaFiles}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:MediaItemViewModel">
+          <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <views:MediaItemPreview Grid.Row="1" Item="{Binding CurrentFile}" />
+    <TextBlock
+        Grid.Row="2"
+        Text="{x:Static loc:UiStrings.MediaFileReferenced}"
+        IsVisible="{Binding IsCurrentFileReferenced}"
+        TextWrapping="Wrap" />
+    <WrapPanel Grid.Row="3">
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddMediaFiles}" Command="{Binding AddFiles}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.LinkToSelectedQuestion}" Command="{Binding LinkCurrentToQuestion}" IsEnabled="{Binding CanLinkCurrentToQuestion}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.FindMediaUsage}" Command="{Binding NavigateToUsage}" CommandParameter="{Binding CurrentFile}" IsEnabled="{Binding HasCurrentFile}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.RemoveMediaFile}" Command="{Binding RemoveCurrentFile}" IsEnabled="{Binding CanRemoveCurrentFile}" />
+    </WrapPanel>
+  </Grid>
+</UserControl>
