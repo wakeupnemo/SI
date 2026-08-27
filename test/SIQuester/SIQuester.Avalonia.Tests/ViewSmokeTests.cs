@@ -214,6 +214,130 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_NonTextAnswerEditorsMutateCanonicalParametersThroughCompiledBindings()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Non-text inspector", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 100 };
+        question.Right.Add("Original answer");
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Non-text inspector");
+        var questionViewModel = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+        var inspector = new InspectorView { SelectedItem = questionViewModel };
+        var window = new Window { Width = 760, Height = 1400, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var answerTypeButtons = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Where(button => ReferenceEquals(button.Command, questionViewModel.SetAnswerType))
+                .ToArray();
+
+            var numberButton = answerTypeButtons.Single(button => Equals(
+                button.CommandParameter,
+                StepParameterValues.SetAnswerTypeType_Number));
+            numberButton.Command!.Execute(numberButton.CommandParameter);
+            window.UpdateLayout();
+
+            var numericEditor = inspector.GetVisualDescendants()
+                .OfType<NumericAnswerEditorView>()
+                .Single(control => control.IsEffectivelyVisible);
+            var numericInputs = numericEditor.GetVisualDescendants().OfType<NumericUpDown>().ToArray();
+            numericInputs[0].Value = -314;
+            numericInputs[1].Value = 7;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(numericInputs, Has.Length.EqualTo(2));
+                Assert.That(questionViewModel.Right, Is.EqualTo(new[] { "-314" }));
+                Assert.That(questionViewModel.Parameters.Model[QuestionParameterNames.AnswerDeviation].SimpleValue,
+                    Is.EqualTo("7"));
+            });
+
+            var selectButton = answerTypeButtons.Single(button => Equals(
+                button.CommandParameter,
+                StepParameterValues.SetAnswerTypeType_Select));
+            selectButton.Command!.Execute(selectButton.CommandParameter);
+            window.UpdateLayout();
+
+            var optionsEditor = inspector.GetVisualDescendants()
+                .OfType<AnswerOptionsEditorView>()
+                .Single(control => control.IsEffectivelyVisible);
+            var options = optionsEditor.Options!.GroupValue!;
+            var originalOptionCount = options.Count;
+            var addOptionButton = optionsEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => Equals(button.Content, UiStrings.AddOption));
+            addOptionButton.Command!.Execute(addOptionButton.CommandParameter);
+            window.UpdateLayout();
+            var markRightButton = optionsEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Last(button => Equals(button.Content, UiStrings.MarkRightAnswer));
+            var markedOption = (StepParameterRecord)markRightButton.CommandParameter!;
+            markRightButton.Command!.Execute(markRightButton.CommandParameter);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.Right, Is.EqualTo(new[] { markedOption.Key }));
+                Assert.That(optionsEditor.GetVisualDescendants().OfType<TextBlock>()
+                    .Any(text => Equals(text.Text, markedOption.Key)), Is.True);
+            });
+
+            var pointButton = answerTypeButtons.Single(button => Equals(
+                button.CommandParameter,
+                StepParameterValues.SetAnswerTypeType_Point));
+            pointButton.Command!.Execute(pointButton.CommandParameter);
+            window.UpdateLayout();
+            var pointEditor = inspector.GetVisualDescendants()
+                .OfType<PointAnswerEditorView>()
+                .Single(control => control.IsEffectivelyVisible);
+            var pointEditorHost = pointEditor.GetVisualAncestors()
+                .OfType<ContentControl>()
+                .Single(control => control.Name == "PointAnswerEditorHost");
+            pointEditor.FindControl<TextBox>("PointAnswerEditor")!.Text = "0.46,0.7";
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.AnswerOptions, Is.Null);
+                Assert.That(options, Has.Count.EqualTo(originalOptionCount + 1));
+                Assert.That(questionViewModel.IsPointAnswer, Is.True);
+                Assert.That(questionViewModel.Right, Is.EqualTo(new[] { "0.46,0.7" }));
+                Assert.That(questionViewModel.Parameters.Model[QuestionParameterNames.AnswerDeviation].SimpleValue,
+                    Is.EqualTo("0"));
+            });
+
+            var managedButton = answerTypeButtons.Single(button => Equals(
+                button.CommandParameter,
+                StepParameterValues.SetAnswerTypeType_ManagedByClient));
+            managedButton.Command!.Execute(managedButton.CommandParameter);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.IsManagedByClient, Is.True);
+                Assert.That(questionViewModel.Right, Is.Empty);
+                Assert.That(pointEditorHost.IsVisible, Is.False);
+                Assert.That(inspector.GetVisualDescendants().OfType<TextBlock>()
+                    .Any(text => text.IsEffectivelyVisible && Equals(text.Text, UiStrings.ClientManagedDescription)),
+                    Is.True);
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void DocumentEditor_InitialSelectionFlowsToTypedInspector()
     {
         using var serviceProvider = CreateServiceProvider();

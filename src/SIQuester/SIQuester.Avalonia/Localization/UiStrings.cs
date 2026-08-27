@@ -121,4 +121,18 @@ public static class UiStrings
     public static string Maximum => Get(nameof(Maximum));
     public static string Step => Get(nameof(Step));
     public static string StepType => Get(nameof(StepType));
+    public static string AnswerType => Get(nameof(AnswerType));
+    public static string TextAnswer => Get(nameof(TextAnswer));
+    public static string NumberAnswer => Get(nameof(NumberAnswer));
+    public static string PointAnswer => Get(nameof(PointAnswer));
+    public static string SelectAnswer => Get(nameof(SelectAnswer));
+    public static string ClientManagedAnswer => Get(nameof(ClientManagedAnswer));
+    public static string ClientManagedDescription => Get(nameof(ClientManagedDescription));
+    public static string NumericAnswer => Get(nameof(NumericAnswer));
+    public static string AnswerDeviation => Get(nameof(AnswerDeviation));
+    public static string PointCoordinates => Get(nameof(PointCoordinates));
+    public static string AnswerOptions => Get(nameof(AnswerOptions));
+    public static string RightOption => Get(nameof(RightOption));
+    public static string MarkRightAnswer => Get(nameof(MarkRightAnswer));
+    public static string AddOption => Get(nameof(AddOption));
 }

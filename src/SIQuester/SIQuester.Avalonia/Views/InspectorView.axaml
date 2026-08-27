@@ -5,6 +5,7 @@
     xmlns:vm="using:SIQuester.ViewModel"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:core="using:SIPackages.Core"
     x:Name="Root"
     x:DataType="views:InspectorView">
   <Grid>
@@ -62,10 +63,36 @@
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QuestionText}" />
           <TextBox Text="{Binding QuestionText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="140" Margin="{StaticResource FieldMargin}" />
           <views:ScenarioEditorView Question="{Binding}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.AnswerType}" />
+          <WrapPanel Margin="{StaticResource FieldMargin}">
+            <Button Classes="command" Content="{x:Static loc:UiStrings.TextAnswer}" Command="{Binding SetAnswerType}" CommandParameter="{x:Static core:StepParameterValues.SetAnswerTypeType_Text}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.NumberAnswer}" Command="{Binding SetAnswerType}" CommandParameter="{x:Static core:StepParameterValues.SetAnswerTypeType_Number}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.PointAnswer}" Command="{Binding SetAnswerType}" CommandParameter="{x:Static core:StepParameterValues.SetAnswerTypeType_Point}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.SelectAnswer}" Command="{Binding SetAnswerType}" CommandParameter="{x:Static core:StepParameterValues.SetAnswerTypeType_Select}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.ClientManagedAnswer}" Command="{Binding SetAnswerType}" CommandParameter="{x:Static core:StepParameterValues.SetAnswerTypeType_ManagedByClient}" />
+          </WrapPanel>
           <StackPanel IsVisible="{Binding UsesSimpleAnswerCollections}">
             <views:StringListEditorView Header="{x:Static loc:UiStrings.RightAnswers}" Editor="{Binding Right}" />
             <views:StringListEditorView Header="{x:Static loc:UiStrings.WrongAnswers}" Editor="{Binding Wrong}" />
           </StackPanel>
+          <ContentControl x:Name="NumericAnswerEditorHost" Content="{Binding NumericAnswer}" IsVisible="{Binding IsNumericAnswer}">
+            <ContentControl.DataTemplates>
+              <DataTemplate x:DataType="vm:NumericAnswerViewModel">
+                <views:NumericAnswerEditorView />
+              </DataTemplate>
+            </ContentControl.DataTemplates>
+          </ContentControl>
+          <ContentControl x:Name="PointAnswerEditorHost" Content="{Binding PointAnswer}" IsVisible="{Binding IsPointAnswer}">
+            <ContentControl.DataTemplates>
+              <DataTemplate x:DataType="vm:PointAnswerViewModel">
+                <views:PointAnswerEditorView />
+              </DataTemplate>
+            </ContentControl.DataTemplates>
+          </ContentControl>
+          <views:AnswerOptionsEditorView Question="{Binding}" Options="{Binding AnswerOptions}" IsVisible="{Binding IsSelectAnswer}" />
+          <Border IsVisible="{Binding IsManagedByClient}" Padding="{StaticResource Space12Thickness}" Margin="{StaticResource FieldMargin}" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
+            <TextBlock Text="{x:Static loc:UiStrings.ClientManagedDescription}" TextWrapping="Wrap" />
+          </Border>
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" HorizontalAlignment="Left" />
         </StackPanel>

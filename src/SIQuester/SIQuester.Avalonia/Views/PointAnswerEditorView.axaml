@@ -1,0 +1,23 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.PointAnswerEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:PointAnswerViewModel">
+  <Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space8}" Margin="{StaticResource FieldMargin}">
+    <StackPanel>
+      <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PointCoordinates}" />
+      <TextBox
+          x:Name="PointAnswerEditor"
+          Text="{Binding Answer, Mode=TwoWay}"
+          AutomationProperties.Name="{x:Static loc:UiStrings.PointCoordinates}" />
+    </StackPanel>
+    <StackPanel Grid.Column="1">
+      <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.AnswerDeviation}" />
+      <TextBox
+          Text="{Binding Deviation, Mode=TwoWay}"
+          AutomationProperties.Name="{x:Static loc:UiStrings.AnswerDeviation}" />
+    </StackPanel>
+  </Grid>
+</UserControl>

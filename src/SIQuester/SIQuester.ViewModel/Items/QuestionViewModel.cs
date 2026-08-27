@@ -3,6 +3,7 @@ using SIPackages.Core;
 using SIQuester.Model;
 using SIQuester.ViewModel.Helpers;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows.Input;
 using Utils.Commands;
 
@@ -210,9 +211,10 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
             if (Parameters.TryGetValue(QuestionParameterNames.AnswerType, out var answerTypeParameter)
                 && answerTypeParameter.Model.SimpleValue == StepParameterValues.SetAnswerTypeType_Number)
             {
-                return new NumericAnswerViewModel(this);
+                return _numericAnswer ??= new NumericAnswerViewModel(this);
             }
 
+            _numericAnswer = null;
             return null;
         }
     }
@@ -265,6 +267,13 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     }
 
     /// <summary>
+    /// Gets whether this question uses selectable answer options.
+    /// </summary>
+    public bool IsSelectAnswer =>
+        Parameters.TryGetValue(QuestionParameterNames.AnswerType, out var answerTypeParameter)
+        && answerTypeParameter.Model.SimpleValue == StepParameterValues.SetAnswerTypeType_Select;
+
+    /// <summary>
     /// Gets whether this question answer validation is managed by client.
     /// </summary>
     public bool IsManagedByClient
@@ -302,7 +311,9 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     }
     
     private int? _rightPercent;
+    private NumericAnswerViewModel? _numericAnswer;
     private PointAnswerViewModel? _pointAnswer;
+    private StepParameterViewModel? _observedAnswerTypeParameter;
 
     /// <summary>
     /// Gets the percentage of correct answers (correct / (correct + wrong) * 100).
@@ -357,6 +368,8 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
         Right.CollectionChanged += Right_CollectionChanged;
         Wrong.CollectionChanged += Wrong_CollectionChanged;
+        Parameters.CollectionChanged += Parameters_AnswerTypeCollectionChanged;
+        RefreshAnswerTypeParameterSubscription();
     }
 
     private ContentItem? GetPrimaryQuestionTextItem()
@@ -710,6 +723,15 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
             var answerType = (string)arg;
 
+            // Reapplying a valid select type must not recreate options or discard user edits.
+            if (answerType == StepParameterValues.SetAnswerTypeType_Select
+                && Parameters.AnswerType == answerType
+                && AnswerOptions?.GroupValue != null)
+            {
+                OnAnswerTypeChanged();
+                return;
+            }
+
             if (answerType == StepParameterValues.SetAnswerTypeType_Text)
             {
                 // Default value; remove parameter
@@ -794,6 +816,9 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
             }
             else if (answerType == StepParameterValues.SetAnswerTypeType_Select)
             {
+                // Replace a stale or malformed options parameter while preserving valid options above.
+                Parameters.RemoveParameter(QuestionParameterNames.AnswerOptions);
+
                 var options = new StepParameter
                 {
                     Type = StepParameterTypes.Group,
@@ -852,12 +877,65 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
     private void OnAnswerTypeChanged()
     {
+        if (!IsNumericAnswer)
+        {
+            _numericAnswer = null;
+        }
+
+        if (!IsPointAnswer && _pointAnswer != null)
+        {
+            _pointAnswer.Dispose();
+            _pointAnswer = null;
+        }
+
         OnPropertyChanged(nameof(IsNumericAnswer));
         OnPropertyChanged(nameof(NumericAnswer));
         OnPropertyChanged(nameof(IsPointAnswer));
         OnPropertyChanged(nameof(PointAnswer));
+        OnPropertyChanged(nameof(IsSelectAnswer));
+        OnPropertyChanged(nameof(AnswerOptions));
         OnPropertyChanged(nameof(IsManagedByClient));
         OnPropertyChanged(nameof(UsesSimpleAnswerCollections));
+    }
+
+    private void Parameters_AnswerTypeCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (RefreshAnswerTypeParameterSubscription())
+        {
+            OnAnswerTypeChanged();
+        }
+    }
+
+    private bool RefreshAnswerTypeParameterSubscription()
+    {
+        Parameters.TryGetValue(QuestionParameterNames.AnswerType, out var answerTypeParameter);
+
+        if (ReferenceEquals(_observedAnswerTypeParameter, answerTypeParameter))
+        {
+            return false;
+        }
+
+        if (_observedAnswerTypeParameter != null)
+        {
+            _observedAnswerTypeParameter.Model.PropertyChanged -= AnswerTypeParameter_PropertyChanged;
+        }
+
+        _observedAnswerTypeParameter = answerTypeParameter;
+
+        if (_observedAnswerTypeParameter != null)
+        {
+            _observedAnswerTypeParameter.Model.PropertyChanged += AnswerTypeParameter_PropertyChanged;
+        }
+
+        return true;
+    }
+
+    private void AnswerTypeParameter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(StepParameter.SimpleValue))
+        {
+            OnAnswerTypeChanged();
+        }
     }
 
     private void SwitchEmpty_Executed(object? arg)
@@ -949,5 +1027,27 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
         Right.Add(Path.GetFileNameWithoutExtension(fileName));
         return true;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Right.CollectionChanged -= Right_CollectionChanged;
+            Wrong.CollectionChanged -= Wrong_CollectionChanged;
+            Parameters.CollectionChanged -= Parameters_AnswerTypeCollectionChanged;
+
+            if (_observedAnswerTypeParameter != null)
+            {
+                _observedAnswerTypeParameter.Model.PropertyChanged -= AnswerTypeParameter_PropertyChanged;
+                _observedAnswerTypeParameter = null;
+            }
+
+            _pointAnswer?.Dispose();
+            _pointAnswer = null;
+            _numericAnswer = null;
+        }
+
+        base.Dispose(disposing);
     }
 }

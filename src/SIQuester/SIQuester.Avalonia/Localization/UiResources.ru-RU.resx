@@ -110,4 +110,18 @@
   <data name="Maximum" xml:space="preserve"><value>Максимум</value></data>
   <data name="Step" xml:space="preserve"><value>Шаг</value></data>
   <data name="StepType" xml:space="preserve"><value>Тип шага</value></data>
+  <data name="AnswerType" xml:space="preserve"><value>Тип ответа</value></data>
+  <data name="TextAnswer" xml:space="preserve"><value>Текст</value></data>
+  <data name="NumberAnswer" xml:space="preserve"><value>Число</value></data>
+  <data name="PointAnswer" xml:space="preserve"><value>Точка</value></data>
+  <data name="SelectAnswer" xml:space="preserve"><value>Выбор вариантов</value></data>
+  <data name="ClientManagedAnswer" xml:space="preserve"><value>Проверяет клиент</value></data>
+  <data name="ClientManagedDescription" xml:space="preserve"><value>Ответ проверяется приложением игрока. В этом режиме списки правильных и неправильных ответов не редактируются.</value></data>
+  <data name="NumericAnswer" xml:space="preserve"><value>Числовой ответ</value></data>
+  <data name="AnswerDeviation" xml:space="preserve"><value>Допустимое отклонение</value></data>
+  <data name="PointCoordinates" xml:space="preserve"><value>Координаты точки</value></data>
+  <data name="AnswerOptions" xml:space="preserve"><value>Варианты ответа</value></data>
+  <data name="RightOption" xml:space="preserve"><value>Правильный вариант:</value></data>
+  <data name="MarkRightAnswer" xml:space="preserve"><value>Сделать правильным</value></data>
+  <data name="AddOption" xml:space="preserve"><value>Добавить вариант</value></data>
 </root>
