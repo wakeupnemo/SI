@@ -1,0 +1,34 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.ScenarioEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:Name="Root"
+    x:DataType="views:ScenarioEditorView">
+  <StackPanel Margin="{StaticResource FieldMargin}">
+    <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Scenario}" />
+    <views:ContentItemsEditorView
+        Editor="{Binding Question.LegacyContent, ElementName=Root}"
+        IsVisible="{Binding Question.HasLegacyContent, ElementName=Root}" />
+    <ItemsControl
+        ItemsSource="{Binding Question.ScriptSteps, ElementName=Root}"
+        IsVisible="{Binding Question.HasScript, ElementName=Root}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ScriptStepViewModel">
+          <Expander IsExpanded="True" Margin="{StaticResource FieldMargin}">
+            <Expander.Header>
+              <TextBlock Text="{Binding Model.Type}" FontWeight="SemiBold" />
+            </Expander.Header>
+            <StackPanel Margin="{StaticResource Space8Thickness}">
+              <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.StepType}" />
+              <TextBox Text="{Binding Model.Type, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+              <views:StepParametersEditorView Editor="{Binding Parameters}" />
+            </StackPanel>
+          </Expander>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

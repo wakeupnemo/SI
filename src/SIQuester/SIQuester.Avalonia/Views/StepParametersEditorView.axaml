@@ -1,0 +1,54 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.StepParametersEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:Name="Root"
+    x:DataType="views:StepParametersEditorView">
+  <ItemsControl ItemsSource="{Binding Editor, ElementName=Root}">
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="vm:StepParameterRecord">
+        <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{StaticResource Space8}">
+              <TextBlock Text="{Binding Key}" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="1" Text="{Binding Value.Model.Type}" Opacity="0.65" />
+            </Grid>
+            <TextBlock Text="{x:Static loc:UiStrings.ParameterReference}" IsVisible="{Binding Value.Model.IsRef}" Opacity="0.65" />
+            <TextBox
+                x:Name="SimpleParameterEditor"
+                Text="{Binding Value.Model.SimpleValue, Mode=TwoWay}"
+                IsVisible="{Binding Value.UsesSimpleValue}"
+                Margin="{StaticResource MetadataEditorMargin}" />
+            <views:ContentItemsEditorView
+                Editor="{Binding Value.ContentValue}"
+                IsVisible="{Binding Value.UsesContentValue}" />
+            <views:StepParametersEditorView
+                Editor="{Binding Value.GroupValue}"
+                IsVisible="{Binding Value.UsesGroupValue}" />
+            <Grid
+                ColumnDefinitions="*,*,*"
+                ColumnSpacing="{StaticResource Space8}"
+                IsVisible="{Binding Value.UsesNumberSetValue}"
+                Margin="{StaticResource MetadataEditorMargin}">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Minimum}" />
+                <NumericUpDown Value="{Binding Value.NumberSetValue.Minimum, Mode=TwoWay}" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Maximum}" />
+                <NumericUpDown Value="{Binding Value.NumberSetValue.Maximum, Mode=TwoWay}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Step}" />
+                <NumericUpDown Value="{Binding Value.NumberSetValue.Step, Mode=TwoWay}" Minimum="0" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

@@ -87,7 +87,11 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         IsTopLevel = isTopLevel;
     }
 
-    internal void AddScreenText_Executed(object? arg) => QDocument.ActivatedObject = Add(ContentTypes.Text, "", ContentPlacements.Screen);
+    internal void AddScreenText_Executed(object? arg)
+    {
+        CurrentItem = Add(ContentTypes.Text, "", ContentPlacements.Screen);
+        QDocument.ActivatedObject = CurrentItem;
+    }
 
     private void AddReplicText_Executed(object? arg)
     {
@@ -98,7 +102,8 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
             RemoveAt(index);
         }
 
-        QDocument.ActivatedObject = Add(ContentTypes.Text, "", ContentPlacements.Replic);
+        CurrentItem = Add(ContentTypes.Text, "", ContentPlacements.Replic);
+        QDocument.ActivatedObject = CurrentItem;
     }
 
     private void ChangePlacement_Executed(object? arg)

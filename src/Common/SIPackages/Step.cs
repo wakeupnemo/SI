@@ -74,6 +74,18 @@ public sealed class Step : PropertyChangedNotifier, ITyped, IEquatable<Step>
     /// <inheritdoc />
     public override int GetHashCode() => HashCode.Combine(Type, Parameters.GetCollectionHashCode());
 
+    internal Step Clone()
+    {
+        var step = new Step { _type = _type };
+
+        foreach (var parameter in Parameters)
+        {
+            step.Parameters[parameter.Key] = parameter.Value.Clone();
+        }
+
+        return step;
+    }
+
     /// <inheritdoc />
     public void ReadXml(XmlReader reader, PackageLimits? limits)
     {
@@ -82,6 +94,7 @@ public sealed class Step : PropertyChangedNotifier, ITyped, IEquatable<Step>
             _type = reader.Value.LimitLengthBy(limits?.TextLength);
         }
 
+        reader.MoveToElement();
         Parameters.ReadXml(reader, limits);
     }
 

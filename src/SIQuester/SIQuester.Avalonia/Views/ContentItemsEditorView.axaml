@@ -1,0 +1,71 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.ContentItemsEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:Name="Root"
+    x:DataType="views:ContentItemsEditorView">
+  <StackPanel Margin="{StaticResource FieldMargin}">
+    <ListBox
+        x:Name="ContentItemsList"
+        ItemsSource="{Binding Editor, ElementName=Root}"
+        SelectedIndex="{Binding Editor.CurrentPosition, ElementName=Root, Mode=TwoWay}"
+        MinHeight="{StaticResource MetadataListHeight}"
+        MaxHeight="{StaticResource MetadataListMaxHeight}"
+        AutomationProperties.Name="{x:Static loc:UiStrings.ContentItems}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:ContentItemViewModel">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Space8}">
+            <TextBlock Text="{Binding Model.Type}" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="{Binding Model.Value}" TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <ContentControl Content="{Binding Editor.CurrentItem, ElementName=Root}">
+      <ContentControl.DataTemplates>
+        <DataTemplate x:DataType="vm:ContentItemViewModel">
+          <StackPanel Margin="{StaticResource MetadataEditorMargin}">
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ContentValue}" />
+            <TextBox
+                x:Name="ContentValueEditor"
+                Text="{Binding Model.Value, Mode=TwoWay}"
+                AcceptsReturn="True"
+                MinHeight="64"
+                AutomationProperties.Name="{x:Static loc:UiStrings.ContentValue}" />
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Placement}" />
+            <ComboBox
+                ItemsSource="{x:Static vm:ContentItemViewModel.AvailablePlacements}"
+                SelectedItem="{Binding Model.Placement, Mode=TwoWay}"
+                Margin="{StaticResource FieldMargin}" />
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.DurationSeconds}" />
+            <NumericUpDown
+                Value="{Binding DurationSeconds, Mode=TwoWay}"
+                Minimum="0"
+                Increment="0.5"
+                Margin="{StaticResource FieldMargin}" />
+            <CheckBox
+                Content="{x:Static loc:UiStrings.WaitForFinish}"
+                IsChecked="{Binding Model.WaitForFinish, Mode=TwoWay}"
+                Margin="{StaticResource FieldMargin}" />
+            <CheckBox
+                Content="{x:Static loc:UiStrings.PackageMediaReference}"
+                IsChecked="{Binding Model.IsRef, Mode=TwoWay}"
+                Margin="{StaticResource FieldMargin}" />
+          </StackPanel>
+        </DataTemplate>
+      </ContentControl.DataTemplates>
+    </ContentControl>
+
+    <WrapPanel Orientation="Horizontal">
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddScreenText}" Command="{Binding Editor.AddText, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddReplicText}" Command="{Binding Editor.AddVoice, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" Command="{Binding Editor.MoveLeft, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" Command="{Binding Editor.MoveRight, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Editor.RemoveItem, ElementName=Root}" />
+    </WrapPanel>
+  </StackPanel>
+</UserControl>

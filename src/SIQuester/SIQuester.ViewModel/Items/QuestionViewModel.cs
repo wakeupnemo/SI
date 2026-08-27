@@ -99,6 +99,20 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
     public StepParametersViewModel Parameters { get; private set; }
 
+    /// <summary>
+    /// Gets legacy question content when the question does not use an explicit script.
+    /// </summary>
+    public ContentItemsViewModel? LegacyContent { get; private set; }
+
+    /// <summary>
+    /// Gets canonical script steps without converting legacy questions.
+    /// </summary>
+    public IReadOnlyList<ScriptStepViewModel> ScriptSteps { get; private set; }
+
+    public bool HasScript => Model.Script != null;
+
+    public bool HasLegacyContent => LegacyContent != null;
+
     public ICommand AddComplexAnswer { get; private set; }
 
     public ICommand RemoveComplexAnswer { get; private set; }
@@ -313,6 +327,14 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         Right = new AnswersViewModel(this, question.Right, true);
         Wrong = new AnswersViewModel(this, question.Wrong, false);
         Parameters = new StepParametersViewModel(this, question.Parameters);
+        ScriptSteps = question.Script?.Steps.Select(step => new ScriptStepViewModel(this, step)).ToArray()
+            ?? Array.Empty<ScriptStepViewModel>();
+
+        if (question.Script == null
+            && Parameters.TryGetValue(QuestionParameterNames.Question, out var questionParameter))
+        {
+            LegacyContent = questionParameter.ContentValue;
+        }
 
         BindHelper.Bind(Right, question.Right);
         BindHelper.Bind(Wrong, question.Wrong);
@@ -386,6 +408,9 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
                 ContentValue = new List<ContentItem>(),
             });
             Parameters.AddParameter(QuestionParameterNames.Question, questionParameter);
+            LegacyContent = questionParameter.ContentValue;
+            OnPropertyChanged(nameof(LegacyContent));
+            OnPropertyChanged(nameof(HasLegacyContent));
         }
 
         return questionParameter.ContentValue!;

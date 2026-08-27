@@ -21,51 +21,57 @@ public sealed class StepParameters : Dictionary<string, StepParameter>, IEquatab
     /// <inheritdoc />
     public void ReadXml(XmlReader reader, PackageLimits? limits)
     {
-        var read = true;
         var parentTagName = reader.LocalName;
+        var parentDepth = reader.Depth;
 
-        while (!read || reader.Read())
+        if (reader.IsEmptyElement)
         {
-            read = true;
+            reader.Read();
+            return;
+        }
 
-            switch (reader.NodeType)
+        if (!reader.Read())
+        {
+            return;
+        }
+
+        while (reader.ReadState == ReadState.Interactive)
+        {
+            if (reader.NodeType == XmlNodeType.EndElement
+                && reader.Depth == parentDepth
+                && reader.LocalName == parentTagName)
             {
-                case XmlNodeType.Element:
-                    switch (reader.LocalName)
-                    {
-                        case "param":
-                            if (!reader.IsEmptyElement && (limits == null || Count < limits.ParameterCount))
-                            {
-                                var name = "";
-
-                                if (reader.MoveToAttribute("name"))
-                                {
-                                    name = reader.Value.LimitLengthBy(limits?.TextLength);
-                                }
-
-                                var parameter = new StepParameter();
-                                parameter.ReadXml(reader, limits);
-                                this[name] = parameter;
-                            }
-                            else
-                            {
-                                reader.Skip();
-                            }
-
-                            read = false;
-                            break;
-                    }
-
-                    break;
-
-                case XmlNodeType.EndElement:
-                    if (reader.LocalName == parentTagName)
-                    {
-                        reader.Read();
-                        return;
-                    }
-                    break;
+                reader.Read();
+                return;
             }
+
+            if (reader.NodeType == XmlNodeType.Element
+                && reader.Depth == parentDepth + 1
+                && reader.LocalName == "param")
+            {
+                if (!reader.IsEmptyElement && (limits == null || Count < limits.ParameterCount))
+                {
+                    var name = reader.GetAttribute("name")?.LimitLengthBy(limits?.TextLength) ?? "";
+                    var parameter = new StepParameter();
+
+                    using (var parameterReader = reader.ReadSubtree())
+                    {
+                        parameterReader.Read();
+                        parameter.ReadXml(parameterReader, limits);
+                    }
+
+                    this[name] = parameter;
+                    reader.Read();
+                }
+                else
+                {
+                    reader.Skip();
+                }
+
+                continue;
+            }
+
+            reader.Read();
         }
     }
 

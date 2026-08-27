@@ -3,6 +3,53 @@ namespace SIPackages.Tests;
 public sealed class SIDocumentTests
 {
     [Test]
+    public void SaveAndReload_PreservesMultiStepQuestionScript()
+    {
+        using var stream = new MemoryStream();
+
+        using (var document = SIDocument.Create("Script package", "Author", stream, true))
+        {
+            var round = new Round { Name = "Round" };
+            var theme = new Theme { Name = "Theme" };
+            var question = new Question { Price = 100, Script = new Script() };
+            question.Script.Steps.Add(new Step
+            {
+                Type = SIPackages.Core.StepTypes.ShowContent,
+                Parameters =
+                {
+                    [SIPackages.Core.StepParameterNames.Content] = new StepParameter
+                    {
+                        Type = SIPackages.Core.StepParameterTypes.Content,
+                        ContentValue = new List<ContentItem>
+                        {
+                            new() { Type = SIPackages.Core.ContentTypes.Text, Value = "Question text 例" },
+                        },
+                    },
+                },
+            });
+            question.Script.Steps.Add(new Step { Type = SIPackages.Core.StepTypes.Accept });
+            question.Right.Add("Answer");
+            theme.Questions.Add(question);
+            round.Themes.Add(theme);
+            document.Package.Rounds.Add(round);
+            document.Save();
+        }
+
+        stream.Position = 0;
+        using var reloaded = SIDocument.Load(stream);
+        var reloadedScript = reloaded.Package.Rounds[0].Themes[0].Questions[0].Script;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(reloadedScript, Is.Not.Null);
+            Assert.That(reloadedScript!.Steps, Has.Count.EqualTo(2));
+            Assert.That(reloadedScript.Steps[0].Parameters[SIPackages.Core.StepParameterNames.Content]
+                .ContentValue![0].Value, Is.EqualTo("Question text 例"));
+            Assert.That(reloadedScript.Steps[1].Type, Is.EqualTo(SIPackages.Core.StepTypes.Accept));
+        });
+    }
+
+    [Test]
     public void Save_OldFormat_RemovesLegacyAuthorAndSourceFiles()
     {
         var tempFile = Path.GetTempFileName();

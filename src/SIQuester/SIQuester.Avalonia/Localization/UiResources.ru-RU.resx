@@ -96,4 +96,18 @@
   <data name="Themes" xml:space="preserve"><value>Темы</value></data>
   <data name="Questions" xml:space="preserve"><value>Вопросы</value></data>
   <data name="MediaFiles" xml:space="preserve"><value>Медиафайлы</value></data>
+  <data name="Scenario" xml:space="preserve"><value>Сценарий</value></data>
+  <data name="ContentItems" xml:space="preserve"><value>Элементы содержимого</value></data>
+  <data name="ContentValue" xml:space="preserve"><value>Содержимое</value></data>
+  <data name="Placement" xml:space="preserve"><value>Размещение</value></data>
+  <data name="DurationSeconds" xml:space="preserve"><value>Длительность, секунды</value></data>
+  <data name="WaitForFinish" xml:space="preserve"><value>Дождаться окончания воспроизведения</value></data>
+  <data name="PackageMediaReference" xml:space="preserve"><value>Ссылка на медиафайл пакета</value></data>
+  <data name="AddScreenText" xml:space="preserve"><value>Добавить текст на экран</value></data>
+  <data name="AddReplicText" xml:space="preserve"><value>Добавить реплику</value></data>
+  <data name="ParameterReference" xml:space="preserve"><value>Ссылка на параметр вопроса</value></data>
+  <data name="Minimum" xml:space="preserve"><value>Минимум</value></data>
+  <data name="Maximum" xml:space="preserve"><value>Максимум</value></data>
+  <data name="Step" xml:space="preserve"><value>Шаг</value></data>
+  <data name="StepType" xml:space="preserve"><value>Тип шага</value></data>
 </root>

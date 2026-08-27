@@ -107,4 +107,18 @@ public static class UiStrings
     public static string Themes => Get(nameof(Themes));
     public static string Questions => Get(nameof(Questions));
     public static string MediaFiles => Get(nameof(MediaFiles));
+    public static string Scenario => Get(nameof(Scenario));
+    public static string ContentItems => Get(nameof(ContentItems));
+    public static string ContentValue => Get(nameof(ContentValue));
+    public static string Placement => Get(nameof(Placement));
+    public static string DurationSeconds => Get(nameof(DurationSeconds));
+    public static string WaitForFinish => Get(nameof(WaitForFinish));
+    public static string PackageMediaReference => Get(nameof(PackageMediaReference));
+    public static string AddScreenText => Get(nameof(AddScreenText));
+    public static string AddReplicText => Get(nameof(AddReplicText));
+    public static string ParameterReference => Get(nameof(ParameterReference));
+    public static string Minimum => Get(nameof(Minimum));
+    public static string Maximum => Get(nameof(Maximum));
+    public static string Step => Get(nameof(Step));
+    public static string StepType => Get(nameof(StepType));
 }

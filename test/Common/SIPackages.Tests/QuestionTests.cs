@@ -8,6 +8,66 @@ namespace SIPackages.Tests;
 internal sealed class QuestionTests
 {
     [Test]
+    public void Clone_PreservesIndependentScriptAndEveryParameterKind()
+    {
+        var question = new Question
+        {
+            Script = new Script
+            {
+                Steps =
+                {
+                    new Step
+                    {
+                        Type = "custom",
+                        Parameters =
+                        {
+                            ["simple"] = new StepParameter { SimpleValue = "value" },
+                            ["content"] = new StepParameter
+                            {
+                                Type = StepParameterTypes.Content,
+                                ContentValue = new List<ContentItem>
+                                {
+                                    new() { Type = ContentTypes.Text, Value = "text" },
+                                },
+                            },
+                            ["group"] = new StepParameter
+                            {
+                                Type = StepParameterTypes.Group,
+                                GroupValue = new StepParameters
+                                {
+                                    ["inner"] = new StepParameter { SimpleValue = "nested" },
+                                },
+                            },
+                            ["numbers"] = new StepParameter
+                            {
+                                Type = StepParameterTypes.NumberSet,
+                                NumberSetValue = new NumberSet { Minimum = 10, Maximum = 50, Step = 10 },
+                            },
+                        },
+                    },
+                },
+            },
+        };
+
+        var clone = question.Clone();
+        clone.Script!.Steps[0].Parameters["content"].ContentValue![0].Value = "changed";
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(clone.Script, Is.Not.SameAs(question.Script));
+            Assert.That(clone.Script.Steps, Has.Count.EqualTo(1));
+            Assert.That(clone.Script.Steps[0].Type, Is.EqualTo("custom"));
+            Assert.That(clone.Script.Steps[0], Is.Not.SameAs(question.Script.Steps[0]));
+            Assert.That(question.Script.Steps[0].Parameters["content"].ContentValue![0].Value,
+                Is.EqualTo("text"));
+            Assert.That(clone.Script.Steps[0].Parameters["group"].GroupValue!["inner"].SimpleValue,
+                Is.EqualTo("nested"));
+            Assert.That(clone.Script.Steps[0].Parameters["numbers"].NumberSetValue!.Step,
+                Is.EqualTo(10));
+        });
+    }
+
+    [Test]
     public void Serialize_Deserialize_Ok()
     {
         var question = new Question

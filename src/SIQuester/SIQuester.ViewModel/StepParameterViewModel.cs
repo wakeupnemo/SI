@@ -16,11 +16,21 @@ public sealed class StepParameterViewModel : ModelViewBase
 
     public StepParametersViewModel? GroupValue { get; }
 
+    public bool UsesSimpleValue => Model.IsRef || Model.Type == StepParameterTypes.Simple;
+
+    public bool UsesContentValue => !Model.IsRef && Model.Type == StepParameterTypes.Content;
+
+    public bool UsesGroupValue => !Model.IsRef && Model.Type == StepParameterTypes.Group;
+
+    public bool UsesNumberSetValue => !Model.IsRef && Model.Type == StepParameterTypes.NumberSet;
+
     public StepParameterViewModel(QuestionViewModel question, StepParameter stepParameter, bool isTopLevel = true)
     {
         Model = stepParameter;
 
-        if (stepParameter.Type == StepParameterTypes.Content)
+        if (!stepParameter.IsRef
+            && stepParameter.Type == StepParameterTypes.Content
+            && stepParameter.ContentValue != null)
         {
             ContentValue = new ContentItemsViewModel(question, stepParameter.ContentValue!, isTopLevel);
         }

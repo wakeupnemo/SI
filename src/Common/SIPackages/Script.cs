@@ -26,46 +26,65 @@ public sealed class Script : IEquatable<Script>
     /// <inheritdoc />
     public override int GetHashCode() => Steps.GetCollectionHashCode();
 
+    internal Script Clone()
+    {
+        var script = new Script();
+        script.Steps.AddRange(Steps.Select(step => step.Clone()));
+        return script;
+    }
+
     /// <inheritdoc />
     public void ReadXml(XmlReader reader, PackageLimits? limits)
     {
-        var read = true;
-
-        while (!read || reader.Read())
+        if (reader.IsEmptyElement)
         {
-            read = true;
+            reader.Read();
+            return;
+        }
 
-            switch (reader.NodeType)
+        var scriptDepth = reader.Depth;
+
+        if (!reader.Read())
+        {
+            return;
+        }
+
+        while (reader.ReadState == ReadState.Interactive)
+        {
+            if (reader.NodeType == XmlNodeType.EndElement
+                && reader.Depth == scriptDepth
+                && reader.LocalName == "script")
             {
-                case XmlNodeType.Element:
-                    switch (reader.LocalName)
-                    {
-                        case "step":
-                            if (limits == null || Steps.Count < limits.StepCount)
-                            {
-                                var step = new Step();
-                                step.ReadXml(reader, limits);
-                                Steps.Add(step);
-                            }
-                            else
-                            {
-                                reader.Skip();
-                            }
-
-                            read = false;
-                            break;
-                    }
-
-                    break;
-
-                case XmlNodeType.EndElement:
-                    if (reader.LocalName == "script")
-                    {
-                        reader.Read();
-                        return;
-                    }
-                    break;
+                reader.Read();
+                return;
             }
+
+            if (reader.NodeType == XmlNodeType.Element
+                && reader.Depth == scriptDepth + 1
+                && reader.LocalName == "step")
+            {
+                if (limits == null || Steps.Count < limits.StepCount)
+                {
+                    var step = new Step();
+
+                    using (var stepReader = reader.ReadSubtree())
+                    {
+                        stepReader.Read();
+                        step.ReadXml(stepReader, limits);
+                    }
+
+                    Steps.Add(step);
+                    reader.Read();
+                }
+                else
+                {
+                    reader.Skip();
+                }
+
+                continue;
+            }
+
+            reader.Read();
         }
     }
 

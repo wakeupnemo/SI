@@ -131,6 +131,89 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_ScenarioEditorsMutateCanonicalScriptThroughCompiledBindings()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Scenario inspector", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 100, Script = new Script() };
+        question.Script.Steps.Add(new Step
+        {
+            Type = StepTypes.ShowContent,
+            Parameters =
+            {
+                [StepParameterNames.Content] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = new List<ContentItem>
+                    {
+                        new() { Type = ContentTypes.Text, Value = "Original content" },
+                    },
+                },
+            },
+        });
+        question.Script.Steps.Add(new Step
+        {
+            Type = StepTypes.AskAnswer,
+            Parameters =
+            {
+                [StepParameterNames.Mode] = new StepParameter { SimpleValue = "direct" },
+            },
+        });
+        question.Right.Add("Answer");
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Scenario inspector");
+        var questionViewModel = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+        var inspector = new InspectorView { SelectedItem = questionViewModel };
+        var window = new Window { Width = 760, Height = 1400, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+
+            var scenarioEditor = inspector.GetVisualDescendants().OfType<ScenarioEditorView>().Single();
+            var contentEditor = scenarioEditor.GetVisualDescendants()
+                .OfType<ContentItemsEditorView>()
+                .Single(editor => editor.IsEffectivelyVisible);
+            contentEditor.Editor!.CurrentPosition = 0;
+            window.UpdateLayout();
+            contentEditor.GetVisualDescendants()
+                .OfType<TextBox>()
+                .Single(control => control.Name == "ContentValueEditor" && control.IsEffectivelyVisible)
+                .Text = "Текст из Avalonia 例";
+
+            var simpleEditor = scenarioEditor.GetVisualDescendants()
+                .OfType<TextBox>()
+                .Single(control => control.Name == "SimpleParameterEditor" && control.IsEffectivelyVisible);
+            simpleEditor.Text = "direct-ui";
+            contentEditor.Editor.AddVoice.Execute(null);
+            contentEditor.Editor.CurrentItem!.Model.Value = "Реплика из Avalonia";
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.ScriptSteps, Has.Count.EqualTo(2));
+                Assert.That(question.Script.Steps[0].Parameters[StepParameterNames.Content].ContentValue![0].Value,
+                    Is.EqualTo("Текст из Avalonia 例"));
+                Assert.That(question.Script.Steps[0].Parameters[StepParameterNames.Content].ContentValue![1].Value,
+                    Is.EqualTo("Реплика из Avalonia"));
+                Assert.That(question.Script.Steps[1].Parameters[StepParameterNames.Mode].SimpleValue,
+                    Is.EqualTo("direct-ui"));
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void DocumentEditor_InitialSelectionFlowsToTypedInspector()
     {
         using var serviceProvider = CreateServiceProvider();

@@ -8,7 +8,6 @@ namespace SIPackages.Tests;
 public sealed class ScriptDeserializationTests
 {
     [Test]
-    [Ignore("Script XML deserialization has known issues with reader state management")]
     public void LoadXml_ScriptQuestion_IsDeserialized()
     {
         // Arrange & Act
@@ -22,7 +21,6 @@ public sealed class ScriptDeserializationTests
     }
 
     [Test]
-    [Ignore("Script XML deserialization has known issues with reader state management")]
     public void LoadXml_ScriptQuestion_ShowContentStep_IsDeserialized()
     {
         // Arrange & Act
@@ -46,7 +44,6 @@ public sealed class ScriptDeserializationTests
     }
 
     [Test]
-    [Ignore("Script XML deserialization has known issues with reader state management")]
     public void LoadXml_ScriptQuestion_AcceptStep_IsDeserialized()
     {
         // Arrange & Act
@@ -69,7 +66,6 @@ public sealed class ScriptDeserializationTests
     }
 
     [Test]
-    [Ignore("Script XML deserialization has known issues with reader state management")]
     public void LoadXml_MultiStepScriptQuestion_IsDeserialized()
     {
         // Arrange & Act
@@ -89,7 +85,6 @@ public sealed class ScriptDeserializationTests
     }
 
     [Test]
-    [Ignore("Script XML deserialization has known issues with reader state management")]
     public void LoadXml_ScriptQuestion_RightAnswers_AreDeserialized()
     {
         // Arrange & Act

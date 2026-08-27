@@ -61,6 +61,7 @@
           <NumericUpDown Value="{Binding Model.Price, Mode=TwoWay}" Minimum="-1" Maximum="1000000" Margin="{StaticResource FieldMargin}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QuestionText}" />
           <TextBox Text="{Binding QuestionText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="140" Margin="{StaticResource FieldMargin}" />
+          <views:ScenarioEditorView Question="{Binding}" />
           <StackPanel IsVisible="{Binding UsesSimpleAnswerCollections}">
             <views:StringListEditorView Header="{x:Static loc:UiStrings.RightAnswers}" Editor="{Binding Right}" />
             <views:StringListEditorView Header="{x:Static loc:UiStrings.WrongAnswers}" Editor="{Binding Wrong}" />

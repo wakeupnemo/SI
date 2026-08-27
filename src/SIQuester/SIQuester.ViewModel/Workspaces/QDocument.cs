@@ -723,6 +723,8 @@ public sealed class QDocument : WorkspaceViewModel
                         AttachParametersListener(question.Parameters);
                     }
 
+                    AttachScriptListeners(question);
+
                     question.Right.CollectionChanged += Object_CollectionChanged;
                     question.Wrong.CollectionChanged += Object_CollectionChanged;
 
@@ -746,6 +748,24 @@ public sealed class QDocument : WorkspaceViewModel
         foreach (var parameter in parameters)
         {
             AttachParameterListeners(parameter);
+        }
+    }
+
+    private void AttachScriptListeners(QuestionViewModel question)
+    {
+        foreach (var step in question.ScriptSteps)
+        {
+            step.Model.PropertyChanged += Object_PropertyValueChanged;
+            AttachParametersListener(step.Parameters);
+        }
+    }
+
+    private void DetachScriptListeners(QuestionViewModel question)
+    {
+        foreach (var step in question.ScriptSteps)
+        {
+            step.Model.PropertyChanged -= Object_PropertyValueChanged;
+            DetachParametersLsteners(step.Parameters);
         }
     }
 
@@ -1010,6 +1030,8 @@ public sealed class QDocument : WorkspaceViewModel
                                         AttachParametersListener(questionViewModel.Parameters);
                                     }
 
+                                    AttachScriptListeners(questionViewModel);
+
                                     questionViewModel.Right.CollectionChanged += Object_CollectionChanged;
                                     questionViewModel.Wrong.CollectionChanged += Object_CollectionChanged;
 
@@ -1024,6 +1046,10 @@ public sealed class QDocument : WorkspaceViewModel
                     else if (item is StepParameterRecord parameter)
                     {
                         AttachParameterListeners(parameter);
+                    }
+                    else if (item is ContentItemViewModel contentItem)
+                    {
+                        contentItem.Model.PropertyChanged += Object_PropertyValueChanged;
                     }
                 }
                 break;
@@ -1070,6 +1096,8 @@ public sealed class QDocument : WorkspaceViewModel
                                         DetachParametersLsteners(questionViewModel.Parameters);
                                     }
 
+                                    DetachScriptListeners(questionViewModel);
+
                                     questionViewModel.Right.CollectionChanged -= Object_CollectionChanged;
                                     questionViewModel.Wrong.CollectionChanged -= Object_CollectionChanged;
 
@@ -1084,6 +1112,10 @@ public sealed class QDocument : WorkspaceViewModel
                     else if (item is StepParameterRecord parameter)
                     {
                         DetachParameterListeners(parameter);
+                    }
+                    else if (item is ContentItemViewModel contentItem)
+                    {
+                        contentItem.Model.PropertyChanged -= Object_PropertyValueChanged;
                     }
                 }
                 break;

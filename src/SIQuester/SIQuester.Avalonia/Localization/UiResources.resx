@@ -96,4 +96,18 @@
   <data name="Themes" xml:space="preserve"><value>Themes</value></data>
   <data name="Questions" xml:space="preserve"><value>Questions</value></data>
   <data name="MediaFiles" xml:space="preserve"><value>Media files</value></data>
+  <data name="Scenario" xml:space="preserve"><value>Scenario</value></data>
+  <data name="ContentItems" xml:space="preserve"><value>Content items</value></data>
+  <data name="ContentValue" xml:space="preserve"><value>Content value</value></data>
+  <data name="Placement" xml:space="preserve"><value>Placement</value></data>
+  <data name="DurationSeconds" xml:space="preserve"><value>Duration, seconds</value></data>
+  <data name="WaitForFinish" xml:space="preserve"><value>Wait for this content to finish</value></data>
+  <data name="PackageMediaReference" xml:space="preserve"><value>Package media reference</value></data>
+  <data name="AddScreenText" xml:space="preserve"><value>Add screen text</value></data>
+  <data name="AddReplicText" xml:space="preserve"><value>Add spoken text</value></data>
+  <data name="ParameterReference" xml:space="preserve"><value>Reference to a question parameter</value></data>
+  <data name="Minimum" xml:space="preserve"><value>Minimum</value></data>
+  <data name="Maximum" xml:space="preserve"><value>Maximum</value></data>
+  <data name="Step" xml:space="preserve"><value>Step</value></data>
+  <data name="StepType" xml:space="preserve"><value>Step type</value></data>
 </root>

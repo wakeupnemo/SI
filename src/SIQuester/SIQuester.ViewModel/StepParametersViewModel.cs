@@ -44,12 +44,15 @@ public sealed class StepParametersViewModel : ObservableCollection<StepParameter
 
     public QuestionViewModel Owner => _question;
 
-    public StepParametersViewModel(QuestionViewModel question, StepParameters parameters)
+    public StepParametersViewModel(
+        QuestionViewModel question,
+        StepParameters parameters,
+        bool? contentIsTopLevel = null)
     {
         _question = question;
         Model = parameters;
 
-        var isTopLevel = question.Model.Parameters == parameters;
+        var isTopLevel = contentIsTopLevel ?? question.Model.Parameters == parameters;
 
         foreach (var parameter in parameters)
         {
