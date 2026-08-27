@@ -467,6 +467,12 @@ public sealed class PackageViewModel : ItemViewModel<Package>
                 }
                 break;
 
+            case NotifyCollectionChangedAction.Move:
+                var movedRound = Model.Rounds[e.OldStartingIndex];
+                Model.Rounds.RemoveAt(e.OldStartingIndex);
+                Model.Rounds.Insert(e.NewStartingIndex, movedRound);
+                break;
+
             case NotifyCollectionChangedAction.Reset:
                 Model.Rounds.Clear();
 
@@ -476,6 +482,11 @@ public sealed class PackageViewModel : ItemViewModel<Package>
                     Model.Rounds.Add(round.Model);
                 }
                 break;
+        }
+
+        foreach (var round in Rounds)
+        {
+            round.UpdateStructuralCommands();
         }
     }
     

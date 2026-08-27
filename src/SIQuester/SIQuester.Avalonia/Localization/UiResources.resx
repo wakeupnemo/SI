@@ -186,4 +186,5 @@
   <data name="Warning" xml:space="preserve"><value>Warning</value></data>
   <data name="GoToIssue" xml:space="preserve"><value>Go to</value></data>
   <data name="ValidationDetails" xml:space="preserve"><value>Detailed report</value></data>
+  <data name="DuplicateItem" xml:space="preserve"><value>Duplicate</value></data>
 </root>

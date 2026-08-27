@@ -63,10 +63,13 @@
             <Button Classes="command" Content="{x:Static loc:UiStrings.FinalRound}" AutomationProperties.Name="{x:Static loc:UiStrings.FinalRound}" Command="{Binding SetType}" CommandParameter="{x:Static core:RoundTypes.Final}" />
           </WrapPanel>
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+          <WrapPanel>
             <Button Classes="command" Content="{x:Static loc:UiStrings.AddTheme}" Command="{Binding AddTheme}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveUp}" Command="{Binding MoveEarlier}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveDown}" Command="{Binding MoveLater}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.DuplicateItem}" AutomationProperties.Name="{x:Static loc:UiStrings.DuplicateItem}" Command="{Binding Duplicate}" />
             <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
-          </StackPanel>
+          </WrapPanel>
         </StackPanel>
       </ScrollViewer>
     </DataTemplate>
@@ -78,10 +81,13 @@
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
           <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
-          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
+          <WrapPanel>
             <Button Classes="command" Content="{x:Static loc:UiStrings.AddQuestion}" Command="{Binding AddQuestion}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveUp}" Command="{Binding MoveEarlier}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveDown}" Command="{Binding MoveLater}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.DuplicateItem}" AutomationProperties.Name="{x:Static loc:UiStrings.DuplicateItem}" Command="{Binding Duplicate}" />
             <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
-          </StackPanel>
+          </WrapPanel>
         </StackPanel>
       </ScrollViewer>
     </DataTemplate>

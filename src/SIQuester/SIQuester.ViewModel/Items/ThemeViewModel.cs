@@ -20,7 +20,20 @@ public sealed class ThemeViewModel : ItemViewModel<Theme>
     /// <summary>
     /// Owner round view model.
     /// </summary>
-    public RoundViewModel? OwnerRound { get; set; }
+    private RoundViewModel? _ownerRound;
+
+    public RoundViewModel? OwnerRound
+    {
+        get => _ownerRound;
+        set
+        {
+            if (!ReferenceEquals(_ownerRound, value))
+            {
+                _ownerRound = value;
+                UpdateStructuralCommands();
+            }
+        }
+    }
 
     public override IItemViewModel? Owner => OwnerRound;
 
@@ -35,7 +48,13 @@ public sealed class ThemeViewModel : ItemViewModel<Theme>
 
     public override ICommand? Remove { get; protected set; }
 
-    public ICommand Clone { get; private set; }
+    public ICommand Clone { get; }
+
+    public SimpleCommand Duplicate { get; }
+
+    public SimpleCommand MoveEarlier { get; }
+
+    public SimpleCommand MoveLater { get; }
 
     /// <summary>
     /// Adds new question.
@@ -70,12 +89,16 @@ public sealed class ThemeViewModel : ItemViewModel<Theme>
         Questions.CollectionChanged += Questions_CollectionChanged;
 
         Clone = new SimpleCommand(CloneTheme_Executed);
+        Duplicate = new SimpleCommand(DuplicateTheme_Executed);
+        MoveEarlier = new SimpleCommand(_ => Move(-1));
+        MoveLater = new SimpleCommand(_ => Move(1));
         Remove = new SimpleCommand(RemoveTheme_Executed);
         Add = AddQuestion = new SimpleCommand(AddQuestion_Executed);
         AddEmptyQuestion = new SimpleCommand(AddEmptyQuestion_Executed);
         GenerateQuestions = new SimpleCommand(GenerateQuestions_Executed);
         SortQuestions = new SimpleCommand(SortQuestions_Executed);
         ShuffleQuestions = new SimpleCommand(ShuffleQuestions_Executed);
+        UpdateStructuralCommands();
     }
 
     private async void GenerateQuestions_Executed(object? arg)
@@ -170,10 +193,61 @@ public sealed class ThemeViewModel : ItemViewModel<Theme>
             return;
         }
 
-        var newTheme = Model.Clone();
-        var newThemeViewModel = new ThemeViewModel(newTheme);
+        var newThemeViewModel = new ThemeViewModel(Model.Clone());
         OwnerRound.Themes.Add(newThemeViewModel);
         OwnerRound.OwnerPackage.Document.Navigate.Execute(newThemeViewModel);
+    }
+
+    private void DuplicateTheme_Executed(object? arg)
+    {
+        if (OwnerRound == null || OwnerRound.OwnerPackage == null)
+        {
+            return;
+        }
+
+        var newThemeViewModel = new ThemeViewModel(Model.Clone());
+        var index = OwnerRound.Themes.IndexOf(this);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        using var change = OwnerRound.OwnerPackage.Document.OperationsManager.BeginComplexChange();
+        OwnerRound.Themes.Insert(index + 1, newThemeViewModel);
+        change.Commit();
+        OwnerRound.OwnerPackage.Document.Navigate.Execute(newThemeViewModel);
+    }
+
+    private void Move(int offset)
+    {
+        var ownerDocument = OwnerRound?.OwnerPackage?.Document;
+
+        if (OwnerRound == null || ownerDocument == null)
+        {
+            return;
+        }
+
+        var sourceIndex = OwnerRound.Themes.IndexOf(this);
+        var targetIndex = sourceIndex + offset;
+
+        if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= OwnerRound.Themes.Count)
+        {
+            return;
+        }
+
+        using var change = ownerDocument.OperationsManager.BeginComplexChange();
+        OwnerRound.Themes.Move(sourceIndex, targetIndex);
+        change.Commit();
+    }
+
+    internal void UpdateStructuralCommands()
+    {
+        var ownerRound = OwnerRound;
+        var index = ownerRound?.Themes.IndexOf(this) ?? -1;
+        MoveEarlier.CanBeExecuted = index > 0;
+        MoveLater.CanBeExecuted = ownerRound != null && index >= 0 && index + 1 < ownerRound.Themes.Count;
+        Duplicate.CanBeExecuted = index >= 0;
     }
 
     private void RemoveTheme_Executed(object? arg)

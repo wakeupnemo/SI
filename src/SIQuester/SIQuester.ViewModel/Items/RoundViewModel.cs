@@ -14,7 +14,20 @@ namespace SIQuester.ViewModel;
 /// </summary>
 public sealed class RoundViewModel : ItemViewModel<Round>
 {
-    public PackageViewModel? OwnerPackage { get; set; }
+    private PackageViewModel? _ownerPackage;
+
+    public PackageViewModel? OwnerPackage
+    {
+        get => _ownerPackage;
+        set
+        {
+            if (!ReferenceEquals(_ownerPackage, value))
+            {
+                _ownerPackage = value;
+                UpdateStructuralCommands();
+            }
+        }
+    }
 
     public override IItemViewModel? Owner => OwnerPackage;
 
@@ -26,7 +39,13 @@ public sealed class RoundViewModel : ItemViewModel<Round>
 
     public override ICommand? Remove { get; protected set; }
 
-    public ICommand Clone { get; private set; }
+    public ICommand Clone { get; }
+
+    public SimpleCommand Duplicate { get; }
+
+    public SimpleCommand MoveEarlier { get; }
+
+    public SimpleCommand MoveLater { get; }
 
     public ICommand AddTheme { get; private set; }
 
@@ -43,9 +62,13 @@ public sealed class RoundViewModel : ItemViewModel<Round>
         Themes.CollectionChanged += Themes_CollectionChanged;
 
         Clone = new SimpleCommand(CloneRound_Executed);
+        Duplicate = new SimpleCommand(DuplicateRound_Executed);
+        MoveEarlier = new SimpleCommand(_ => Move(-1));
+        MoveLater = new SimpleCommand(_ => Move(1));
         Remove = new SimpleCommand(RemoveRound_Executed);
         Add = AddTheme = new SimpleCommand(AddTheme_Executed);
         SetType = new SimpleCommand(SetType_Executed);
+        UpdateStructuralCommands();
     }
 
     private void SetType_Executed(object? arg)
@@ -82,6 +105,12 @@ public sealed class RoundViewModel : ItemViewModel<Round>
                 }
                 break;
 
+            case NotifyCollectionChangedAction.Move:
+                var movedTheme = Model.Themes[e.OldStartingIndex];
+                Model.Themes.RemoveAt(e.OldStartingIndex);
+                Model.Themes.Insert(e.NewStartingIndex, movedTheme);
+                break;
+
             case NotifyCollectionChangedAction.Reset:
                 Model.Themes.Clear();
                 foreach (ThemeViewModel question in Themes)
@@ -91,14 +120,73 @@ public sealed class RoundViewModel : ItemViewModel<Round>
                 }
                 break;
         }
+
+        foreach (var theme in Themes)
+        {
+            theme.UpdateStructuralCommands();
+        }
     }
 
     private void CloneRound_Executed(object? arg)
     {
-        var newRound = Model.Clone();
-        var newRoundViewModel = new RoundViewModel(newRound);
+        if (OwnerPackage == null)
+        {
+            return;
+        }
+
+        var newRoundViewModel = new RoundViewModel(Model.Clone());
         OwnerPackage.Rounds.Add(newRoundViewModel);
         OwnerPackage.Document.Navigate.Execute(newRoundViewModel);
+    }
+
+    private void DuplicateRound_Executed(object? arg)
+    {
+        if (OwnerPackage == null)
+        {
+            return;
+        }
+
+        var index = OwnerPackage.Rounds.IndexOf(this);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        var newRoundViewModel = new RoundViewModel(Model.Clone());
+        using var change = OwnerPackage.Document.OperationsManager.BeginComplexChange();
+        OwnerPackage.Rounds.Insert(index + 1, newRoundViewModel);
+        change.Commit();
+        OwnerPackage.Document.Navigate.Execute(newRoundViewModel);
+    }
+
+    private void Move(int offset)
+    {
+        if (OwnerPackage == null)
+        {
+            return;
+        }
+
+        var sourceIndex = OwnerPackage.Rounds.IndexOf(this);
+        var targetIndex = sourceIndex + offset;
+
+        if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= OwnerPackage.Rounds.Count)
+        {
+            return;
+        }
+
+        using var change = OwnerPackage.Document.OperationsManager.BeginComplexChange();
+        OwnerPackage.Rounds.Move(sourceIndex, targetIndex);
+        change.Commit();
+    }
+
+    internal void UpdateStructuralCommands()
+    {
+        var ownerPackage = OwnerPackage;
+        var index = ownerPackage?.Rounds.IndexOf(this) ?? -1;
+        MoveEarlier.CanBeExecuted = index > 0;
+        MoveLater.CanBeExecuted = ownerPackage != null && index >= 0 && index + 1 < ownerPackage.Rounds.Count;
+        Duplicate.CanBeExecuted = index >= 0;
     }
 
     private void RemoveRound_Executed(object? arg)

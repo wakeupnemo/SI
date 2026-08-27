@@ -112,6 +112,90 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_RoundAndThemeStructuralButtonsRouteThroughTypedCommands()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Structural inspector", "Test author");
+
+        for (var roundIndex = 1; roundIndex <= 3; roundIndex++)
+        {
+            var round = new Round { Name = $"Round {roundIndex}" };
+
+            for (var themeIndex = 1; themeIndex <= 3; themeIndex++)
+            {
+                var theme = new Theme { Name = $"Theme {roundIndex}.{themeIndex}" };
+                theme.Questions.Add(new Question { Price = 100 });
+                round.Themes.Add(theme);
+            }
+
+            document.Package.Rounds.Add(round);
+        }
+
+        using var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Structural inspector");
+        var selectedRound = documentViewModel.Package.Rounds[1];
+        var inspector = new InspectorView { SelectedItem = selectedRound };
+        var window = new Window { Width = 720, Height = 900, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var roundButtons = inspector.GetVisualDescendants().OfType<Button>().ToArray();
+            var moveRoundEarlier = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.MoveEarlier));
+            var moveRoundLater = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.MoveLater));
+            var duplicateRound = roundButtons.Single(button => ReferenceEquals(button.Command, selectedRound.Duplicate));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(moveRoundEarlier.Content, Is.EqualTo(UiStrings.MoveUp));
+                Assert.That(moveRoundLater.Content, Is.EqualTo(UiStrings.MoveDown));
+                Assert.That(duplicateRound.Content, Is.EqualTo(UiStrings.DuplicateItem));
+                Assert.That(moveRoundEarlier.IsEnabled, Is.True);
+                Assert.That(moveRoundLater.IsEnabled, Is.True);
+                Assert.That(duplicateRound.IsEnabled, Is.True);
+            });
+
+            moveRoundEarlier.Command!.Execute(moveRoundEarlier.CommandParameter);
+            duplicateRound.Command!.Execute(duplicateRound.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.That(document.Package.Rounds.Select(round => round.Name),
+                Is.EqualTo(new[] { "Round 2", "Round 2", "Round 1", "Round 3" }));
+
+            var selectedTheme = selectedRound.Themes[1];
+            inspector.SelectedItem = selectedTheme;
+            window.UpdateLayout();
+            var themeButtons = inspector.GetVisualDescendants().OfType<Button>().ToArray();
+            var moveThemeEarlier = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.MoveEarlier));
+            var moveThemeLater = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.MoveLater));
+            var duplicateTheme = themeButtons.Single(button => ReferenceEquals(button.Command, selectedTheme.Duplicate));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(moveThemeEarlier.Content, Is.EqualTo(UiStrings.MoveUp));
+                Assert.That(moveThemeLater.Content, Is.EqualTo(UiStrings.MoveDown));
+                Assert.That(duplicateTheme.Content, Is.EqualTo(UiStrings.DuplicateItem));
+                Assert.That(moveThemeEarlier.IsEnabled, Is.True);
+                Assert.That(moveThemeLater.IsEnabled, Is.True);
+                Assert.That(duplicateTheme.IsEnabled, Is.True);
+            });
+
+            moveThemeEarlier.Command!.Execute(moveThemeEarlier.CommandParameter);
+            duplicateTheme.Command!.Execute(duplicateTheme.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.That(selectedRound.Model.Themes.Select(theme => theme.Name),
+                Is.EqualTo(new[] { "Theme 2.2", "Theme 2.2", "Theme 2.1", "Theme 2.3" }));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaTest]
     public void Inspector_MetadataEditorsMutateExistingViewModelsThroughCompiledBindings()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -1668,6 +1752,7 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.NextSearchResult, Is.EqualTo("Следующее совпадение"));
             Assert.That(UiStrings.ClearSearch, Is.EqualTo("Очистить поиск"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
+            Assert.That(UiStrings.DuplicateItem, Is.EqualTo("Дублировать"));
             Assert.That(UiStrings.Validation, Is.EqualTo("Проверка"));
             Assert.That(UiStrings.GoToIssue, Is.EqualTo("Перейти"));
             Assert.That(

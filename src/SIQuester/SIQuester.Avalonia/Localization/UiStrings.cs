@@ -197,4 +197,5 @@ public static class UiStrings
     public static string Warning => Get(nameof(Warning));
     public static string GoToIssue => Get(nameof(GoToIssue));
     public static string ValidationDetails => Get(nameof(ValidationDetails));
+    public static string DuplicateItem => Get(nameof(DuplicateItem));
 }
