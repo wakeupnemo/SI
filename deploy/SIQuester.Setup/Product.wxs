@@ -212,6 +212,9 @@
 			<Component Guid="{c17c0222-cbed-4df1-b2a8-015fc6a9f5bb}">
 				<File Id="script.js" KeyPath="yes" Source="$(var.PublishFolder)wwwroot\script.js" />
 			</Component>
+			<Component Guid="{B32EE971-9EC6-4F07-A801-BA88AB35D725}">
+				<File Id="siquester_bridge.js" KeyPath="yes" Source="$(var.PublishFolder)wwwroot\siquester-bridge.js" />
+			</Component>
 			<Component Guid="{67efe4f6-377d-4ea8-8e54-527ac0f7571d}">
 				<File Id="style.css" KeyPath="yes" Source="$(var.PublishFolder)wwwroot\style.css" />
 			</Component>

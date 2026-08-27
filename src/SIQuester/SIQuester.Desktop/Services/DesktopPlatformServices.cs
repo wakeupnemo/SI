@@ -16,7 +16,6 @@ internal sealed class DesktopPlatformServices :
     IApplicationLifetimeService,
     IMediaMaterializationService,
     IPlatformCapabilities,
-    IQuestionPreviewService,
     IExternalLauncher,
     IUiDispatcher,
     IPlatformService
@@ -39,9 +38,6 @@ internal sealed class DesktopPlatformServices :
         .ToArray();
 
     public bool SupportsRecoveryManagementUi => true;
-
-    public QuestionPreviewHostDescriptor GetHostDescriptor() =>
-        QuestionPreviewHostDescriptor.Unavailable(QuestionPreviewAvailability.BackendUnavailable);
 
     public async ValueTask InvokeAsync(Action action, CancellationToken cancellationToken = default)
     {

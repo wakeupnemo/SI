@@ -3977,7 +3977,11 @@ public sealed class QDocument : WorkspaceViewModel
             return;
         }
 
-        Dialog = new QuestionPlayViewModel(questionViewModel, this, _questionPreviewService);
+        Dialog = new QuestionPlayViewModel(
+            questionViewModel,
+            this,
+            _questionPreviewService,
+            _loggerFactory.CreateLogger<QuestionPlayViewModel>());
     }
 
     internal bool CheckPackageQuality()

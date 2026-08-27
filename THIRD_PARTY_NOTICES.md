@@ -5,6 +5,7 @@ The cross-platform SIQuester distribution includes the following newly distribut
 | Component | Version | License | Purpose |
 |---|---:|---|---|
 | Avalonia desktop packages | 12.1.1 | MIT | Cross-platform desktop UI, Fluent controls/theme, native platform backends, and accessibility |
+| Avalonia Controls WebView | 12.1.0 | MIT | Native WebView2, WKWebView, WPE WebKit, and WebKitGTK integration for controlled question preview |
 | Avalonia ANGLE Windows natives | 2.1.27548.20260419 | BSD-3-Clause | OpenGL ES translation used by the Avalonia Windows backend |
 | HarfBuzzSharp and native assets | 8.3.1.3 | MIT | Cross-platform text shaping used by Avalonia |
 | SkiaSharp and native assets | 3.119.4 | MIT | Cross-platform 2D rendering used by Avalonia |
@@ -16,6 +17,7 @@ The cross-platform SIQuester distribution includes the following newly distribut
 Source and license locations:
 
 - Avalonia: <https://github.com/AvaloniaUI/Avalonia>
+- Avalonia Controls WebView: <https://github.com/AvaloniaUI/Avalonia.Controls.WebView>
 - ANGLE: <https://github.com/google/angle>
 - HarfBuzzSharp and SkiaSharp: <https://github.com/mono/SkiaSharp>
 - MicroCom: <https://github.com/kekekeks/MicroCom>

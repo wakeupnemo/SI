@@ -227,7 +227,12 @@
   <data name="SpardTokenPreviewTruncated" xml:space="preserve"><value>Предварительный просмотр токенов ограничен для безопасности</value></data>
   <data name="QuestionPreviewTitle" xml:space="preserve"><value>Предпросмотр вопроса</value></data>
   <data name="QuestionPreviewBackendUnavailable" xml:space="preserve"><value>Предпросмотр вопроса недоступен: в этой сборке не настроен нативный браузерный компонент. Редактирование и сохранение остаются доступными.</value></data>
+  <data name="QuestionPreviewLinuxBackendUnavailable" xml:space="preserve"><value>Для предпросмотра требуется WebKitGTK 4.1 (GTK 3 и libsoup 3) или WPE WebKit. Установите пакеты для вашего дистрибутива Linux из документации и перезапустите SIQuester. Редактирование и сохранение остаются доступными.</value></data>
+  <data name="QuestionPreviewWindowsBackendUnavailable" xml:space="preserve"><value>Для предпросмотра требуется Microsoft Edge WebView2 Runtime. Установите или восстановите WebView2 и перезапустите SIQuester. Редактирование и сохранение остаются доступными.</value></data>
+  <data name="QuestionPreviewPlatformUnsupported" xml:space="preserve"><value>На этой платформе нет поддерживаемого нативного браузерного компонента для предпросмотра. Редактирование и сохранение остаются доступными.</value></data>
   <data name="QuestionPreviewAssetsUnavailable" xml:space="preserve"><value>Файлы встроенного проигрывателя вопросов отсутствуют. Переустановите SIQuester или восстановите его каталог wwwroot.</value></data>
+  <data name="QuestionPreviewLoading" xml:space="preserve"><value>Запуск защищённого предпросмотра вопроса…</value></data>
+  <data name="QuestionPreviewRuntimeFailure" xml:space="preserve"><value>Нативный предпросмотр вопроса неожиданно остановился. Закройте его и попробуйте снова; редактирование и сохранение остаются доступными.</value></data>
   <data name="QuestionPreviewNext" xml:space="preserve"><value>Следующий фрагмент</value></data>
   <data name="QuestionPreviewReplay" xml:space="preserve"><value>Повторить вопрос</value></data>
 </root>

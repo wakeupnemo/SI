@@ -16,6 +16,7 @@ on:
       - "test/SIQuester/**"
       - "tools/package-siquester-*.sh"
       - "tools/smoke-siquester-linux.sh"
+      - "tools/smoke-siquester-question-preview-linux.sh"
       - ".github/workflows/siquester-cross-platform.yml"
   pull_request:
     branches: [ "master" ]
@@ -32,6 +33,7 @@ on:
       - "test/SIQuester/**"
       - "tools/package-siquester-*.sh"
       - "tools/smoke-siquester-linux.sh"
+      - "tools/smoke-siquester-question-preview-linux.sh"
       - ".github/workflows/siquester-cross-platform.yml"
   workflow_dispatch:
 
@@ -113,6 +115,70 @@ jobs:
         with:
           name: siquester-compatibility-${{ runner.os }}
           path: bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/
+          if-no-files-found: error
+
+  linux-question-preview:
+    name: Linux WebKit question preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install WebKit and smoke dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes imagemagick libwebkit2gtk-4.1-0 xdotool xvfb
+
+      - name: Restore and build preview test boundary
+        run: |
+          dotnet restore SIQuester.CrossPlatform.sln -p:Configuration=Release
+          dotnet build SIQuester.CrossPlatform.sln --configuration Release --no-restore -m:1
+
+      - name: Require native WebKit capability
+        env:
+          SIQUESTER_EXPECT_PREVIEW_BACKEND: available
+        run: >-
+          dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csproj
+          --configuration Release --no-build --no-restore
+          --filter FullyQualifiedName~DesktopPreviewService
+          --logger "console;verbosity=normal"
+
+      - name: Generate semantic compatibility fixture
+        run: >-
+          dotnet test test/SIQuester/SIQuester.ViewModel.Tests/SIQuester.ViewModel.Tests.csproj
+          --configuration Release --no-build --no-restore
+          --filter FullyQualifiedName~CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia
+          --logger "console;verbosity=normal"
+
+      - name: Render retained question player through WebKitGTK
+        shell: bash
+        env:
+          XDG_CONFIG_HOME: ${{ runner.temp }}/siquester-preview-smoke/config
+          XDG_DATA_HOME: ${{ runner.temp }}/siquester-preview-smoke/data
+          XDG_CACHE_HOME: ${{ runner.temp }}/siquester-preview-smoke/cache
+          XDG_STATE_HOME: ${{ runner.temp }}/siquester-preview-smoke/state
+        run: |
+          xvfb-run -a -s "-screen 0 1200x760x24" \
+            tools/smoke-siquester-question-preview-linux.sh \
+            bin/AnyCPU.Release/SIQuester.Desktop/net10.0/SIQuester.Desktop.dll \
+            bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq \
+            "${{ runner.temp }}/siquester-preview-smoke/receipt"
+
+      - name: Upload question-preview receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-linux-question-preview
+          path: |
+            ${{ runner.temp }}/siquester-preview-smoke/receipt/
+            ${{ runner.temp }}/siquester-preview-smoke/state/SIQuester/logs/
           if-no-files-found: error
 
   package:

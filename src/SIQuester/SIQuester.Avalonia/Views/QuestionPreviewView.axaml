@@ -16,15 +16,68 @@
       <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.QuestionPreviewTitle}" />
 
       <Grid Grid.Row="1">
+        <ContentControl
+            x:Name="PreviewContentHost"
+            IsVisible="{Binding IsPreviewAvailable}" />
         <Border
             Classes="card"
-            IsVisible="{Binding IsPreviewBackendUnavailable}"
+            IsVisible="{Binding IsPreviewLoading}">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{StaticResource Space12}">
+            <ProgressBar IsIndeterminate="True" Width="220" />
+            <TextBlock
+                Text="{x:Static loc:UiStrings.QuestionPreviewLoading}"
+                AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewLoading}" />
+          </StackPanel>
+        </Border>
+        <Border
+            Classes="card"
+            IsVisible="{Binding HasPreviewFailure}"
+            BorderBrush="{DynamicResource SystemFillColorCriticalBrush}">
+          <TextBlock
+              Text="{x:Static loc:UiStrings.QuestionPreviewRuntimeFailure}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewRuntimeFailure}" />
+        </Border>
+        <Border
+            Classes="card"
+            IsVisible="{Binding IsGenericPreviewBackendUnavailable}"
             BorderBrush="{DynamicResource SystemAccentColor}">
           <TextBlock
               Text="{x:Static loc:UiStrings.QuestionPreviewBackendUnavailable}"
               TextWrapping="Wrap"
               VerticalAlignment="Center"
               AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewBackendUnavailable}" />
+        </Border>
+        <Border
+            Classes="card"
+            IsVisible="{Binding RequiresLinuxWebKit}"
+            BorderBrush="{DynamicResource SystemAccentColor}">
+          <TextBlock
+              Text="{x:Static loc:UiStrings.QuestionPreviewLinuxBackendUnavailable}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewLinuxBackendUnavailable}" />
+        </Border>
+        <Border
+            Classes="card"
+            IsVisible="{Binding RequiresWindowsWebView2}"
+            BorderBrush="{DynamicResource SystemAccentColor}">
+          <TextBlock
+              Text="{x:Static loc:UiStrings.QuestionPreviewWindowsBackendUnavailable}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewWindowsBackendUnavailable}" />
+        </Border>
+        <Border
+            Classes="card"
+            IsVisible="{Binding IsPreviewPlatformUnsupported}"
+            BorderBrush="{DynamicResource SystemAccentColor}">
+          <TextBlock
+              Text="{x:Static loc:UiStrings.QuestionPreviewPlatformUnsupported}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewPlatformUnsupported}" />
         </Border>
         <Border
             Classes="card"
@@ -48,7 +101,8 @@
             Classes="command"
             Content="{x:Static loc:UiStrings.QuestionPreviewReplay}"
             Command="{Binding Replay}"
-            IsVisible="{Binding IsReplayVisible}" />
+            IsVisible="{Binding IsReplayVisible}"
+            IsEnabled="{Binding IsPreviewAvailable}" />
         <Button
             Classes="command accent"
             Content="{x:Static loc:UiStrings.Close}"

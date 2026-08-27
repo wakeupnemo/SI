@@ -21,5 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\SIQuester\SIQuester.Avalonia\SIQuester.Avalonia.csproj" />
+    <ProjectReference Include="..\..\..\src\SIQuester\SIQuester.Desktop\SIQuester.Desktop.csproj" />
   </ItemGroup>
 </Project>

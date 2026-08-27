@@ -6,7 +6,7 @@ Architecture: @ARCHITECTURE@
 Installed-Size: @INSTALLED_SIZE@
 Maintainer: SI contributors <VladimirKhil@users.noreply.github.com>
 Depends: libc6, libfontconfig1, libgcc-s1, libice6, libicu70 | libicu72 | libicu74 | libicu76, libsm6, libssl3, libstdc++6, libx11-6, zlib1g
-Recommends: desktop-file-utils, shared-mime-info, xdg-utils
+Recommends: desktop-file-utils, libwebkit2gtk-4.1-0 | libwpewebkit-2.0-1, shared-mime-info, xdg-utils
 Homepage: https://github.com/VladimirKhil/SI
 Description: Cross-platform SIGame package editor
  SIQuester creates and edits canonical .siq question packages used by SIGame.

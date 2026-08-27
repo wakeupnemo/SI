@@ -16,16 +16,36 @@ public enum QuestionPreviewAvailability
 }
 
 /// <summary>
+/// Identifies an actionable native runtime requirement without embedding localized host text in the view model.
+/// </summary>
+public enum QuestionPreviewBackendRequirement
+{
+    /// <summary>No platform-specific installation guidance is available.</summary>
+    None,
+
+    /// <summary>Linux requires WPE WebKit or GTK 3 with WebKitGTK.</summary>
+    LinuxWebKit,
+
+    /// <summary>Windows requires the Microsoft Edge WebView2 runtime.</summary>
+    WindowsWebView2,
+
+    /// <summary>The current operating-system platform is not supported.</summary>
+    UnsupportedPlatform,
+}
+
+/// <summary>
 /// Describes the current question-preview host without exposing UI-framework objects.
 /// </summary>
 public sealed record QuestionPreviewHostDescriptor
 {
     private QuestionPreviewHostDescriptor(
         QuestionPreviewAvailability availability,
-        Uri? applicationSource)
+        Uri? applicationSource,
+        QuestionPreviewBackendRequirement backendRequirement)
     {
         Availability = availability;
         ApplicationSource = applicationSource;
+        BackendRequirement = backendRequirement;
     }
 
     /// <summary>Gets the current availability state.</summary>
@@ -33,6 +53,9 @@ public sealed record QuestionPreviewHostDescriptor
 
     /// <summary>Gets the application-owned player source when available.</summary>
     public Uri? ApplicationSource { get; }
+
+    /// <summary>Gets platform-specific installation guidance for an unavailable backend.</summary>
+    public QuestionPreviewBackendRequirement BackendRequirement { get; }
 
     /// <summary>Gets whether preview can be started.</summary>
     public bool IsAvailable => Availability == QuestionPreviewAvailability.Available
@@ -60,18 +83,31 @@ public sealed record QuestionPreviewHostDescriptor
                 nameof(applicationSource));
         }
 
-        return new QuestionPreviewHostDescriptor(QuestionPreviewAvailability.Available, applicationSource);
+        return new QuestionPreviewHostDescriptor(
+            QuestionPreviewAvailability.Available,
+            applicationSource,
+            QuestionPreviewBackendRequirement.None);
     }
 
     /// <summary>Creates an unavailable descriptor without exposing a source that must not be loaded.</summary>
-    public static QuestionPreviewHostDescriptor Unavailable(QuestionPreviewAvailability availability)
+    public static QuestionPreviewHostDescriptor Unavailable(
+        QuestionPreviewAvailability availability,
+        QuestionPreviewBackendRequirement backendRequirement = QuestionPreviewBackendRequirement.None)
     {
         if (availability == QuestionPreviewAvailability.Available)
         {
             throw new ArgumentOutOfRangeException(nameof(availability));
         }
 
-        return new QuestionPreviewHostDescriptor(availability, null);
+        if (availability != QuestionPreviewAvailability.BackendUnavailable
+            && backendRequirement != QuestionPreviewBackendRequirement.None)
+        {
+            throw new ArgumentException(
+                "Backend installation guidance is only valid for an unavailable backend.",
+                nameof(backendRequirement));
+        }
+
+        return new QuestionPreviewHostDescriptor(availability, null, backendRequirement);
     }
 }
 

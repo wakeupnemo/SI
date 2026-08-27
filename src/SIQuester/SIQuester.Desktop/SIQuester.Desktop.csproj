@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia.Controls.WebView" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
@@ -27,7 +28,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SIQuester.Avalonia.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\..\test\SIGame\SIGame.Tests\SIGameTestEn.siq" Link="templates\SIGameTestEn.siq" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\..\test\SIGame\SIGame.Tests\SIGameTestNew.siq" Link="templates\SIGameTestNew.siq" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\SIQuester\wwwroot\**\*"
+          Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

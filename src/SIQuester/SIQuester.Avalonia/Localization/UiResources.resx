@@ -227,7 +227,12 @@
   <data name="SpardTokenPreviewTruncated" xml:space="preserve"><value>Token preview truncated for safety</value></data>
   <data name="QuestionPreviewTitle" xml:space="preserve"><value>Question preview</value></data>
   <data name="QuestionPreviewBackendUnavailable" xml:space="preserve"><value>Question preview is unavailable because this build has no configured native browser backend. Editing and saving remain available.</value></data>
+  <data name="QuestionPreviewLinuxBackendUnavailable" xml:space="preserve"><value>Question preview requires WebKitGTK 4.1 (GTK 3 and libsoup 3) or WPE WebKit. Install the documented packages for your Linux distribution, then restart SIQuester. Editing and saving remain available.</value></data>
+  <data name="QuestionPreviewWindowsBackendUnavailable" xml:space="preserve"><value>Question preview requires the Microsoft Edge WebView2 Runtime. Install or repair WebView2, then restart SIQuester. Editing and saving remain available.</value></data>
+  <data name="QuestionPreviewPlatformUnsupported" xml:space="preserve"><value>Question preview has no supported native browser backend on this platform. Editing and saving remain available.</value></data>
   <data name="QuestionPreviewAssetsUnavailable" xml:space="preserve"><value>The application-owned question player files are missing. Reinstall SIQuester or restore its wwwroot assets.</value></data>
+  <data name="QuestionPreviewLoading" xml:space="preserve"><value>Starting the secure question preview…</value></data>
+  <data name="QuestionPreviewRuntimeFailure" xml:space="preserve"><value>The native question preview stopped unexpectedly. Close this preview and try again; editing and saving remain available.</value></data>
   <data name="QuestionPreviewNext" xml:space="preserve"><value>Next fragment</value></data>
   <data name="QuestionPreviewReplay" xml:space="preserve"><value>Replay question</value></data>
 </root>

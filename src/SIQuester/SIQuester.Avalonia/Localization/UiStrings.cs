@@ -238,7 +238,12 @@ public static class UiStrings
     public static string SpardTokenPreviewTruncated => Get(nameof(SpardTokenPreviewTruncated));
     public static string QuestionPreviewTitle => Get(nameof(QuestionPreviewTitle));
     public static string QuestionPreviewBackendUnavailable => Get(nameof(QuestionPreviewBackendUnavailable));
+    public static string QuestionPreviewLinuxBackendUnavailable => Get(nameof(QuestionPreviewLinuxBackendUnavailable));
+    public static string QuestionPreviewWindowsBackendUnavailable => Get(nameof(QuestionPreviewWindowsBackendUnavailable));
+    public static string QuestionPreviewPlatformUnsupported => Get(nameof(QuestionPreviewPlatformUnsupported));
     public static string QuestionPreviewAssetsUnavailable => Get(nameof(QuestionPreviewAssetsUnavailable));
+    public static string QuestionPreviewLoading => Get(nameof(QuestionPreviewLoading));
+    public static string QuestionPreviewRuntimeFailure => Get(nameof(QuestionPreviewRuntimeFailure));
     public static string QuestionPreviewNext => Get(nameof(QuestionPreviewNext));
     public static string QuestionPreviewReplay => Get(nameof(QuestionPreviewReplay));
 }

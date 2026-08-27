@@ -1,4 +1,6 @@
-﻿using SIEngine.Core;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using SIEngine.Core;
 using SIPackages;
 using SIPackages.Core;
 using SIQuester.ViewModel.Contracts;
@@ -18,6 +20,7 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     private QuestionEngine _questionEngine;
     private readonly QDocument _qDocument;
     private readonly QuestionViewModel _originalQuestion;
+    private readonly ILogger<QuestionPlayViewModel> _logger;
 
     private bool _singleAnswerer = true;
     private bool _isFinished;
@@ -26,6 +29,8 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     private bool _isAnswer = false;
     private bool _isAnswerSimple = false;
     private string _rightAnswer = "";
+    private bool _isPreviewReady;
+    private bool _hasPreviewFailure;
 
     public override string Header => Resources.QuestionPlay;
 
@@ -45,6 +50,28 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     /// <summary>Gets whether the application-owned player assets are missing.</summary>
     public bool ArePreviewAssetsUnavailable =>
         PreviewHost.Availability == QuestionPreviewAvailability.AssetsUnavailable;
+
+    /// <summary>Gets whether Linux WebKit runtime packages are required.</summary>
+    public bool RequiresLinuxWebKit =>
+        PreviewHost.BackendRequirement == QuestionPreviewBackendRequirement.LinuxWebKit;
+
+    /// <summary>Gets whether the Windows WebView2 runtime is required.</summary>
+    public bool RequiresWindowsWebView2 =>
+        PreviewHost.BackendRequirement == QuestionPreviewBackendRequirement.WindowsWebView2;
+
+    /// <summary>Gets whether the current platform has no supported preview backend.</summary>
+    public bool IsPreviewPlatformUnsupported =>
+        PreviewHost.BackendRequirement == QuestionPreviewBackendRequirement.UnsupportedPlatform;
+
+    /// <summary>Gets whether only generic backend-unavailable guidance can be shown.</summary>
+    public bool IsGenericPreviewBackendUnavailable => IsPreviewBackendUnavailable
+        && PreviewHost.BackendRequirement == QuestionPreviewBackendRequirement.None;
+
+    /// <summary>Gets whether the preview is waiting for its application-owned page.</summary>
+    public bool IsPreviewLoading => IsPreviewAvailable && !_isPreviewReady && !_hasPreviewFailure;
+
+    /// <summary>Gets whether the current native preview host failed after opening.</summary>
+    public bool HasPreviewFailure => _hasPreviewFailure;
 
     public event Action<string>? SendJsonMessage;
 
@@ -76,12 +103,15 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
     public QuestionPlayViewModel(
         QuestionViewModel question,
         QDocument document,
-        IQuestionPreviewService questionPreviewService)
+        IQuestionPreviewService questionPreviewService,
+        ILogger<QuestionPlayViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(questionPreviewService);
         _originalQuestion = question;
         _qDocument = document;
+        _logger = logger ?? NullLogger<QuestionPlayViewModel>.Instance;
         PreviewHost = questionPreviewService.GetHostDescriptor();
+        _isPreviewReady = IsPreviewAvailable;
 
         Play = new SimpleCommand(Play_Executed);
         Replay = new SimpleCommand(Replay_Executed);
@@ -105,11 +135,50 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
 
         _isFinished = false;
         _options = null;
-        Play.CanBeExecuted = IsPreviewAvailable;
-        Replay.CanBeExecuted = IsPreviewAvailable;
+        RefreshPlaybackCommandState();
         
         // Notify visibility changes
         OnPropertyChanged(nameof(IsReplayVisible));
+    }
+
+    /// <summary>Updates readiness after the native host loads or detaches its controlled page.</summary>
+    public void SetPreviewReady(bool isReady)
+    {
+        var normalizedReady = IsPreviewAvailable && isReady && !_hasPreviewFailure;
+
+        if (_isPreviewReady == normalizedReady)
+        {
+            return;
+        }
+
+        _isPreviewReady = normalizedReady;
+        OnPropertyChanged(nameof(IsPreviewLoading));
+        RefreshPlaybackCommandState();
+    }
+
+    /// <summary>Records a recoverable native host failure without exposing exception details in the UI.</summary>
+    public void ReportPreviewHostFailure(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        _logger.LogWarning(exception, "Question preview host failed");
+
+        if (_hasPreviewFailure)
+        {
+            return;
+        }
+
+        _hasPreviewFailure = true;
+        _isPreviewReady = false;
+        OnPropertyChanged(nameof(HasPreviewFailure));
+        OnPropertyChanged(nameof(IsPreviewLoading));
+        RefreshPlaybackCommandState();
+    }
+
+    private void RefreshPlaybackCommandState()
+    {
+        var canPlay = IsPreviewAvailable && _isPreviewReady && !_hasPreviewFailure;
+        Play.CanBeExecuted = canPlay && !_isFinished;
+        Replay.CanBeExecuted = canPlay;
     }
 
     /// <summary>

@@ -85,7 +85,8 @@ internal sealed class QuestionPreviewProtocolTests
         var source = new Uri("http://127.0.0.1:52731/index.html");
         var available = QuestionPreviewHostDescriptor.Available(source);
         var unavailable = QuestionPreviewHostDescriptor.Unavailable(
-            QuestionPreviewAvailability.BackendUnavailable);
+            QuestionPreviewAvailability.BackendUnavailable,
+            QuestionPreviewBackendRequirement.LinuxWebKit);
 
         Assert.Multiple(() =>
         {
@@ -93,6 +94,8 @@ internal sealed class QuestionPreviewProtocolTests
             Assert.That(available.ApplicationSource, Is.EqualTo(source));
             Assert.That(unavailable.IsAvailable, Is.False);
             Assert.That(unavailable.ApplicationSource, Is.Null);
+            Assert.That(unavailable.BackendRequirement,
+                Is.EqualTo(QuestionPreviewBackendRequirement.LinuxWebKit));
             Assert.Throws<ArgumentException>(() =>
                 QuestionPreviewHostDescriptor.Available(new Uri("relative/index.html", UriKind.Relative)));
             Assert.Throws<ArgumentException>(() =>
@@ -101,7 +104,39 @@ internal sealed class QuestionPreviewProtocolTests
                 QuestionPreviewHostDescriptor.Available(new Uri("https://preview.siquester.invalid/index.html")));
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 QuestionPreviewHostDescriptor.Unavailable(QuestionPreviewAvailability.Available));
+            Assert.Throws<ArgumentException>(() => QuestionPreviewHostDescriptor.Unavailable(
+                QuestionPreviewAvailability.AssetsUnavailable,
+                QuestionPreviewBackendRequirement.LinuxWebKit));
             Assert.Throws<ArgumentOutOfRangeException>(() => new QuestionPreviewSignalMessage("unknown"));
+        });
+    }
+
+    [Test]
+    public void NativeHostReadiness_GatesPlaybackAndFailureIsTerminal()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var document = TestHelper.CreateDocumentViewModelFactory(serviceProvider)
+            .CreateViewModelFor(TestHelper.CreateSimpleTestPackage());
+        var preview = new QuestionPlayViewModel(
+            document.Package.Rounds[0].Themes[0].Questions[0],
+            document,
+            new AvailablePreviewService());
+
+        preview.SetPreviewReady(false);
+        var canPlayWhileLoading = preview.Play.CanExecute(null);
+        preview.SetPreviewReady(true);
+        var canPlayWhenReady = preview.Play.CanExecute(null);
+        preview.ReportPreviewHostFailure(new InvalidOperationException("native host stopped"));
+        preview.SetPreviewReady(true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(canPlayWhileLoading, Is.False);
+            Assert.That(canPlayWhenReady, Is.True);
+            Assert.That(preview.HasPreviewFailure, Is.True);
+            Assert.That(preview.IsPreviewLoading, Is.False);
+            Assert.That(preview.Play.CanExecute(null), Is.False);
+            Assert.That(preview.Replay.CanExecute(null), Is.False);
         });
     }
 
