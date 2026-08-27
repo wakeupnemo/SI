@@ -21,6 +21,7 @@ internal sealed class TestDocumentViewModelFactory : IDocumentViewModelFactory
     private readonly IDocumentPersistenceService _documentPersistenceService;
     private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IMediaMaterializationService _mediaMaterializationService;
+    private readonly IAppPaths _appPaths;
 
     public TestDocumentViewModelFactory(
         StorageContextViewModel storageContextViewModel,
@@ -32,7 +33,8 @@ internal sealed class TestDocumentViewModelFactory : IDocumentViewModelFactory
         IDialogService dialogService,
         IDocumentPersistenceService documentPersistenceService,
         IDocumentRecoveryService documentRecoveryService,
-        IMediaMaterializationService mediaMaterializationService)
+        IMediaMaterializationService mediaMaterializationService,
+        IAppPaths appPaths)
     {
         _storageContextViewModel = storageContextViewModel;
         _packageTemplatesRepository = packageTemplatesRepository;
@@ -44,6 +46,7 @@ internal sealed class TestDocumentViewModelFactory : IDocumentViewModelFactory
         _documentPersistenceService = documentPersistenceService;
         _documentRecoveryService = documentRecoveryService;
         _mediaMaterializationService = mediaMaterializationService;
+        _appPaths = appPaths;
     }
 
     public QDocument CreateViewModelFor(SIDocument document, string? fileName = null)
@@ -60,7 +63,8 @@ internal sealed class TestDocumentViewModelFactory : IDocumentViewModelFactory
             _dialogService,
             _documentPersistenceService,
             _documentRecoveryService,
-            _mediaMaterializationService);
+            _mediaMaterializationService,
+            _appPaths);
         qDocument.FileName = fileName ?? document.Package.Name;
         
         return qDocument;

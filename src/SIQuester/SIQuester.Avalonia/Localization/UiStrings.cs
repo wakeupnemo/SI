@@ -159,4 +159,7 @@ public static class UiStrings
     public static string QualityControlDisabled => Get(nameof(QualityControlDisabled));
     public static string EnableQualityControl => Get(nameof(EnableQualityControl));
     public static string DisableQualityControl => Get(nameof(DisableQualityControl));
+    public static string PackageLogo => Get(nameof(PackageLogo));
+    public static string SelectLogo => Get(nameof(SelectLogo));
+    public static string RemoveLogo => Get(nameof(RemoveLogo));
 }

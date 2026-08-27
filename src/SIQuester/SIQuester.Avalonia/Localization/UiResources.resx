@@ -148,4 +148,7 @@
   <data name="QualityControlDisabled" xml:space="preserve"><value>Disabled</value></data>
   <data name="EnableQualityControl" xml:space="preserve"><value>Enable quality control</value></data>
   <data name="DisableQualityControl" xml:space="preserve"><value>Disable quality control</value></data>
+  <data name="PackageLogo" xml:space="preserve"><value>Package logo</value></data>
+  <data name="SelectLogo" xml:space="preserve"><value>Select logo</value></data>
+  <data name="RemoveLogo" xml:space="preserve"><value>Remove logo</value></data>
 </root>

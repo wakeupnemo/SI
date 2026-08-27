@@ -29,6 +29,13 @@
           <TextBox x:Name="PackageRestrictionEditor" Text="{Binding Model.Restriction, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.Restriction}" AcceptsReturn="True" Margin="{StaticResource FieldMargin}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Difficulty}" />
           <NumericUpDown x:Name="PackageDifficultyEditor" Value="{Binding Model.Difficulty, Mode=TwoWay}" Minimum="0" Maximum="10" AutomationProperties.Name="{x:Static loc:UiStrings.Difficulty}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PackageLogo}" />
+          <views:PackageLogoPreview x:Name="PackageLogoPreview" Package="{Binding}" IsVisible="{Binding HasLogo}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Text="{Binding LogoName}" IsVisible="{Binding HasLogo}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding LogoName}" Margin="{StaticResource FieldMargin}" />
+          <WrapPanel Margin="{StaticResource FieldMargin}">
+            <Button Classes="command" Content="{x:Static loc:UiStrings.SelectLogo}" AutomationProperties.Name="{x:Static loc:UiStrings.SelectLogo}" Command="{Binding SelectLogo}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.RemoveLogo}" AutomationProperties.Name="{x:Static loc:UiStrings.RemoveLogo}" Command="{Binding RemoveLogo}" IsVisible="{Binding HasLogo}" />
+          </WrapPanel>
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QualityControlStatus}" />
           <WrapPanel Margin="{StaticResource FieldMargin}">
             <TextBlock Text="{x:Static loc:UiStrings.QualityControlEnabled}" IsVisible="{Binding HasQualityControl}" VerticalAlignment="Center" Margin="{StaticResource MetadataCommandMargin}" />

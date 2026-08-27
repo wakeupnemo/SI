@@ -1,0 +1,30 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.PackageLogoPreview"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:SIQuester.Avalonia.Localization">
+  <Border
+      Classes="card"
+      Height="{StaticResource LogoPreviewHeight}"
+      ClipToBounds="True">
+    <Grid>
+      <Image
+          x:Name="LogoImage"
+          Stretch="Uniform"
+          AutomationProperties.Name="{x:Static loc:UiStrings.PackageLogo}" />
+      <TextBlock
+          x:Name="LoadingText"
+          Text="{x:Static loc:UiStrings.LoadingImage}"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center" />
+      <TextBlock
+          x:Name="ImageErrorText"
+          Text="{x:Static loc:UiStrings.ImageUnavailable}"
+          TextWrapping="Wrap"
+          MaxWidth="420"
+          IsVisible="False"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center" />
+    </Grid>
+  </Border>
+</UserControl>

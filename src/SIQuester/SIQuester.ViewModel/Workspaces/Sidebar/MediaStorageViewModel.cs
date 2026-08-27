@@ -59,8 +59,8 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     /// <summary>
     /// Пути для файлов, ещё не загруженных в коллекцию (не закоммиченных)
     /// </summary>
-    private readonly Dictionary<MediaItemViewModel, Tuple<string, FileStream>> _streams = new();
-    private readonly Dictionary<MediaItemViewModel, Tuple<string, FileStream>> _removedStreams = new();
+    private readonly Dictionary<MediaItemViewModel, PendingMediaFile> _streams = new();
+    private readonly Dictionary<MediaItemViewModel, PendingMediaFile> _removedStreams = new();
 
     private bool _blockFlag = false;
 
@@ -130,6 +130,8 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     private readonly string _header;
 
     private readonly string _name;
+
+    private readonly string _temporaryMediaDirectory;
 
     internal string Name => _name;
 
@@ -202,11 +204,18 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     /// </summary>
     public SortDirection[] SortDirections { get; } = new[] { SortDirection.Ascending, SortDirection.Descending };
 
-    public MediaStorageViewModel(QDocument document, DataCollection collection, string header, ILogger<MediaStorageViewModel> logger, bool canCompress = false)
+    public MediaStorageViewModel(
+        QDocument document,
+        DataCollection collection,
+        string header,
+        string temporaryMediaDirectory,
+        ILogger<MediaStorageViewModel> logger,
+        bool canCompress = false)
     {
         _document = document;
         _header = header;
         _name = collection.Name;
+        _temporaryMediaDirectory = temporaryMediaDirectory;
         _logger = logger;
 
         FillFiles(collection);
@@ -232,15 +241,16 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     private MediaItemViewModel CreateItem(string item)
     {
         var named = new MediaItemViewModel(new Named(item), _name, () => Wrap(item));
-        named.Model.PropertyChanged += Named_PropertyChanged;
-        
-        // Subscribe to media loading completion for re-sorting if needed
-        named.PropertyChanged += MediaItem_PropertyChanged;
-        
-        // Trigger MediaSource loading for proper sorting
-        _ = named.LoadMediaAsync();
-        
+        AttachItem(named);
         return named;
+    }
+
+    private void AttachItem(MediaItemViewModel item)
+    {
+        item.Model.PropertyChanged -= Named_PropertyChanged;
+        item.PropertyChanged -= MediaItem_PropertyChanged;
+        item.Model.PropertyChanged += Named_PropertyChanged;
+        item.PropertyChanged += MediaItem_PropertyChanged;
     }
 
     private async void MediaItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -391,6 +401,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
                         return; // file was removed and removal has been committed
                     }
 
+                    AttachItem(item);
                     Files.Add(item);
                     OnPropertyChanged(nameof(Files));
 
@@ -553,24 +564,30 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         foreach (var item in _removedStreams)
         {
-            item.Value.Item2.Dispose();
+            item.Value.Dispose();
         }
         _removedStreams.Clear();
 
         foreach (var item in _added.ToArray())
         {
+            var pendingFile = _streams[item];
+
             try
             {
-                using var fs = _streams[item].Item2;
-                await collection.AddFileAsync(item.Model.Name, fs, cancellationToken);
+                await collection.AddFileAsync(item.Model.Name, pendingFile.Stream, cancellationToken);
+                pendingFile.Dispose();
+                _added.Remove(item);
+                _streams.Remove(item);
             }
             catch (Exception exc)
             {
+                if (pendingFile.Stream.CanSeek)
+                {
+                    pendingFile.Stream.Position = 0;
+                }
+
                 OnError(exc);
             }
-            
-            _added.Remove(item);
-            _streams.Remove(item);
         }
 
         foreach (var item in _renamed.ToArray())
@@ -579,7 +596,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             _renamed.Remove(item);
         }
 
-        HasPendingChanges = false;
+        HasPendingChanges = IsChanged();
     }
 
     public async Task ApplyToAsync(
@@ -594,19 +611,18 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         foreach (var item in _added.ToArray())
         {
-            var fs = _streams[item].Item2;
+            var pendingFile = _streams[item];
 
-            if (final)
+            try
             {
-                using (fs)
-                {
-                    await collection.AddFileAsync(item.Model.Name, fs, cancellationToken);
-                }
+                await collection.AddFileAsync(item.Model.Name, pendingFile.Stream, cancellationToken);
             }
-            else
+            finally
             {
-                await collection.AddFileAsync(item.Model.Name, fs, cancellationToken);
-                fs.Position = 0;
+                if (pendingFile.Stream.CanSeek)
+                {
+                    pendingFile.Stream.Position = 0;
+                }
             }
         }
 
@@ -617,6 +633,15 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         if (final)
         {
+            foreach (var pendingFile in _streams.Values
+                .Concat(_removedStreams.Values)
+                .Distinct())
+            {
+                pendingFile.Dispose();
+            }
+
+            _streams.Clear();
+            _removedStreams.Clear();
             _added.Clear();
             _removed.Clear();
             _renamed.Clear();
@@ -636,14 +661,14 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         foreach (var streamInfo in _removedStreams.Values)
         {
-            streamInfo.Item2.Dispose();
+            streamInfo.Dispose();
         }
 
         foreach (var item in _added)
         {
             if (_streams.Remove(item, out var streamInfo))
             {
-                streamInfo.Item2.Dispose();
+                streamInfo.Dispose();
             }
         }
 
@@ -680,6 +705,64 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     }
 
     public MediaItemViewModel AddFile(string file, string? name = null)
+        => AddFileCore(file, name, deleteSourceOnRelease: false);
+
+    internal async Task<StagedMediaFile> StageFileAsync(
+        PickedFile pickedFile,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pickedFile);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var safeName = GetSafePickedFileName(pickedFile);
+
+        if (!string.IsNullOrWhiteSpace(pickedFile.LocalPath))
+        {
+            return new StagedMediaFile(
+                Path.GetFullPath(pickedFile.LocalPath),
+                safeName,
+                deleteOnDispose: false,
+                _logger);
+        }
+
+        Directory.CreateDirectory(_temporaryMediaDirectory);
+        var extension = Path.GetExtension(safeName);
+        var temporaryPath = Path.Combine(
+            _temporaryMediaDirectory,
+            $"import-{Guid.NewGuid():N}{extension}");
+
+        try
+        {
+            await using var source = await pickedFile.OpenReadAsync(cancellationToken);
+            await using var target = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                81920,
+                FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough);
+            await source.CopyToAsync(target, cancellationToken);
+            await target.FlushAsync(cancellationToken);
+            target.Flush(flushToDisk: true);
+            return new StagedMediaFile(temporaryPath, safeName, deleteOnDispose: true, _logger);
+        }
+        catch
+        {
+            TryDeleteTemporaryFile(temporaryPath, _logger);
+            throw;
+        }
+    }
+
+    internal MediaItemViewModel AddFile(StagedMediaFile stagedFile)
+    {
+        ArgumentNullException.ThrowIfNull(stagedFile);
+
+        var item = AddFileCore(stagedFile.Path, stagedFile.DisplayName, stagedFile.DeleteOnDispose);
+        stagedFile.TransferOwnership();
+        return item;
+    }
+
+    private MediaItemViewModel AddFileCore(string file, string? name, bool deleteSourceOnRelease)
     {
         if (_document.Package.HasQualityControl)
         {
@@ -690,7 +773,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         var uniqueName = FileHelper.GenerateUniqueFileName(localName, name => Files.Any(f => f.Model.Name == name));
 
         var item = CreateItem(uniqueName);
-        PreviewAdd(item, file);
+        PreviewAdd(item, file, deleteSourceOnRelease: deleteSourceOnRelease);
 
         OnChanged(new CustomChange(
             () =>
@@ -700,11 +783,32 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             },
             () =>
             {
-                PreviewAdd(item, file);
+                PreviewAdd(item, file, deleteSourceOnRelease: deleteSourceOnRelease);
                 HasPendingChanges = IsChanged();
             }));
 
         return item;
+    }
+
+    private static string GetSafePickedFileName(PickedFile pickedFile)
+    {
+        var safeName = Path.GetFileName(pickedFile.DisplayName).Replace("%", "");
+        var extension = Path.GetExtension(safeName);
+
+        if (extension.Length == 0)
+        {
+            var declaredExtension = pickedFile.Extension.StartsWith('.')
+                ? pickedFile.Extension
+                : $".{pickedFile.Extension}";
+            extension = Path.GetExtension($"file{declaredExtension}");
+        }
+
+        if (string.IsNullOrWhiteSpace(safeName))
+        {
+            return $"media{extension}";
+        }
+
+        return Path.GetExtension(safeName).Length == 0 ? $"{safeName}{extension}" : safeName;
     }
 
     private void ValidateFileExtensionAndSize(string fileName)
@@ -734,11 +838,20 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         }
     }
 
-    private void PreviewAdd(MediaItemViewModel item, string path, int index = -1)
+    private void PreviewAdd(
+        MediaItemViewModel item,
+        string path,
+        int index = -1,
+        bool deleteSourceOnRelease = false)
     {
         if (_removed.Contains(item))
         {
             _removed.Remove(item);
+        }
+        else if (_removedStreams.Remove(item, out var removedStream))
+        {
+            _added.Add(item);
+            _streams[item] = removedStream;
         }
         else
         {
@@ -751,18 +864,14 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             catch (Exception exc)
             {
                 _logger.LogWarning(exc, "PreviewAdd error: {error}", exc.Message);
-                OnError(exc);
-                return;
+                throw;
             }
 
             _added.Add(item);
-            _streams[item] = Tuple.Create(path, fileStream);
-
-            if (_removedStreams.ContainsKey(item))
-            {
-                _removedStreams.Remove(item);
-            }
+            _streams[item] = new PendingMediaFile(path, fileStream, deleteSourceOnRelease, _logger);
         }
+
+        AttachItem(item);
 
         if (index == -1)
         {
@@ -803,7 +912,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         if (pendingStream.Key != null)
         {
-            return new Media(pendingStream.Value.Item1, pendingStream.Value.Item2.Length);
+            return new Media(pendingStream.Value.Path, pendingStream.Value.Stream.Length);
         }
 
         return _document.Lock.WithLock(
@@ -832,7 +941,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         if (pendingStream.Key != null)
         {
-            var fileInfo = new FileInfo(pendingStream.Value.Item1);
+            var fileInfo = new FileInfo(pendingStream.Value.Path);
             return new StreamInfo(File.OpenRead(fileInfo.FullName), fileInfo.Length);
         }
 
@@ -855,7 +964,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
         if (pendingStream.Key != null)
         {
-            return pendingStream.Value.Item1;
+            return pendingStream.Value.Path;
         }
 
         return null;
@@ -874,7 +983,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
 
     internal StorageChanges GetChanges() => new()
     {
-        Added = _added.Select(item => _streams[item].Item1).ToArray(),
+        Added = _added.Select(item => _streams[item].Path).ToArray(),
         Removed = _removed.Select(item => item.Model.Name).ToArray(),
         Renamed = _renamed.ToDictionary(item => item.Item1, item => item.Item2)
     };
@@ -956,7 +1065,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         var pendingStream = _streams.FirstOrDefault(s => s.Key == mediaItem);
         if (pendingStream.Key != null)
         {
-            return pendingStream.Value.Item2.Length;
+            return pendingStream.Value.Stream.Length;
         }
 
         // Fallback: try to get size using the document's GetLength method
@@ -971,16 +1080,98 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         }
     }
 
+    private static void TryDeleteTemporaryFile(string path, ILogger logger)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception exc)
+        {
+            logger.LogWarning(exc, "Could not delete staged media file {path}", path);
+        }
+    }
+
+    internal sealed class StagedMediaFile : IDisposable
+    {
+        private readonly ILogger _logger;
+        private bool _ownsFile;
+
+        internal string Path { get; }
+
+        internal string DisplayName { get; }
+
+        internal bool DeleteOnDispose { get; }
+
+        internal StagedMediaFile(
+            string path,
+            string displayName,
+            bool deleteOnDispose,
+            ILogger logger)
+        {
+            Path = path;
+            DisplayName = displayName;
+            DeleteOnDispose = deleteOnDispose;
+            _ownsFile = deleteOnDispose;
+            _logger = logger;
+        }
+
+        internal void TransferOwnership() => _ownsFile = false;
+
+        public void Dispose()
+        {
+            if (_ownsFile)
+            {
+                _ownsFile = false;
+                TryDeleteTemporaryFile(Path, _logger);
+            }
+        }
+    }
+
+    private sealed class PendingMediaFile : IDisposable
+    {
+        private readonly bool _deleteOnDispose;
+        private readonly ILogger _logger;
+        private bool _isDisposed;
+
+        internal string Path { get; }
+
+        internal FileStream Stream { get; }
+
+        internal PendingMediaFile(string path, FileStream stream, bool deleteOnDispose, ILogger logger)
+        {
+            Path = path;
+            Stream = stream;
+            _deleteOnDispose = deleteOnDispose;
+            _logger = logger;
+        }
+
+        public void Dispose()
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _isDisposed = true;
+            Stream.Dispose();
+
+            if (_deleteOnDispose)
+            {
+                TryDeleteTemporaryFile(Path, _logger);
+            }
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            foreach (var stream in _streams.Values
+            foreach (var pendingFile in _streams.Values
                 .Concat(_removedStreams.Values)
-                .Select(value => value.Item2)
                 .Distinct())
             {
-                stream.Dispose();
+                pendingFile.Dispose();
             }
 
             _streams.Clear();

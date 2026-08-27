@@ -1277,6 +1277,8 @@ public sealed class QDocument : WorkspaceViewModel
 
     private readonly IClipboardService _clipboardService;
     internal IClipboardService ClipboardService => _clipboardService;
+
+    internal IFilePickerService FilePickerService => _filePickerService;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ISIStatisticsServiceClient _statisticsClient;
 
@@ -1448,6 +1450,7 @@ public sealed class QDocument : WorkspaceViewModel
     private readonly IDocumentPersistenceService _documentPersistenceService;
     private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IMediaMaterializationService _mediaMaterializationService;
+    private readonly IAppPaths _appPaths;
     private string _recoveryId = Guid.NewGuid().ToString("N");
 
     internal string RecoveryId => _recoveryId;
@@ -1475,7 +1478,8 @@ public sealed class QDocument : WorkspaceViewModel
         IDialogService dialogService,
         IDocumentPersistenceService documentPersistenceService,
         IDocumentRecoveryService documentRecoveryService,
-        IMediaMaterializationService mediaMaterializationService)
+        IMediaMaterializationService mediaMaterializationService,
+        IAppPaths appPaths)
     {
         Lock = new Lock(document.Package.Name);
 
@@ -1492,6 +1496,7 @@ public sealed class QDocument : WorkspaceViewModel
         _documentPersistenceService = documentPersistenceService;
         _documentRecoveryService = documentRecoveryService;
         _mediaMaterializationService = mediaMaterializationService;
+        _appPaths = appPaths;
         _logger = loggerFactory.CreateLogger<QDocument>();
 
         StorageContext = storageContextViewModel;
@@ -1556,10 +1561,16 @@ public sealed class QDocument : WorkspaceViewModel
 
         var msvmLogger = loggerFactory.CreateLogger<MediaStorageViewModel>();
 
-        Images = new MediaStorageViewModel(this, Document.Images, Resources.Images, msvmLogger, true);
-        Audio = new MediaStorageViewModel(this, Document.Audio, Resources.Audio, msvmLogger);
-        Video = new MediaStorageViewModel(this, Document.Video, Resources.Video, msvmLogger);
-        Html = new MediaStorageViewModel(this, Document.Html, Resources.Html, msvmLogger);
+        Images = new MediaStorageViewModel(
+            this,
+            Document.Images,
+            Resources.Images,
+            _appPaths.TemporaryMediaDirectory,
+            msvmLogger,
+            true);
+        Audio = new MediaStorageViewModel(this, Document.Audio, Resources.Audio, _appPaths.TemporaryMediaDirectory, msvmLogger);
+        Video = new MediaStorageViewModel(this, Document.Video, Resources.Video, _appPaths.TemporaryMediaDirectory, msvmLogger);
+        Html = new MediaStorageViewModel(this, Document.Html, Resources.Html, _appPaths.TemporaryMediaDirectory, msvmLogger);
 
         Images.Changed += OperationsManager.AddChange;
         Audio.Changed += OperationsManager.AddChange;

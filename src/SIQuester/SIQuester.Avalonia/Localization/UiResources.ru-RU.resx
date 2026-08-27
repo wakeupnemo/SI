@@ -148,4 +148,7 @@
   <data name="QualityControlDisabled" xml:space="preserve"><value>Выключен</value></data>
   <data name="EnableQualityControl" xml:space="preserve"><value>Включить контроль качества</value></data>
   <data name="DisableQualityControl" xml:space="preserve"><value>Выключить контроль качества</value></data>
+  <data name="PackageLogo" xml:space="preserve"><value>Логотип пакета</value></data>
+  <data name="SelectLogo" xml:space="preserve"><value>Выбрать логотип</value></data>
+  <data name="RemoveLogo" xml:space="preserve"><value>Удалить логотип</value></data>
 </root>

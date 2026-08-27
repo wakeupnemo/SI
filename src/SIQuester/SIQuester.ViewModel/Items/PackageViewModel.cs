@@ -1,5 +1,6 @@
 ﻿using SIPackages;
 using SIPackages.Core;
+using SIPackages.Models;
 using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Contracts.Host;
@@ -51,9 +52,11 @@ public sealed class PackageViewModel : ItemViewModel<Package>
     /// <summary>
     /// Selects logo for package.
     /// </summary>
-    public ICommand SelectLogo { get; private set; }
+    public AsyncCommand SelectLogo { get; }
 
-    public ICommand RemoveLogo { get; private set; }
+    public SimpleCommand RemoveLogo { get; }
+
+    private bool _isLogoUpdatePending;
 
     private IMedia? _logo = null;
 
@@ -79,6 +82,19 @@ public sealed class PackageViewModel : ItemViewModel<Package>
                 OnPropertyChanged();
             }
         }
+    }
+
+    public bool HasLogo => !string.IsNullOrEmpty(Model.Logo);
+
+    public string LogoName => Model.LogoItem?.Value ?? "";
+
+    /// <summary>
+    /// Opens the embedded package logo stream. The caller owns the returned stream.
+    /// </summary>
+    public StreamInfo? OpenLogoStream()
+    {
+        var logoItem = Model.LogoItem;
+        return logoItem is { IsRef: true } ? Document.Images.TryGetStreamInfo(logoItem.Value) : null;
     }
 
     public ICommand CopyInfo { get; private set; }
@@ -145,8 +161,9 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         DisableQualityControl = new SimpleCommand(DisableQualityControl_Executed);
         UpdateQualityControlCommands();
 
-        SelectLogo = new SimpleCommand(SelectLogo_Executed);
+        SelectLogo = new AsyncCommand(SelectLogo_ExecutedAsync);
         RemoveLogo = new SimpleCommand(RemoveLogo_Executed);
+        UpdateLogoCommands();
         
         CopyInfo = new AsyncCommand(CopyInfo_ExecutedAsync);
         PasteInfo = new AsyncCommand(PasteInfo_ExecutedAsync);
@@ -360,6 +377,14 @@ public sealed class PackageViewModel : ItemViewModel<Package>
             OnPropertyChanged(nameof(HasQualityControl));
             UpdateQualityControlCommands();
         }
+        else if (e.PropertyName == nameof(Package.Logo))
+        {
+            _logo = null;
+            OnPropertyChanged(nameof(Logo));
+            OnPropertyChanged(nameof(HasLogo));
+            OnPropertyChanged(nameof(LogoName));
+            UpdateLogoCommands();
+        }
     }
 
     private async Task EnableQualityControl_ExecutedAsync(object? arg)
@@ -496,45 +521,70 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         OnPropertyChanged(nameof(Tags));
     }
 
-    private void SelectLogo_Executed(object? arg)
+    private async Task SelectLogo_ExecutedAsync(object? arg)
     {
-        var model = arg as MediaItemViewModel;
-
-        if (model == null)
-        {
-            var images = Document.Images;
-            var previousFileCount = images.Files.Count;
-
-            images.AddItem.Execute(null);
-
-            if (!images.HasPendingChanges)
-            {
-                return;
-            }
-
-            if (previousFileCount == images.Files.Count)
-            {
-                return;
-            }
-
-            model = images.Files.LastOrDefault();
-        }
-
-        if (model == null)
+        if (_isLogoUpdatePending)
         {
             return;
         }
 
-        Model.Logo = $"@{model.Model.Name}";
-        _logo = null;
-        OnPropertyChanged(nameof(Logo));
+        _isLogoUpdatePending = true;
+        UpdateLogoCommands();
+
+        try
+        {
+            if (arg is MediaItemViewModel existingImage)
+            {
+                Model.Logo = $"@{existingImage.Model.Name}";
+                return;
+            }
+
+            var imageExtensions = Quality.FileExtensions[CollectionNames.ImagesStorageName]
+                .Select(extension => extension.TrimStart('.'))
+                .ToArray();
+            var pickedFiles = await Document.FilePickerService.PickOpenFilesAsync(new OpenFilePickerRequest(
+                Resources.Images,
+                [new FileTypeFilter(Resources.Images, imageExtensions)],
+                AllowMultiple: false));
+            var pickedFile = pickedFiles.FirstOrDefault();
+
+            if (pickedFile == null)
+            {
+                return;
+            }
+
+            using var stagedFile = await Document.Images.StageFileAsync(pickedFile);
+            using var change = Document.OperationsManager.BeginComplexChange();
+            var image = Document.Images.AddFile(stagedFile);
+            Model.Logo = $"@{image.Model.Name}";
+            change.Commit();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exc)
+        {
+            Document.OnError(exc);
+        }
+        finally
+        {
+            _isLogoUpdatePending = false;
+            UpdateLogoCommands();
+        }
     }
 
     private void RemoveLogo_Executed(object? arg)
     {
-        Model.Logo = "";
-        _logo = null;
-        OnPropertyChanged(nameof(Logo));
+        if (!_isLogoUpdatePending)
+        {
+            Model.Logo = "";
+        }
+    }
+
+    private void UpdateLogoCommands()
+    {
+        SelectLogo.CanBeExecuted = !_isLogoUpdatePending;
+        RemoveLogo.CanBeExecuted = HasLogo && !_isLogoUpdatePending;
     }
 
     protected override void UpdateCosts(CostSetter costSetter)

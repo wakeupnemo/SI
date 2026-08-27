@@ -289,6 +289,142 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task Inspector_PackageLogoPickerLoadsBoundedPreviewAndRemovesReference()
+    {
+        var imageBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZqxQAAAAASUVORK5CYII=");
+        var source = new MemoryStream(imageBytes, writable: false);
+        var pickedFile = new PickedFile(
+            localPath: null,
+            displayName: "логотип 例.png",
+            extension: ".png",
+            _ => ValueTask.FromResult<Stream>(source));
+        var filePicker = Substitute.For<IFilePickerService>();
+        filePicker.PickOpenFilesAsync(
+                Arg.Any<OpenFilePickerRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<IReadOnlyList<PickedFile>>([pickedFile]));
+        using var serviceProvider = CreateServiceProvider(filePickerService: filePicker);
+        using var document = SIDocument.Create("Logo inspector", "Test author");
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Logo inspector");
+        var package = documentViewModel.Package;
+        var inspector = new InspectorView { SelectedItem = package };
+        var window = new Window { Width = 720, Height = 1200, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var preview = inspector.GetVisualDescendants()
+                .OfType<PackageLogoPreview>()
+                .Single();
+            var image = preview.FindControl<Image>("LogoImage")!;
+            var loading = preview.FindControl<TextBlock>("LoadingText")!;
+            var error = preview.FindControl<TextBlock>("ImageErrorText")!;
+            var selectButton = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, package.SelectLogo));
+            var removeButton = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, package.RemoveLogo));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(preview.IsEffectivelyVisible, Is.False);
+                Assert.That(removeButton.IsEffectivelyVisible, Is.False);
+                Assert.That(selectButton.Content, Is.EqualTo(UiStrings.SelectLogo));
+                Assert.That(removeButton.Content, Is.EqualTo(UiStrings.RemoveLogo));
+            });
+
+            await package.SelectLogo.ExecuteAsync(null);
+            window.UpdateLayout();
+
+            for (var i = 0; i < 100 && image.Source == null && !error.IsVisible; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(source.CanRead, Is.False, "The portal stream must be released after staging");
+                Assert.That(document.Package.Logo, Is.EqualTo("@логотип 例.png"));
+                Assert.That(package.HasLogo, Is.True);
+                Assert.That(preview.IsEffectivelyVisible, Is.True);
+                Assert.That(image.Source, Is.Not.Null);
+                Assert.That(loading.IsVisible, Is.False);
+                Assert.That(error.IsVisible, Is.False);
+                Assert.That(removeButton.IsEffectivelyVisible, Is.True);
+            });
+
+            removeButton.Command!.Execute(removeButton.CommandParameter);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(document.Package.Logo, Is.Empty);
+                Assert.That(package.HasLogo, Is.False);
+                Assert.That(preview.IsEffectivelyVisible, Is.False);
+                Assert.That(removeButton.IsEffectivelyVisible, Is.False);
+            });
+
+            await filePicker.Received(1).PickOpenFilesAsync(
+                Arg.Is<OpenFilePickerRequest>(request =>
+                    !request.AllowMultiple
+                    && request.FileTypes.Single().Extensions.Contains("png")),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
+    public async Task PackageLogoPreview_ExternalLinkIsNotLoadedAsApplicationMedia()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("External logo", "Test author");
+        document.Package.Logo = "https://example.invalid/package-logo.png";
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "External logo");
+        var preview = new PackageLogoPreview { Package = documentViewModel.Package };
+        var window = new Window { Width = 720, Height = 240, Content = preview };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var image = preview.FindControl<Image>("LogoImage")!;
+            var error = preview.FindControl<TextBlock>("ImageErrorText")!;
+
+            for (var i = 0; i < 100 && image.Source == null && !error.IsVisible; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(documentViewModel.Package.HasLogo, Is.True);
+                Assert.That(documentViewModel.Package.OpenLogoStream(), Is.Null,
+                    "External package URLs must not be opened through the embedded-media preview path");
+                Assert.That(image.Source, Is.Null);
+                Assert.That(error.IsVisible, Is.True);
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void Inspector_ScenarioEditorsMutateCanonicalScriptThroughCompiledBindings()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -1012,6 +1148,9 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.ShowmanComments, Is.EqualTo("Комментарии ведущему"));
             Assert.That(UiStrings.EnableQualityControl, Is.EqualTo("Включить контроль качества"));
             Assert.That(UiStrings.DisableQualityControl, Is.EqualTo("Выключить контроль качества"));
+            Assert.That(UiStrings.PackageLogo, Is.EqualTo("Логотип пакета"));
+            Assert.That(UiStrings.SelectLogo, Is.EqualTo("Выбрать логотип"));
+            Assert.That(UiStrings.RemoveLogo, Is.EqualTo("Удалить логотип"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
@@ -1027,7 +1166,9 @@ internal sealed class ViewSmokeTests
         }
     }
 
-    private static ServiceProvider CreateServiceProvider(IClipboardService? clipboardService = null)
+    private static ServiceProvider CreateServiceProvider(
+        IClipboardService? clipboardService = null,
+        IFilePickerService? filePickerService = null)
     {
         AppSettings.Default = new AppSettings();
         var services = new ServiceCollection();
@@ -1035,9 +1176,14 @@ internal sealed class ViewSmokeTests
         services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
         var appPaths = Substitute.For<IAppPaths>();
         appPaths.RecoveryDirectory.Returns(Path.Combine(Path.GetTempPath(), "SIQuester.Avalonia.Tests", Guid.NewGuid().ToString("N")));
+        appPaths.TemporaryMediaDirectory.Returns(Path.Combine(
+            Path.GetTempPath(),
+            "SIQuester.Avalonia.Tests",
+            Guid.NewGuid().ToString("N"),
+            "media"));
         services.AddSingleton(appPaths);
         services.AddSingleton(clipboardService ?? Substitute.For<IClipboardService>());
-        services.AddSingleton(Substitute.For<IFilePickerService>());
+        services.AddSingleton(filePickerService ?? Substitute.For<IFilePickerService>());
         services.AddSingleton(Substitute.For<IDialogService>());
         services.AddSingleton(Substitute.For<IApplicationLifetimeService>());
         services.AddSingleton(Substitute.For<IMediaMaterializationService>());
