@@ -108,6 +108,8 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
             Model.TypeName = value;
             TypeNameChanged?.Invoke(this, oldValue);
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsSecretQuestion));
+            OnPropertyChanged(nameof(UsesSecretTheme));
         }
     }
 
@@ -126,6 +128,67 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     public bool HasScript => Model.Script != null;
 
     public bool HasLegacyContent => LegacyContent != null;
+
+    /// <summary>
+    /// Gets whether the selected canonical question behavior uses secret-question parameters.
+    /// </summary>
+    public bool IsSecretQuestion => TypeName == QuestionTypes.Secret
+        || TypeName == QuestionTypes.SecretPublicPrice
+        || TypeName == QuestionTypes.SecretNoQuestion;
+
+    /// <summary>
+    /// Gets whether the selected secret behavior exposes a theme announced to players.
+    /// </summary>
+    public bool UsesSecretTheme => TypeName == QuestionTypes.Secret
+        || TypeName == QuestionTypes.SecretPublicPrice;
+
+    /// <summary>
+    /// Gets the canonical secret-question theme parameter, when present.
+    /// </summary>
+    public StepParameterViewModel? SecretThemeParameter =>
+        Parameters.TryGetValue(QuestionParameterNames.Theme, out var parameter) ? parameter : null;
+
+    /// <summary>
+    /// Gets the canonical secret-question price editor, when present.
+    /// </summary>
+    public NumberSetEditorNewViewModel? SecretPrice =>
+        Parameters.TryGetValue(QuestionParameterNames.Price, out var parameter) ? parameter.NumberSetValue : null;
+
+    /// <summary>
+    /// Gets or sets whether a secret question may be given to the current player.
+    /// </summary>
+    public bool SecretAllowsCurrentPlayer
+    {
+        get => Parameters.TryGetValue(QuestionParameterNames.SelectionMode, out var parameter)
+            && parameter.Model.SimpleValue == StepParameterValues.SetAnswererSelect_Any;
+        set
+        {
+            var selectionMode = value
+                ? StepParameterValues.SetAnswererSelect_Any
+                : StepParameterValues.SetAnswererSelect_ExceptCurrent;
+
+            if (!Parameters.TryGetValue(QuestionParameterNames.SelectionMode, out var parameter))
+            {
+                Parameters.InsertSorted(new StepParameterRecord(
+                    QuestionParameterNames.SelectionMode,
+                    new StepParameterViewModel(this, new StepParameter { SimpleValue = selectionMode })));
+            }
+            else if (parameter.Model.SimpleValue != selectionMode)
+            {
+                parameter.Model.SimpleValue = selectionMode;
+            }
+
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets canonical content shown after the answer, when configured.
+    /// </summary>
+    public ContentItemsViewModel? PostAnswerContent =>
+        Parameters.TryGetValue(QuestionParameterNames.Answer, out var parameter) ? parameter.ContentValue : null;
+
+    public bool HasPostAnswerContent => PostAnswerContent != null;
 
     public ICommand AddComplexAnswer { get; private set; }
 
@@ -158,6 +221,10 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
     public SimpleCommand SetAnswerTime { get; private set; }
 
+    public SimpleCommand ClearAnswerTime { get; private set; }
+
+    public bool HasAnswerDuration => AnswerDuration != null;
+
     /// <summary>
     /// Gets the answer duration in seconds if set, or null if not set.
     /// </summary>
@@ -181,6 +248,7 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
             {
                 Parameters.RemoveParameter(QuestionParameterNames.AnswerDuration);
                 SetAnswerTime.CanBeExecuted = true;
+                ClearAnswerTime.CanBeExecuted = false;
             }
             else
             {
@@ -200,9 +268,11 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
                 }
 
                 SetAnswerTime.CanBeExecuted = false;
+                ClearAnswerTime.CanBeExecuted = true;
             }
 
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasAnswerDuration));
         }
     }
 
@@ -388,12 +458,13 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         SetQuestionType = new SimpleCommand(SetQuestionType_Executed);
         SetAnswerType = new SimpleCommand(SetAnswerType_Executed);
         SwitchEmpty = new SimpleCommand(SwitchEmpty_Executed);
-        SetAnswerTime = new SimpleCommand(SetAnswerTime_Executed);
+        SetAnswerTime = new SimpleCommand(SetAnswerTime_Executed) { CanBeExecuted = AnswerDuration == null };
+        ClearAnswerTime = new SimpleCommand(_ => AnswerDuration = null) { CanBeExecuted = AnswerDuration != null };
 
         Right.CollectionChanged += Right_CollectionChanged;
         Wrong.CollectionChanged += Wrong_CollectionChanged;
         Parameters.CollectionChanged += Parameters_AnswerTypeCollectionChanged;
-        RefreshAnswerTypeParameterSubscription();
+        RefreshParameterSubscriptions();
         UpdateStructuralCommands();
     }
 
@@ -1015,7 +1086,15 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
     {
         RefreshLegacyContent();
 
-        if (RefreshAnswerTypeParameterSubscription())
+        OnPropertyChanged(nameof(SecretThemeParameter));
+        OnPropertyChanged(nameof(SecretPrice));
+        OnPropertyChanged(nameof(SecretAllowsCurrentPlayer));
+        OnPropertyChanged(nameof(PostAnswerContent));
+        OnPropertyChanged(nameof(HasPostAnswerContent));
+        OnPropertyChanged(nameof(AnswerDuration));
+        OnPropertyChanged(nameof(HasAnswerDuration));
+
+        if (RefreshParameterSubscriptions())
         {
             OnAnswerTypeChanged();
         }
@@ -1042,28 +1121,67 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         OnPropertyChanged(nameof(HasLegacyContent));
     }
 
-    private bool RefreshAnswerTypeParameterSubscription()
+    private StepParameterViewModel? _observedSelectionModeParameter;
+
+    private StepParameterViewModel? _observedAnswerDurationParameter;
+
+    private bool RefreshParameterSubscriptions()
     {
         Parameters.TryGetValue(QuestionParameterNames.AnswerType, out var answerTypeParameter);
 
-        if (ReferenceEquals(_observedAnswerTypeParameter, answerTypeParameter))
+        var answerTypeChanged = !ReferenceEquals(_observedAnswerTypeParameter, answerTypeParameter);
+
+        if (answerTypeChanged)
         {
-            return false;
+            if (_observedAnswerTypeParameter != null)
+            {
+                _observedAnswerTypeParameter.Model.PropertyChanged -= AnswerTypeParameter_PropertyChanged;
+            }
+
+            _observedAnswerTypeParameter = answerTypeParameter;
+
+            if (_observedAnswerTypeParameter != null)
+            {
+                _observedAnswerTypeParameter.Model.PropertyChanged += AnswerTypeParameter_PropertyChanged;
+            }
         }
 
-        if (_observedAnswerTypeParameter != null)
+        RefreshParameterSubscription(
+            QuestionParameterNames.SelectionMode,
+            ref _observedSelectionModeParameter,
+            SelectionModeParameter_PropertyChanged);
+
+        RefreshParameterSubscription(
+            QuestionParameterNames.AnswerDuration,
+            ref _observedAnswerDurationParameter,
+            AnswerDurationParameter_PropertyChanged);
+
+        return answerTypeChanged;
+    }
+
+    private void RefreshParameterSubscription(
+        string parameterName,
+        ref StepParameterViewModel? observedParameter,
+        PropertyChangedEventHandler handler)
+    {
+        Parameters.TryGetValue(parameterName, out var parameter);
+
+        if (ReferenceEquals(observedParameter, parameter))
         {
-            _observedAnswerTypeParameter.Model.PropertyChanged -= AnswerTypeParameter_PropertyChanged;
+            return;
         }
 
-        _observedAnswerTypeParameter = answerTypeParameter;
-
-        if (_observedAnswerTypeParameter != null)
+        if (observedParameter != null)
         {
-            _observedAnswerTypeParameter.Model.PropertyChanged += AnswerTypeParameter_PropertyChanged;
+            observedParameter.Model.PropertyChanged -= handler;
         }
 
-        return true;
+        observedParameter = parameter;
+
+        if (observedParameter != null)
+        {
+            observedParameter.Model.PropertyChanged += handler;
+        }
     }
 
     private void AnswerTypeParameter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1071,6 +1189,25 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
         if (e.PropertyName == nameof(StepParameter.SimpleValue))
         {
             OnAnswerTypeChanged();
+        }
+    }
+
+    private void SelectionModeParameter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(StepParameter.SimpleValue))
+        {
+            OnPropertyChanged(nameof(SecretAllowsCurrentPlayer));
+        }
+    }
+
+    private void AnswerDurationParameter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(StepParameter.SimpleValue))
+        {
+            OnPropertyChanged(nameof(AnswerDuration));
+            OnPropertyChanged(nameof(HasAnswerDuration));
+            SetAnswerTime.CanBeExecuted = AnswerDuration == null;
+            ClearAnswerTime.CanBeExecuted = AnswerDuration != null;
         }
     }
 
@@ -1177,6 +1314,18 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
             {
                 _observedAnswerTypeParameter.Model.PropertyChanged -= AnswerTypeParameter_PropertyChanged;
                 _observedAnswerTypeParameter = null;
+            }
+
+            if (_observedSelectionModeParameter != null)
+            {
+                _observedSelectionModeParameter.Model.PropertyChanged -= SelectionModeParameter_PropertyChanged;
+                _observedSelectionModeParameter = null;
+            }
+
+            if (_observedAnswerDurationParameter != null)
+            {
+                _observedAnswerDurationParameter.Model.PropertyChanged -= AnswerDurationParameter_PropertyChanged;
+                _observedAnswerDurationParameter = null;
             }
 
             _pointAnswer?.Dispose();

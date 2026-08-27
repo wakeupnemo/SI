@@ -237,4 +237,33 @@
   <data name="QuestionPreviewRuntimeFailure" xml:space="preserve"><value>The native question preview stopped unexpectedly. Close this preview and try again; editing and saving remain available.</value></data>
   <data name="QuestionPreviewNext" xml:space="preserve"><value>Next fragment</value></data>
   <data name="QuestionPreviewReplay" xml:space="preserve"><value>Replay question</value></data>
+  <data name="QuestionBehavior" xml:space="preserve"><value>Question behavior</value></data>
+  <data name="QuestionBehaviorHint" xml:space="preserve"><value>Choose how SIGame gives this question to players. Advanced scripts remain available only for packages that already use them.</value></data>
+  <data name="RoundDefaultBehavior" xml:space="preserve"><value>Round default</value></data>
+  <data name="SimpleBehavior" xml:space="preserve"><value>Simple (answer button)</value></data>
+  <data name="StakeBehavior" xml:space="preserve"><value>Stake</value></data>
+  <data name="StakeAllBehavior" xml:space="preserve"><value>All-in stake</value></data>
+  <data name="SecretBehavior" xml:space="preserve"><value>Secret question</value></data>
+  <data name="SecretPublicPriceBehavior" xml:space="preserve"><value>Secret with public price</value></data>
+  <data name="SecretNoQuestionBehavior" xml:space="preserve"><value>Secret without a question</value></data>
+  <data name="NoRiskBehavior" xml:space="preserve"><value>No-risk / for yourself</value></data>
+  <data name="ForAllBehavior" xml:space="preserve"><value>For everyone</value></data>
+  <data name="CustomManualBehavior" xml:space="preserve"><value>Custom / manual</value></data>
+  <data name="UnknownQuestionBehavior" xml:space="preserve"><value>Unknown type (preserved): {0}</value></data>
+  <data name="SecretSettings" xml:space="preserve"><value>Secret question settings</value></data>
+  <data name="SecretTheme" xml:space="preserve"><value>Announced theme</value></data>
+  <data name="SecretRecipientAny" xml:space="preserve"><value>The current player may receive the question</value></data>
+  <data name="SecretPriceMode" xml:space="preserve"><value>Secret price choices</value></data>
+  <data name="SecretPriceFixed" xml:space="preserve"><value>Fixed value</value></data>
+  <data name="SecretPriceRoundExtremes" xml:space="preserve"><value>Round minimum or maximum</value></data>
+  <data name="SecretPriceEndpoints" xml:space="preserve"><value>Choose minimum or maximum</value></data>
+  <data name="SecretPriceSteppedRange" xml:space="preserve"><value>Range with step</value></data>
+  <data name="SecretPriceValue" xml:space="preserve"><value>Secret price</value></data>
+  <data name="SecretPriceRoundExtremesHint" xml:space="preserve"><value>SIGame derives the two available values from the lowest and highest question prices in this round.</value></data>
+  <data name="PostAnswerContent" xml:space="preserve"><value>Content shown after the answer</value></data>
+  <data name="AddPostAnswerContent" xml:space="preserve"><value>Add post-answer content</value></data>
+  <data name="RemovePostAnswerContent" xml:space="preserve"><value>Remove all post-answer content</value></data>
+  <data name="AnswerTime" xml:space="preserve"><value>Answer time (seconds)</value></data>
+  <data name="UseAnswerTime" xml:space="preserve"><value>Set an answer time limit</value></data>
+  <data name="ClearAnswerTime" xml:space="preserve"><value>Use the default answer time</value></data>
 </root>

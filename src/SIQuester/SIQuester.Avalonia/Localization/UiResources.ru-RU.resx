@@ -237,4 +237,33 @@
   <data name="QuestionPreviewRuntimeFailure" xml:space="preserve"><value>Нативный предпросмотр вопроса неожиданно остановился. Закройте его и попробуйте снова; редактирование и сохранение остаются доступными.</value></data>
   <data name="QuestionPreviewNext" xml:space="preserve"><value>Следующий фрагмент</value></data>
   <data name="QuestionPreviewReplay" xml:space="preserve"><value>Повторить вопрос</value></data>
+  <data name="QuestionBehavior" xml:space="preserve"><value>Поведение вопроса</value></data>
+  <data name="QuestionBehaviorHint" xml:space="preserve"><value>Выберите, как SIGame разыгрывает вопрос. Расширенный сценарий остаётся доступен для пакетов, где он уже используется.</value></data>
+  <data name="RoundDefaultBehavior" xml:space="preserve"><value>По умолчанию для раунда</value></data>
+  <data name="SimpleBehavior" xml:space="preserve"><value>Обычный (с кнопкой ответа)</value></data>
+  <data name="StakeBehavior" xml:space="preserve"><value>Вопрос со ставкой</value></data>
+  <data name="StakeAllBehavior" xml:space="preserve"><value>Ставка ва-банк</value></data>
+  <data name="SecretBehavior" xml:space="preserve"><value>Вопрос с секретом</value></data>
+  <data name="SecretPublicPriceBehavior" xml:space="preserve"><value>Секрет с открытой ценой</value></data>
+  <data name="SecretNoQuestionBehavior" xml:space="preserve"><value>Секрет без вопроса</value></data>
+  <data name="NoRiskBehavior" xml:space="preserve"><value>Без риска / себе</value></data>
+  <data name="ForAllBehavior" xml:space="preserve"><value>Для всех</value></data>
+  <data name="CustomManualBehavior" xml:space="preserve"><value>Особый / ручной</value></data>
+  <data name="UnknownQuestionBehavior" xml:space="preserve"><value>Неизвестный тип (сохранён): {0}</value></data>
+  <data name="SecretSettings" xml:space="preserve"><value>Настройки вопроса с секретом</value></data>
+  <data name="SecretTheme" xml:space="preserve"><value>Объявляемая тема</value></data>
+  <data name="SecretRecipientAny" xml:space="preserve"><value>Текущий игрок тоже может получить вопрос</value></data>
+  <data name="SecretPriceMode" xml:space="preserve"><value>Выбор цены секрета</value></data>
+  <data name="SecretPriceFixed" xml:space="preserve"><value>Фиксированная цена</value></data>
+  <data name="SecretPriceRoundExtremes" xml:space="preserve"><value>Минимум или максимум раунда</value></data>
+  <data name="SecretPriceEndpoints" xml:space="preserve"><value>Минимум или максимум диапазона</value></data>
+  <data name="SecretPriceSteppedRange" xml:space="preserve"><value>Диапазон с шагом</value></data>
+  <data name="SecretPriceValue" xml:space="preserve"><value>Цена секрета</value></data>
+  <data name="SecretPriceRoundExtremesHint" xml:space="preserve"><value>SIGame берёт два доступных значения из минимальной и максимальной цены вопросов этого раунда.</value></data>
+  <data name="PostAnswerContent" xml:space="preserve"><value>Контент после ответа</value></data>
+  <data name="AddPostAnswerContent" xml:space="preserve"><value>Добавить контент после ответа</value></data>
+  <data name="RemovePostAnswerContent" xml:space="preserve"><value>Удалить весь контент после ответа</value></data>
+  <data name="AnswerTime" xml:space="preserve"><value>Время на ответ (секунды)</value></data>
+  <data name="UseAnswerTime" xml:space="preserve"><value>Задать ограничение времени ответа</value></data>
+  <data name="ClearAnswerTime" xml:space="preserve"><value>Использовать обычное время ответа</value></data>
 </root>

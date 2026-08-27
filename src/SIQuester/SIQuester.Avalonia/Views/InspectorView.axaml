@@ -96,11 +96,35 @@
       <ScrollViewer>
         <StackPanel>
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Question}" />
+          <views:QuestionBehaviorEditorView x:Name="QuestionBehaviorEditor" Question="{Binding}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Price}" />
-          <NumericUpDown Value="{Binding Model.Price, Mode=TwoWay}" Minimum="-1" Maximum="1000000" Margin="{StaticResource FieldMargin}" />
+          <NumericUpDown Value="{Binding Model.Price, Mode=TwoWay}" Minimum="-1" Maximum="1000000" AutomationProperties.Name="{x:Static loc:UiStrings.Price}" Margin="{StaticResource FieldMargin}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QuestionText}" />
-          <TextBox Text="{Binding QuestionText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="140" Margin="{StaticResource FieldMargin}" />
+          <TextBox Text="{Binding QuestionText, Mode=TwoWay}" AcceptsReturn="True" MinHeight="140" AutomationProperties.Name="{x:Static loc:UiStrings.QuestionText}" Margin="{StaticResource FieldMargin}" />
           <views:ScenarioEditorView Question="{Binding}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.AnswerTime}" />
+          <Button
+              Classes="command"
+              Content="{x:Static loc:UiStrings.UseAnswerTime}"
+              AutomationProperties.Name="{x:Static loc:UiStrings.UseAnswerTime}"
+              Command="{Binding SetAnswerTime}"
+              IsVisible="{Binding !HasAnswerDuration}"
+              HorizontalAlignment="Left"
+              Margin="{StaticResource FieldMargin}" />
+          <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}" IsVisible="{Binding HasAnswerDuration}" Margin="{StaticResource FieldMargin}">
+            <NumericUpDown
+                x:Name="AnswerDurationEditor"
+                Value="{Binding AnswerDuration, Mode=TwoWay}"
+                Minimum="1"
+                Maximum="3600"
+                AutomationProperties.Name="{x:Static loc:UiStrings.AnswerTime}"
+                Width="120" />
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.ClearAnswerTime}"
+                AutomationProperties.Name="{x:Static loc:UiStrings.ClearAnswerTime}"
+                Command="{Binding ClearAnswerTime}" />
+          </StackPanel>
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.AnswerType}" />
           <WrapPanel Margin="{StaticResource FieldMargin}">
             <Button Classes="command" Content="{x:Static loc:UiStrings.TextAnswer}" Command="{Binding SetAnswerType}" CommandParameter="{x:Static core:StepParameterValues.SetAnswerTypeType_Text}" Margin="{StaticResource MetadataCommandMargin}" />
@@ -131,6 +155,25 @@
           <Border IsVisible="{Binding IsManagedByClient}" Padding="{StaticResource Space12Thickness}" Margin="{StaticResource FieldMargin}" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1">
             <TextBlock Text="{x:Static loc:UiStrings.ClientManagedDescription}" TextWrapping="Wrap" />
           </Border>
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.PostAnswerContent}" />
+          <Button
+              Classes="command"
+              Content="{x:Static loc:UiStrings.AddPostAnswerContent}"
+              AutomationProperties.Name="{x:Static loc:UiStrings.AddPostAnswerContent}"
+              Command="{Binding AddComplexAnswer}"
+              IsVisible="{Binding !HasPostAnswerContent}"
+              HorizontalAlignment="Left"
+              Margin="{StaticResource FieldMargin}" />
+          <StackPanel IsVisible="{Binding HasPostAnswerContent}">
+            <views:ContentItemsEditorView x:Name="PostAnswerContentEditor" Editor="{Binding PostAnswerContent}" />
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.RemovePostAnswerContent}"
+                AutomationProperties.Name="{x:Static loc:UiStrings.RemovePostAnswerContent}"
+                Command="{Binding RemoveComplexAnswer}"
+                HorizontalAlignment="Left"
+                Margin="{StaticResource FieldMargin}" />
+          </StackPanel>
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <WrapPanel>
             <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveUp}" Command="{Binding MoveEarlier}" />

@@ -219,6 +219,110 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_QuestionBehaviorControlsCreateCanonicalSecretTimingAndPostAnswerParameters()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var package = SIDocument.Create("Question behavior", "Test author");
+        var question = new Question { Price = 300, TypeName = "future-behavior-v9" };
+        question.Parameters["futureParameter"] = new StepParameter { SimpleValue = "opaque 例" };
+        question.Right.Add("Answer");
+        var theme = new Theme { Name = "Theme", Questions = { question } };
+        package.Package.Rounds.Add(new Round { Name = "Round", Themes = { theme } });
+        var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Question behavior");
+        var questionViewModel = document.Package.Rounds[0].Themes[0].Questions[0];
+        var inspector = new InspectorView { SelectedItem = questionViewModel };
+        var window = new Window { Width = 760, Height = 1400, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var behaviorEditor = inspector.GetVisualDescendants()
+                .OfType<QuestionBehaviorEditorView>()
+                .Single();
+            var behaviorSelector = behaviorEditor.FindControl<ComboBox>("BehaviorSelector")!;
+            var initialChoices = behaviorSelector.ItemsSource!.Cast<QuestionBehaviorChoice>().ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(((QuestionBehaviorChoice)behaviorSelector.SelectedItem!).TypeName,
+                    Is.EqualTo("future-behavior-v9"));
+                Assert.That(initialChoices.Single(choice => choice.TypeName == "future-behavior-v9").DisplayName,
+                    Does.Contain("future-behavior-v9"));
+                Assert.That(questionViewModel.Parameters.Model["futureParameter"].SimpleValue,
+                    Is.EqualTo("opaque 例"));
+                Assert.That(document.OperationsManager.Undo.CanBeExecuted, Is.False);
+                Assert.That(AutomationProperties.GetName(behaviorSelector), Is.EqualTo(UiStrings.QuestionBehavior));
+            });
+
+            behaviorSelector.SelectedItem = initialChoices.Single(choice => choice.TypeName == QuestionTypes.Secret);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var themeEditor = behaviorEditor.GetVisualDescendants()
+                .OfType<TextBox>()
+                .Single(textBox => AutomationProperties.GetName(textBox) == UiStrings.SecretTheme);
+            themeEditor.Text = "Новая тема 例";
+
+            var priceModeSelector = behaviorEditor.FindControl<ComboBox>("PriceModeSelector")!;
+            priceModeSelector.SelectedItem = behaviorEditor.PriceModes.Single(
+                choice => choice.Mode == NumberSetMode.RangeWithStep);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var steppedRangeGrid = behaviorEditor.FindControl<Grid>("SteppedRangeGrid")!;
+            var priceEditors = steppedRangeGrid.GetVisualDescendants()
+                .OfType<NumericUpDown>()
+                .ToArray();
+            priceEditors[0].Value = 100;
+            priceEditors[1].Value = 1000;
+            priceEditors[2].Value = 200;
+            var recipient = behaviorEditor.GetVisualDescendants()
+                .OfType<CheckBox>()
+                .Single(checkBox => Equals(checkBox.Content, UiStrings.SecretRecipientAny));
+            recipient.IsChecked = true;
+
+            var setAnswerTime = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, questionViewModel.SetAnswerTime));
+            setAnswerTime.Command!.Execute(null);
+            var addPostAnswer = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, questionViewModel.AddComplexAnswer));
+            addPostAnswer.Command!.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            var postAnswerEditor = inspector.GetVisualDescendants()
+                .OfType<ContentItemsEditorView>()
+                .Single(editor => ReferenceEquals(editor.Editor, questionViewModel.PostAnswerContent));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionViewModel.TypeName, Is.EqualTo(QuestionTypes.Secret));
+                Assert.That(questionViewModel.Parameters.Model.ContainsKey("futureParameter"), Is.False);
+                Assert.That(questionViewModel.SecretThemeParameter!.Model.SimpleValue, Is.EqualTo("Новая тема 例"));
+                Assert.That(questionViewModel.SecretAllowsCurrentPlayer, Is.True);
+                Assert.That(questionViewModel.SecretPrice!.Mode, Is.EqualTo(NumberSetMode.RangeWithStep));
+                Assert.That(questionViewModel.SecretPrice.Minimum, Is.EqualTo(100));
+                Assert.That(questionViewModel.SecretPrice.Maximum, Is.EqualTo(1000));
+                Assert.That(questionViewModel.SecretPrice.Step, Is.EqualTo(200));
+                Assert.That(questionViewModel.AnswerDuration, Is.EqualTo(5));
+                Assert.That(questionViewModel.HasPostAnswerContent, Is.True);
+                Assert.That(postAnswerEditor.Editor, Is.SameAs(questionViewModel.PostAnswerContent));
+                Assert.That(postAnswerEditor.Editor, Has.Count.EqualTo(1));
+                Assert.That(AutomationProperties.GetName(recipient), Is.EqualTo(UiStrings.SecretRecipientAny));
+                Assert.That(document.OperationsManager.Undo.CanBeExecuted, Is.True);
+            });
+        }
+        finally
+        {
+            window.Close();
+            document.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public async Task DocumentEditor_QuestionPreviewShowsSafeUnavailableStateAndClosesCleanly()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -2329,6 +2433,10 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.QuestionPreviewTitle, Is.EqualTo("Предпросмотр вопроса"));
             Assert.That(UiStrings.QuestionPreviewBackendUnavailable,
                 Does.StartWith("Предпросмотр вопроса недоступен"));
+            Assert.That(UiStrings.QuestionBehavior, Is.EqualTo("Поведение вопроса"));
+            Assert.That(UiStrings.SecretBehavior, Is.EqualTo("Вопрос с секретом"));
+            Assert.That(UiStrings.PostAnswerContent, Is.EqualTo("Контент после ответа"));
+            Assert.That(UiStrings.AnswerTime, Is.EqualTo("Время на ответ (секунды)"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

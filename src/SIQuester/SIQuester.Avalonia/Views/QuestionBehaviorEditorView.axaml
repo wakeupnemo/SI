@@ -1,0 +1,115 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.QuestionBehaviorEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:Name="Root"
+    x:DataType="views:QuestionBehaviorEditorView">
+  <StackPanel>
+    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.QuestionBehavior}" />
+    <ComboBox
+        x:Name="BehaviorSelector"
+        SelectionChanged="BehaviorSelector_SelectionChanged"
+        AutomationProperties.Name="{x:Static loc:UiStrings.QuestionBehavior}"
+        Margin="{StaticResource FieldMargin}">
+      <ComboBox.ItemTemplate>
+        <DataTemplate x:DataType="views:QuestionBehaviorChoice">
+          <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" />
+        </DataTemplate>
+      </ComboBox.ItemTemplate>
+    </ComboBox>
+    <TextBlock
+        Text="{x:Static loc:UiStrings.QuestionBehaviorHint}"
+        TextWrapping="Wrap"
+        Opacity="0.72"
+        Margin="{StaticResource FieldMargin}" />
+
+    <Border
+        IsVisible="{Binding Question.IsSecretQuestion, ElementName=Root}"
+        Padding="{StaticResource Space12Thickness}"
+        Margin="{StaticResource FieldMargin}"
+        BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+        BorderThickness="1">
+      <StackPanel>
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.SecretSettings}" />
+        <StackPanel IsVisible="{Binding Question.UsesSecretTheme, ElementName=Root}">
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.SecretTheme}" />
+          <TextBox
+              Text="{Binding Question.SecretThemeParameter.Model.SimpleValue, ElementName=Root, Mode=TwoWay}"
+              AutomationProperties.Name="{x:Static loc:UiStrings.SecretTheme}"
+              Margin="{StaticResource FieldMargin}" />
+        </StackPanel>
+
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.SecretPriceMode}" />
+        <ComboBox
+            x:Name="PriceModeSelector"
+            ItemsSource="{Binding PriceModes, ElementName=Root}"
+            SelectionChanged="PriceModeSelector_SelectionChanged"
+            AutomationProperties.Name="{x:Static loc:UiStrings.SecretPriceMode}"
+            Margin="{StaticResource FieldMargin}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="views:NumberSetModeChoice">
+              <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <StackPanel IsVisible="{Binding Question.SecretPrice.IsFixedValue, ElementName=Root}">
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.SecretPriceValue}" />
+          <NumericUpDown
+              Value="{Binding Question.SecretPrice.Minimum, ElementName=Root, Mode=TwoWay}"
+              Minimum="-1000000"
+              Maximum="1000000"
+              AutomationProperties.Name="{x:Static loc:UiStrings.SecretPriceValue}"
+              Margin="{StaticResource FieldMargin}" />
+        </StackPanel>
+
+        <TextBlock
+            IsVisible="{Binding Question.SecretPrice.IsRoundMinimumOrMaximum, ElementName=Root}"
+            Text="{x:Static loc:UiStrings.SecretPriceRoundExtremesHint}"
+            TextWrapping="Wrap"
+            Margin="{StaticResource FieldMargin}" />
+
+        <Grid
+            ColumnDefinitions="*,*"
+            ColumnSpacing="{StaticResource Space8}"
+            IsVisible="{Binding Question.SecretPrice.IsRange, ElementName=Root}">
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Minimum}" />
+            <NumericUpDown Value="{Binding Question.SecretPrice.Minimum, ElementName=Root, Mode=TwoWay}" Minimum="-1000000" Maximum="1000000" />
+          </StackPanel>
+          <StackPanel Grid.Column="1">
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Maximum}" />
+            <NumericUpDown Value="{Binding Question.SecretPrice.Maximum, ElementName=Root, Mode=TwoWay}" Minimum="-1000000" Maximum="1000000" />
+          </StackPanel>
+        </Grid>
+
+        <Grid
+            x:Name="SteppedRangeGrid"
+            ColumnDefinitions="*,*,*"
+            ColumnSpacing="{StaticResource Space8}"
+            IsVisible="{Binding Question.SecretPrice.IsSteppedRange, ElementName=Root}">
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Minimum}" />
+            <NumericUpDown Value="{Binding Question.SecretPrice.Minimum, ElementName=Root, Mode=TwoWay}" Minimum="-1000000" Maximum="1000000" />
+          </StackPanel>
+          <StackPanel Grid.Column="1">
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Maximum}" />
+            <NumericUpDown Value="{Binding Question.SecretPrice.Maximum, ElementName=Root, Mode=TwoWay}" Minimum="-1000000" Maximum="1000000" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Step}" />
+            <NumericUpDown Value="{Binding Question.SecretPrice.Step, ElementName=Root, Mode=TwoWay}" Minimum="0" Maximum="1000000" />
+          </StackPanel>
+        </Grid>
+
+        <CheckBox
+            Content="{x:Static loc:UiStrings.SecretRecipientAny}"
+            IsChecked="{Binding Question.SecretAllowsCurrentPlayer, ElementName=Root, Mode=TwoWay}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.SecretRecipientAny}"
+            Margin="{StaticResource FieldMargin}" />
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

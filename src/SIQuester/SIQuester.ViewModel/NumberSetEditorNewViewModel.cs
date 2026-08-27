@@ -22,9 +22,21 @@ public sealed class NumberSetEditorNewViewModel : ModelViewBase
                 var oldValue = _mode;
                 _mode = value;
                 OnPropertyChanged(oldValue);
+                OnPropertyChanged(nameof(IsFixedValue));
+                OnPropertyChanged(nameof(IsRoundMinimumOrMaximum));
+                OnPropertyChanged(nameof(IsRange));
+                OnPropertyChanged(nameof(IsSteppedRange));
             }
         }
     }
+
+    public bool IsFixedValue => Mode == NumberSetMode.FixedValue;
+
+    public bool IsRoundMinimumOrMaximum => Mode == NumberSetMode.MinimumOrMaximumInRound;
+
+    public bool IsRange => Mode == NumberSetMode.Range;
+
+    public bool IsSteppedRange => Mode == NumberSetMode.RangeWithStep;
 
     public int Minimum
     {

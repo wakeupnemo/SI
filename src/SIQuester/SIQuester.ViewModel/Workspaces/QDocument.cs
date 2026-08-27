@@ -1220,7 +1220,9 @@ public sealed class QDocument : WorkspaceViewModel
                 || parameter.Key == QuestionParameterNames.Answer
                 || parameter.Key == QuestionParameterNames.AnswerType
                 || parameter.Key == QuestionParameterNames.AnswerOptions
-                || parameter.Key == QuestionParameterNames.AnswerDeviation)
+                || parameter.Key == QuestionParameterNames.AnswerDeviation
+                || parameter.Key == QuestionParameterNames.AnswerDuration
+                || requiredParametes.Any(required => required.Item1 == parameter.Key))
             {
                 continue;
             }
@@ -1239,7 +1241,12 @@ public sealed class QDocument : WorkspaceViewModel
 
         foreach (var parameter in requiredParametes)
         {
-            question.Parameters.InsertSorted(new StepParameterRecord(parameter.Item1, new StepParameterViewModel(question, parameter.Item2)));
+            if (!question.Parameters.TryGetValue(parameter.Item1, out _))
+            {
+                question.Parameters.InsertSorted(new StepParameterRecord(
+                    parameter.Item1,
+                    new StepParameterViewModel(question, parameter.Item2)));
+            }
         }
     }
 
@@ -1259,12 +1266,28 @@ public sealed class QDocument : WorkspaceViewModel
 
         if (e is ExtendedPropertyChangedEventArgs<int> extNumber)
         {
-            OperationsManager.AddChange(new SimplePropertyValueChange
+            void RecordOriginalValue() => OperationsManager.AddChange(new SimplePropertyValueChange
             {
                 Element = sender,
                 PropertyName = e.PropertyName,
                 Value = extNumber.OldValue
             });
+
+            if (sender is NumberSetEditorNewViewModel numberSet
+                && numberSet.Mode == NumberSetMode.Range
+                && (e.PropertyName == nameof(NumberSetEditorNewViewModel.Minimum)
+                    || e.PropertyName == nameof(NumberSetEditorNewViewModel.Maximum)))
+            {
+                OperationsManager.RecordComplexChange(() =>
+                {
+                    RecordOriginalValue();
+                    numberSet.Step = Math.Max(0, numberSet.Maximum - numberSet.Minimum);
+                });
+            }
+            else
+            {
+                RecordOriginalValue();
+            }
         }
         else if (e is ExtendedPropertyChangedEventArgs<NumberSetMode> extNumberSet)
         {
@@ -1290,7 +1313,7 @@ public sealed class QDocument : WorkspaceViewModel
                     break;
 
                 case NumberSetMode.Range:
-                    numberSetViewModel.Step = 0;
+                    numberSetViewModel.Step = Math.Max(0, numberSetViewModel.Maximum - numberSetViewModel.Minimum);
                     break;
 
                 case NumberSetMode.RangeWithStep:
