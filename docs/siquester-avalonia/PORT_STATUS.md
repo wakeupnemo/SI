@@ -24,6 +24,7 @@ Updated: 2026-08-27
 - Fixed an adversarially discovered shortcut defect where window-level Ctrl+C intercepted a focused text editor. Routed document shortcuts now yield to text controls and support Control or macOS Command modifiers; headless tests cover both document routing and text-editing isolation.
 - Replaced legacy XML-plus-media-path autosave writes with complete validated SIQ recovery generations under platform state storage. Schema-1 metadata points atomically to an immutable flushed generation and records document identity, original path, timestamp, length, and SHA-256. Unsaved documents and all four media collections are covered; manual save and close serialize against autosave and clear recovery only after success.
 - Added recovery startup inventory/restore, stale detection that requires a valid newer canonical SIQ, retention of malformed entries for diagnosis, and a 20-second owned Avalonia autosave timer. Legacy recovery remains readable during migration.
+- Added an Avalonia per-entry recovery center with validated package preview, exact original/snapshot metadata, progress, restore, reveal-location, and two-step discard actions. Stale snapshots remain usable but restore as unsaved copies, so they cannot directly overwrite newer canonical packages. The WPF host retains its legacy bulk prompt behind an explicit host-capability seam.
 - Added a localized recent-files section to the Avalonia empty state with full-path tooltips and the existing `OpenRecent` command.
 - Added repository-owned self-contained package builders for Linux x64/ARM64 tarballs and Debian packages plus macOS x64/ARM64 app bundles. Output is staged privately, validated before atomic publication, normalized with `SOURCE_DATE_EPOCH`, shipped with license notices and checksums, and integrated into a five-RID CI artifact matrix. Linux packages include desktop/MIME registration and complete .NET/Avalonia native dependency metadata; macOS bundles declare editable SIQ document types.
 - Added the native SIQuester icon to the Avalonia window and platform artifacts. The retained WPF release workflow now uses .NET 10 and current official action majors without changing the WPF/MSI authority boundary.
@@ -42,10 +43,11 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Fresh cross-platform Release build: passed with 0 errors and 130 existing nullable/obsolete-API warnings in `SIPackages`, `QTxtConverter`, and legacy view-model code. An incremental build can report 0 warnings because those projects are not recompiled; analyzers and warnings remain enabled. Every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 86 passed, 5 skipped, 0 failed.
-- `SIQuester.ViewModel.Tests`: 73 passed, 0 failed. Nine recovery tests cover unsaved/four-media snapshots, independent same-name documents, generation replacement, cancellation cleanup, autosave/manual-save/close races, startup restore, traversal rejection, and corrupt-newer-canonical handling. Clipboard and settings coverage remains green.
-- `SIQuester.Avalonia.Tests`: 14 passed, 0 failed. Recent-file command/path rendering joins the native clipboard, shortcut, compiled-binding, settings, selection, and lifecycle coverage.
+- `SIQuester.ViewModel.Tests`: 74 passed, 0 failed. Ten recovery tests cover unsaved/four-media snapshots, independent same-name documents, generation replacement, cancellation cleanup, autosave/manual-save/close races, startup restore, traversal rejection, corrupt-newer-canonical handling, preview counts, reveal, restore, stale restore-as-copy, and explicit discard. Clipboard and settings coverage remains green.
+- `SIQuester.Avalonia.Tests`: 15 passed, 0 failed. The recovery center's compiled command bindings, stale label, restore-as-copy state, and post-preview action visibility join the native clipboard, shortcut, settings, selection, and lifecycle coverage.
 - Existing WPF project cross-compiled on Linux with `-p:EnableWindowsTargeting=true`: passed, 0 errors and 0 warnings in the final incremental compatibility build. Native WPF execution remains a Windows-only verification.
 - Native Linux Release smoke: the self-contained x64 tar payload and the identical executable extracted from the Debian package exposed a visible `SIQuester` window at 1200x760, opened `SIGameTestNew.siq`, and exited normally through the application-owned `Ctrl+Q` path. Both logs record successful open/settings commit and no fatal or unhandled exception.
+- Recovery-center Linux receipt: the framework-dependent Release host opened a validated 2,973,900-byte recovery snapshot with Unicode display/original paths, rendered its per-entry actions, and asynchronously previewed the real package as 2 rounds, 7 themes, 35 questions, and 12 media files. The 1200x760 visual inspection found no overlap or clipping; `Ctrl+Q` exited with code 0, empty stderr, and no fatal/unhandled log entry. Receipt directory: `/tmp/siquester-recovery-smoke.w7Cnsd`.
 - Settings runtime receipt: `/tmp/siquester-settings-smoke.1LErfv/config/SIQuester/settings.json`, 1,492 bytes, SHA-256 `eb7dcd4289dbc07260886ddb6672cc02e8aec831b348d209345854340f651b9b`; the log records document close and `Application settings were committed successfully` with no fatal/unhandled exception.
 - `tools/smoke-siquester-linux.sh` now accepts either a framework-dependent DLL or a self-contained native executable. It reproduced the graceful window/open/exit/settings/log receipt under Xvfb; cross-platform CI invokes it for both the ordinary Release build and packaged x64 tarball.
 
@@ -69,7 +71,7 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 - Test: `CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia`.
 - Release output: `bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq`.
 - Receipt: adjacent `avalonia-core-roundtrip.receipt.json`.
-- Current artifact: 1,078 bytes; SHA-256 `e8251135107b87f71f81c3b6fa32ec35ba5e732304ea9c3798da1a48f0d68659`. ZIP metadata can change this hash between generated runs; semantic and media receipts remain authoritative.
+- Current artifact: 1,078 bytes; SHA-256 `d797568f7f2a1a0a327cfe0f93961ef480b2d4c1a1b54b08947fcd7e9bd7a68a`. ZIP metadata can change this hash between generated runs; semantic and media receipts remain authoritative.
 - Verified through `SIDocument.Load`: one round, one theme, one question, and one image with semantic and byte comparison.
 - Existing Windows SIQuester/SIGame runtime acceptance is not yet verified and must not be inferred from the loader receipt.
 
@@ -81,15 +83,16 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Next independent tasks
 
-1. Add a per-entry recovery workspace with preview, restore, discard, reveal-location, stale-entry controls, and a documented retention policy.
-2. Expand typed inspectors to all metadata, scenarios, parameters, answers, and media operations.
-3. Extract cancellable search scheduling from `QDocument` and cover rapid switching/close races.
-4. Replace clipboard media materialization paths with a bounded, stable-lifetime transfer representation and add media-rich cross-process compatibility coverage.
+1. Expand typed inspectors to all metadata, scenarios, parameters, answers, and media operations.
+2. Extract cancellable search scheduling from `QDocument` and cover rapid switching/close races.
+3. Replace clipboard media materialization paths with a bounded, stable-lifetime transfer representation and add media-rich cross-process compatibility coverage.
+4. Implement data-level flat-mode reorder operations and their move/copy/cancellation tests.
 5. Obtain hosted Linux/macOS/Windows CI receipts, including native macOS bundle signing/launch and native Windows WPF acceptance.
 
 ## Known limitations
 
-- This is a verified first vertical slice plus settings, native clipboard, complete recovery persistence, and release packaging foundations, not Milestone 2 completion. Per-entry recovery controls, clipboard media lifetime completion, full metadata/media editing, flat mode, preview, structural SPARD, and advanced import/export remain incomplete.
+- This is a verified first vertical slice plus settings, native clipboard, complete recovery persistence/management, and release packaging foundations, not Milestone 2 completion. Clipboard media lifetime completion, full metadata/media editing, flat mode, question preview, structural SPARD, and advanced import/export remain incomplete.
+- Recovery retention is deliberately conservative: only the latest validated generation is kept per document; superseded generations are removed after pointer commit, and a successful canonical save, approved close, or explicit discard removes the recovery identity. Valid stale snapshots and malformed entries are not age-pruned silently because doing so could destroy the only recoverable user data.
 - Language changes intentionally apply after restart and communicate that boundary. System/light/dark selection is live and persisted, but visual theme snapshots and a macOS runtime Command-key receipt remain pending.
 - WebView and audio/video backends have architectural decisions but no implementation receipt.
 - No performance baseline has been measured yet.
@@ -98,4 +101,4 @@ The macOS archives were structurally cross-published on Linux. Native ICNS gener
 
 ## Review state
 
-- Latest reviewed implementation commit: `29ad371e` (reproducible cross-platform packages and five-RID CI). Fresh Release build, 173 passing tests plus 5 explicit skips, WPF cross-build, workflow/XML/desktop validators, full diff/data-loss/dependency review, byte-reproducibility checks, and self-contained tar/DEB Linux smoke passed for this implementation tree.
+- Latest reviewed implementation commit: `52824c7b` (per-entry recovery center and safe stale restore-as-copy). Fresh Release build, 175 passing tests plus 5 explicit skips, WPF cross-build, complete diff/data-loss review, and real Linux recovery preview smoke passed. No new `PlatformManager.Instance`, `async void`, placeholder, debug-print, dependency, or user-facing hardcoded-XAML usage was introduced.

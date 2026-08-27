@@ -15,7 +15,7 @@ Statuses are limited to `VERIFIED`, `IMPLEMENTED_NOT_VERIFIED`, `IN_PROGRESS`, `
 | Documents | Save All | IMPLEMENTED_NOT_VERIFIED | Async neutral flow implemented; multi-document UI test pending |
 | Documents | Close save/discard/cancel | IN_PROGRESS | Typed dialog and lifetime seams implemented; empty-document close/reentrancy is headless-tested, dirty multi-document state matrix pending |
 | Documents | Templates | NOT_STARTED | Existing built-in/custom templates inventoried |
-| Documents | Autosave and recovery | IN_PROGRESS | Nine tests verify complete SIQ generations, all media, unsaved/same-name identity, cancellation, startup restore, corrupt-canonical handling, and save/close serialization; per-entry preview/reveal/discard UI and retention policy remain |
+| Documents | Autosave and recovery | VERIFIED | Ten recovery tests cover complete SIQ/media generations, identity, cancellation/races, startup, stale detection, per-entry preview/reveal/restore/discard, and safe stale restore-as-copy; Avalonia headless bindings and a real 2.9 MB Linux recovery-preview receipt pass |
 | Data | SIDocument semantic round trip | VERIFIED | `SaveDocument_WithComplexStructure_ShouldPreserveAllData` and compatibility artifact |
 | Data | Media-byte round trip | VERIFIED | all-four-collection Unicode test plus artifact image hash comparison |
 | Data | Unicode/long/space paths | IN_PROGRESS | Unicode/space/non-ASCII media names verified; generated long-path stress fixture pending |

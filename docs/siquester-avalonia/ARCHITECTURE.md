@@ -31,11 +31,11 @@ The save transaction is: create a unique temporary file in the destination direc
 
 ZIP byte equality is not a compatibility oracle. Tests compare model semantics, media names, and media hashes.
 
-Recovery uses a separate non-mutating snapshot path. Each document has a random recovery ID under the platform state directory. A complete SIQ generation is flushed, loaded, and hashed before schema-versioned metadata atomically points to it; the previous generation remains authoritative until that pointer commit. Autosave, canonical save, and close cleanup share the per-document lock. See ADR 0008.
+Recovery uses a separate non-mutating snapshot path. Each document has a random recovery ID under the platform state directory. A complete SIQ generation is flushed, loaded, and hashed before schema-versioned metadata atomically points to it; the previous generation remains authoritative until that pointer commit. Autosave, canonical save, and close cleanup share the per-document lock. Capable hosts expose the validated inventory as per-entry view models; stale snapshots restore with an empty canonical path so Save must choose a new destination. See ADR 0008.
 
 ## Platform contracts
 
-Contracts are introduced only for real seams: file selection, dialogs, lifetime, paths, settings/secrets, launcher, dispatcher, capabilities, persistence/materialization, preview, media preview, and export. Picker results expose neutral metadata and stream operations, not Avalonia storage objects.
+Contracts are introduced only for real seams: file selection, dialogs, lifetime, paths, settings/secrets, launcher, dispatcher, capabilities, persistence/materialization, preview, media preview, and export. Picker results expose neutral metadata and stream operations, not Avalonia storage objects. `IExternalLauncher` owns trusted shell reveal operations; `IPlatformCapabilities` lets Avalonia opt into the recovery center while WPF retains its compatible startup prompt without frontend-type checks in the view-model layer.
 
 ## UI structure
 

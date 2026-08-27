@@ -27,4 +27,5 @@ Canonical save and recovery snapshotting also have different ownership semantics
 - Two documents with the same filename have independent recovery identities.
 - Recovery inventory performs hashing and package validation; archive parsing is moved off the UI thread.
 - Recovery storage can temporarily contain an obsolete generation or metadata backup after an interrupted cleanup, but inventory ignores unreferenced files.
-- The current startup flow offers the existing restore-or-discard confirmation and opens recovered documents dirty. A richer recovery workspace with per-entry preview, reveal, restore, discard, and retention-policy controls remains required before recovery parity is complete.
+- Avalonia inventories every validated entry in a localized recovery center with asynchronous preview, reveal, restore, and explicit two-step discard. A stale snapshot restores as an unsaved copy rather than targeting the newer canonical path. WPF retains the existing bulk confirmation until its UI adopts the same per-entry surface.
+- Retention is data-loss-first: each successful generation commit deletes superseded generations, and successful canonical save, approved close, or explicit discard deletes the recovery identity. Valid current/stale entries and malformed entries are not silently age-pruned because they may be the user's only recoverable data.
