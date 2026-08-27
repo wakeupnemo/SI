@@ -48,7 +48,13 @@ The Debian package declares the native .NET/Avalonia runtime set: `libc6`, `libf
 - Fedora: `fontconfig`, `libICE`, `libicu`, `libSM`, `openssl-libs`, `libstdc++`, `libX11`, and `zlib`;
 - Arch: `fontconfig`, `libice`, `icu`, `libsm`, `openssl`, `gcc-libs`, `libx11`, and `zlib`.
 
-The current core editor does not load WebKit or a media backend. Those dependencies will remain optional when preview support is introduced; a missing preview backend must not prevent startup.
+Question preview uses the official MIT-licensed Avalonia WebView adapter and probes it only when requested. The Debian package therefore recommends, rather than requires, `libwebkit2gtk-4.1-0` (with `libwpewebkit-2.0-1` as an alternative). Portable users can install the GTK backend with:
+
+- Debian/Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`
+- Fedora: `sudo dnf install webkit2gtk4.1`
+- Arch: `sudo pacman -S webkit2gtk-4.1`
+
+Missing WebKit leaves the editor usable and produces an actionable preview message. Distribution GStreamer plugins determine optional audio/video codec coverage; native audio/video preview is not yet claimed by the text-player receipt.
 
 ## macOS application bundles
 
@@ -83,4 +89,4 @@ Cross-platform CI publishes a self-contained Avalonia `win-x64` ZIP as an additi
 
 ## CI receipts
 
-`.github/workflows/siquester-cross-platform.yml` builds and tests on Linux, macOS, and Windows, then publishes `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`, and `win-x64`. The Linux x64 package job also extracts and launches the self-contained tarball under Xvfb, opens a real SIQ, exits through the application command, and uploads its settings/log receipt.
+`.github/workflows/siquester-cross-platform.yml` builds and tests on Linux, macOS, and Windows, then publishes `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`, and `win-x64`. The Linux x64 package job also extracts and launches the self-contained tarball under Xvfb, opens a real SIQ, exits through the application command, and uploads its settings/log receipt. A dedicated Linux WebKit job installs WebKitGTK, requires the native capability path, renders and advances the retained player from the semantic compatibility SIQ, applies a deterministic screenshot-content threshold, and uploads the screenshot, log, and receipt.

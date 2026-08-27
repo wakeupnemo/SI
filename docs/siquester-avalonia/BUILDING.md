@@ -4,7 +4,12 @@
 
 - .NET 10 SDK
 - Linux desktop runtime libraries required by Avalonia (X11 or Wayland environment and standard font/configuration libraries)
-- WebKit/media libraries are optional until preview is invoked; exact packages will be finalized with the preview spike.
+- A native WebView backend for question preview. It is optional for startup and ordinary editing:
+  - Debian/Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`
+  - Fedora: `sudo dnf install webkit2gtk4.1`
+  - Arch: `sudo pacman -S webkit2gtk-4.1`
+
+The desktop host probes WebKit only when Preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Audio/video codecs depend on the distribution's GStreamer packages and are tracked separately from the verified text-player slice.
 
 ## Commands
 

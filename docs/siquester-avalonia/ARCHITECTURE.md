@@ -64,7 +64,7 @@ Image-backed point selection retains the existing neutral `PointAnswerViewModel.
 ## Security boundaries
 
 - Package data is never executed.
-- Web content uses an application-owned origin and explicit navigation policy.
+- Question-player web content uses a bounded application-owned loopback origin under a random route, restrictive response headers, exact navigation policy, and denied popups. Package media and package-provided HTML are not admitted to that origin without a separate validated service path.
 - External links require an explicit launcher action.
 - Secrets use OS secure storage or remain memory-only.
 - Native preview and Steam dependencies load only after capability checks and explicit use.
