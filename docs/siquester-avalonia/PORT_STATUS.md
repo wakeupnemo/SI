@@ -7,7 +7,7 @@ Updated: 2026-08-27
 - Initial HEAD: `8c2bee9c38d250884a3e575809172e626448a0f9` on `feat/siquester-avalonia`; the worktree was initially clean.
 - Host: Debian 13.6, Linux x64; .NET SDK 10.0.400 at `/tmp/dotnet10` for this session.
 - Before modification, `SIPackages.Tests` had 85 passed and 5 skipped tests. `SIQuester.ViewModel.Tests` targeted `net10.0-windows` and discovered no tests on Linux.
-- The initial view-model inventory contained 84 `PlatformManager.Instance` calls and 31 `async void` methods. The current counts are 63 and 26 respectively.
+- The initial view-model inventory contained 84 `PlatformManager.Instance` calls and 31 `async void` methods. The current literal counts are 63 and 24 respectively.
 - Latest stable compatible Avalonia packages were verified and pinned at 12.1.1.
 
 ## Completed vertical slices
