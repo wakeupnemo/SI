@@ -12,7 +12,7 @@
     Width="1200"
     Height="760"
     MinWidth="900"
-    MinHeight="600">
+    MinHeight="480">
 
   <Window.DataTemplates>
     <DataTemplate DataType="{x:Type vm:QDocument}">
@@ -70,16 +70,21 @@
       </MenuItem>
     </Menu>
 
-    <Border Grid.Row="1" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="{StaticResource CommandBarPadding}">
-      <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
-        <Button Classes="command" Content="{x:Static loc:UiStrings.New}" Command="{Binding New}" AutomationProperties.Name="{x:Static loc:UiStrings.New}" />
-        <Button Classes="command" Content="{x:Static loc:UiStrings.Open}" Command="{Binding Open}" AutomationProperties.Name="{x:Static loc:UiStrings.Open}" />
-        <Button Classes="command" Content="{x:Static loc:UiStrings.Save}" Command="{Binding ActiveDocument.Save}" AutomationProperties.Name="{x:Static loc:UiStrings.Save}" />
-        <Button Classes="command" Content="{x:Static loc:UiStrings.SaveAs}" Command="{Binding ActiveDocument.SaveAs}" AutomationProperties.Name="{x:Static loc:UiStrings.SaveAs}" />
-        <Separator />
-        <Button Classes="command" Content="{x:Static loc:UiStrings.Undo}" Command="{Binding ActiveDocument.OperationsManager.Undo}" AutomationProperties.Name="{x:Static loc:UiStrings.Undo}" />
-        <Button Classes="command" Content="{x:Static loc:UiStrings.Redo}" Command="{Binding ActiveDocument.OperationsManager.Redo}" AutomationProperties.Name="{x:Static loc:UiStrings.Redo}" />
-      </StackPanel>
+    <Border Grid.Row="1" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+      <ScrollViewer
+          x:Name="MainCommandBarScrollViewer"
+          HorizontalScrollBarVisibility="Auto"
+          VerticalScrollBarVisibility="Disabled">
+        <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}" Margin="{StaticResource CommandBarPadding}">
+          <Button Classes="command" Content="{x:Static loc:UiStrings.New}" Command="{Binding New}" AutomationProperties.Name="{x:Static loc:UiStrings.New}" />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.Open}" Command="{Binding Open}" AutomationProperties.Name="{x:Static loc:UiStrings.Open}" />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.Save}" Command="{Binding ActiveDocument.Save}" AutomationProperties.Name="{x:Static loc:UiStrings.Save}" />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.SaveAs}" Command="{Binding ActiveDocument.SaveAs}" AutomationProperties.Name="{x:Static loc:UiStrings.SaveAs}" />
+          <Separator />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.Undo}" Command="{Binding ActiveDocument.OperationsManager.Undo}" AutomationProperties.Name="{x:Static loc:UiStrings.Undo}" />
+          <Button Classes="command" Content="{x:Static loc:UiStrings.Redo}" Command="{Binding ActiveDocument.OperationsManager.Redo}" AutomationProperties.Name="{x:Static loc:UiStrings.Redo}" />
+        </StackPanel>
+      </ScrollViewer>
     </Border>
 
     <Grid Grid.Row="2" RowDefinitions="Auto,*">

@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -100,7 +101,112 @@ internal sealed class ViewSmokeTests
     {
         var window = new MainWindow();
 
-        Assert.That(window.Content, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(window.Content, Is.Not.Null);
+            Assert.That(window.MinHeight, Is.EqualTo(480));
+            Assert.That(window.FindControl<ScrollViewer>("MainCommandBarScrollViewer"), Is.Not.Null);
+        });
+    }
+
+    [AvaloniaTest]
+    public void DocumentEditor_MinimumViewportKeepsLongLocalizedContentReachableInLightAndDarkThemes()
+    {
+        var previousCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            foreach (var cultureName in new[] { "en-US", "ru-RU" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(cultureName);
+
+                foreach (var themeVariant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+                {
+                    using var serviceProvider = CreateServiceProvider();
+                    using var package = SIDocument.Create(
+                        "Very long package name — Очень длинное название пакета — for accessibility testing",
+                        "Author with a long name — Автор с длинным именем");
+                    var questionModel = new Question { Price = 100, Script = new Script() };
+                    questionModel.Script.Steps.Add(
+                        new Step
+                        {
+                            Type = StepTypes.ShowContent,
+                            Parameters =
+                            {
+                                [StepParameterNames.Content] = new StepParameter
+                                {
+                                    Type = StepParameterTypes.Content,
+                                    ContentValue =
+                                    [
+                                        new ContentItem
+                                        {
+                                            Type = ContentTypes.Text,
+                                            Value = "Long English question text — длинный русский текст вопроса — remains editable at 200 percent scaling."
+                                        }
+                                    ]
+                                }
+                            }
+                        });
+                    questionModel.Right.Add("Extended correct answer — развёрнутый правильный ответ");
+                    var theme = new Theme
+                    {
+                        Name = "Very long theme name — очень длинное название темы",
+                        Questions = { questionModel }
+                    };
+                    package.Package.Rounds.Add(new Round
+                    {
+                        Name = "Very long round name — очень длинное название раунда",
+                        Themes = { theme }
+                    });
+                    var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+                        .CreateViewModelFor(package, "Long package path — Путь с длинным именем пакета.siq");
+                    document.ActiveNode = document.Package.Rounds[0].Themes[0].Questions[0];
+                    var view = new DocumentEditorView { DataContext = document };
+                    var window = new Window
+                    {
+                        Width = 900,
+                        Height = 480,
+                        Content = view,
+                        RequestedThemeVariant = themeVariant
+                    };
+
+                    try
+                    {
+                        window.Show();
+                        window.UpdateLayout();
+
+                        var commandBar = view.FindControl<ScrollViewer>("EditorCommandBarScrollViewer")!;
+                        var navigator = view.FindControl<TreeView>("Navigator")!;
+                        var inspector = view.FindControl<InspectorView>("Inspector")!;
+                        var searchBox = view.FindControl<TextBox>("SearchBox")!;
+                        searchBox.Focus();
+
+                        Assert.Multiple(() =>
+                        {
+                            Assert.That(window.ActualThemeVariant, Is.EqualTo(themeVariant));
+                            Assert.That(view.Bounds.Width, Is.LessThanOrEqualTo(900));
+                            Assert.That(view.Bounds.Height, Is.LessThanOrEqualTo(480));
+                            Assert.That(commandBar.Bounds.Width, Is.GreaterThan(0));
+                            Assert.That(commandBar.HorizontalScrollBarVisibility.ToString(), Is.EqualTo("Auto"));
+                            Assert.That(navigator.Bounds.Width, Is.GreaterThanOrEqualTo(180));
+                            Assert.That(inspector.Bounds.Width, Is.GreaterThanOrEqualTo(280));
+                            Assert.That(searchBox.IsFocused, Is.True);
+                            Assert.That(AutomationProperties.GetName(searchBox), Is.EqualTo(UiStrings.Search));
+                        });
+                    }
+                    finally
+                    {
+                        window.DataContext = null;
+                        window.Close();
+                        document.Dispose();
+                    }
+                }
+            }
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = previousCulture;
+        }
     }
 
     [AvaloniaTest]

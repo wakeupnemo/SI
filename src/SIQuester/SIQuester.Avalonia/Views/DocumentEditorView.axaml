@@ -20,83 +20,87 @@
     </Grid.ColumnDefinitions>
     <Border
         Grid.ColumnSpan="5"
-        Padding="{StaticResource CommandBarPadding}"
         BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
         BorderThickness="0,0,0,1">
-      <Grid ColumnSpacing="{StaticResource Space8}">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" MinWidth="120" MaxWidth="420" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <WrapPanel>
+      <ScrollViewer
+          x:Name="EditorCommandBarScrollViewer"
+          HorizontalScrollBarVisibility="Auto"
+          VerticalScrollBarVisibility="Disabled">
+        <Grid ColumnSpacing="{StaticResource Space8}" Margin="{StaticResource CommandBarPadding}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" MinWidth="120" MaxWidth="420" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <WrapPanel>
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.TreeView}"
+                Command="{Binding SetViewMode}"
+                CommandParameter="{x:Static model:ViewMode.TreeFull}"
+                Margin="{StaticResource MetadataCommandMargin}"
+                IsEnabled="{Binding IsFlatView}" />
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.FlatView}"
+                Command="{Binding SetViewMode}"
+                CommandParameter="{x:Static model:ViewMode.Flat}"
+                IsEnabled="{Binding IsTreeView}" />
+          </WrapPanel>
+          <TextBlock Grid.Column="1" Text="{x:Static loc:UiStrings.Search}" VerticalAlignment="Center" />
+          <TextBox
+              x:Name="SearchBox"
+              Grid.Column="2"
+              Text="{Binding SearchText, Mode=TwoWay}"
+              PlaceholderText="{x:Static loc:UiStrings.Search}"
+              AutomationProperties.Name="{x:Static loc:UiStrings.Search}" />
+          <TextBlock
+              x:Name="NoSearchResultsText"
+              Grid.Column="3"
+              Text="{x:Static loc:UiStrings.NoSearchResults}"
+              IsVisible="{Binding SearchFailed}"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center" />
           <Button
+              Grid.Column="4"
               Classes="command"
-              Content="{x:Static loc:UiStrings.TreeView}"
-              Command="{Binding SetViewMode}"
-              CommandParameter="{x:Static model:ViewMode.TreeFull}"
-              Margin="{StaticResource MetadataCommandMargin}"
-              IsEnabled="{Binding IsFlatView}" />
+              Content="◀"
+              AutomationProperties.Name="{x:Static loc:UiStrings.PreviousSearchResult}"
+              ToolTip.Tip="{x:Static loc:UiStrings.PreviousSearchResult}"
+              IsEnabled="{Binding HasSearchResults}"
+              Command="{Binding PreviousSearchResult}" />
           <Button
+              Grid.Column="5"
               Classes="command"
-              Content="{x:Static loc:UiStrings.FlatView}"
-              Command="{Binding SetViewMode}"
-              CommandParameter="{x:Static model:ViewMode.Flat}"
-              IsEnabled="{Binding IsTreeView}" />
-        </WrapPanel>
-        <TextBlock Grid.Column="1" Text="{x:Static loc:UiStrings.Search}" VerticalAlignment="Center" />
-        <TextBox
-            x:Name="SearchBox"
-            Grid.Column="2"
-            Text="{Binding SearchText, Mode=TwoWay}"
-            PlaceholderText="{x:Static loc:UiStrings.Search}"
-            AutomationProperties.Name="{x:Static loc:UiStrings.Search}" />
-        <TextBlock
-            x:Name="NoSearchResultsText"
-            Grid.Column="3"
-            Text="{x:Static loc:UiStrings.NoSearchResults}"
-            IsVisible="{Binding SearchFailed}"
-            TextWrapping="Wrap"
-            VerticalAlignment="Center" />
-        <Button
-            Grid.Column="4"
-            Classes="command"
-            Content="◀"
-            AutomationProperties.Name="{x:Static loc:UiStrings.PreviousSearchResult}"
-            ToolTip.Tip="{x:Static loc:UiStrings.PreviousSearchResult}"
-            IsEnabled="{Binding HasSearchResults}"
-            Command="{Binding PreviousSearchResult}" />
-        <Button
-            Grid.Column="5"
-            Classes="command"
-            Content="▶"
-            AutomationProperties.Name="{x:Static loc:UiStrings.NextSearchResult}"
-            ToolTip.Tip="{x:Static loc:UiStrings.NextSearchResult}"
-            IsEnabled="{Binding HasSearchResults}"
-            Command="{Binding NextSearchResult}" />
-        <Button
-            Grid.Column="6"
-            Classes="command"
-            Content="×"
-            AutomationProperties.Name="{x:Static loc:UiStrings.ClearSearch}"
-            ToolTip.Tip="{x:Static loc:UiStrings.ClearSearch}"
-            IsEnabled="{Binding HasSearchText}"
-            Command="{Binding ClearSearchText}" />
-        <Button
-            Grid.Column="7"
-            Classes="command"
-            Content="{x:Static loc:UiStrings.Preview}"
-            Command="{Binding PlayQuestion}"
-            CommandParameter="{Binding ActiveNode}"
-            IsEnabled="{Binding CanPreviewActiveQuestion}"
-            AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewTitle}"
-            ToolTip.Tip="{x:Static loc:UiStrings.QuestionPreviewTitle}" />
-      </Grid>
+              Content="▶"
+              AutomationProperties.Name="{x:Static loc:UiStrings.NextSearchResult}"
+              ToolTip.Tip="{x:Static loc:UiStrings.NextSearchResult}"
+              IsEnabled="{Binding HasSearchResults}"
+              Command="{Binding NextSearchResult}" />
+          <Button
+              Grid.Column="6"
+              Classes="command"
+              Content="×"
+              AutomationProperties.Name="{x:Static loc:UiStrings.ClearSearch}"
+              ToolTip.Tip="{x:Static loc:UiStrings.ClearSearch}"
+              IsEnabled="{Binding HasSearchText}"
+              Command="{Binding ClearSearchText}" />
+          <Button
+              Grid.Column="7"
+              Classes="command"
+              Content="{x:Static loc:UiStrings.Preview}"
+              Command="{Binding PlayQuestion}"
+              CommandParameter="{Binding ActiveNode}"
+              IsEnabled="{Binding CanPreviewActiveQuestion}"
+              AutomationProperties.Name="{x:Static loc:UiStrings.QuestionPreviewTitle}"
+              ToolTip.Tip="{x:Static loc:UiStrings.QuestionPreviewTitle}" />
+        </Grid>
+      </ScrollViewer>
     </Border>
 
     <Border Grid.Row="1" Grid.Column="0" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
