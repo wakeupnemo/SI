@@ -15,8 +15,10 @@ on:
       - "test/Common/SIPackages.Tests/**"
       - "test/SIQuester/**"
       - "tools/package-siquester-*.sh"
+      - "tools/smoke-siquester-dragdrop-linux.sh"
       - "tools/smoke-siquester-linux.sh"
       - "tools/smoke-siquester-question-preview-linux.sh"
+      - "tools/xdnd-file-source.py"
       - ".github/workflows/siquester-cross-platform.yml"
   pull_request:
     branches: [ "master" ]
@@ -32,8 +34,10 @@ on:
       - "test/Common/SIPackages.Tests/**"
       - "test/SIQuester/**"
       - "tools/package-siquester-*.sh"
+      - "tools/smoke-siquester-dragdrop-linux.sh"
       - "tools/smoke-siquester-linux.sh"
       - "tools/smoke-siquester-question-preview-linux.sh"
+      - "tools/xdnd-file-source.py"
       - ".github/workflows/siquester-cross-platform.yml"
   workflow_dispatch:
 
@@ -78,7 +82,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes xvfb xdotool
+          sudo apt-get install --yes gir1.2-gtk-4.0 imagemagick python3-gi xvfb xdotool
 
       - name: Native Linux startup smoke
         if: runner.os == 'Linux'
@@ -108,6 +112,28 @@ jobs:
           name: siquester-linux-settings-smoke
           path: ${{ runner.temp }}/siquester-smoke/config/SIQuester/settings.json
           if-no-files-found: warn
+
+      - name: Native Linux external drag/drop smoke
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          install -d "${{ runner.temp }}/siquester-dragdrop"
+          convert -size 48x32 xc:'#2b7fff' \
+            "${{ runner.temp }}/siquester-dragdrop/изображение drop.png"
+          xvfb-run -a -s "-screen 0 1600x900x24" \
+            tools/smoke-siquester-dragdrop-linux.sh \
+            bin/AnyCPU.Release/SIQuester.Desktop/net10.0/SIQuester.Desktop.dll \
+            test/Common/SIPackages.Tests/test.siq \
+            "${{ runner.temp }}/siquester-dragdrop/изображение drop.png" \
+            "${{ runner.temp }}/siquester-dragdrop/receipt"
+
+      - name: Upload Linux drag/drop receipt
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: siquester-linux-dragdrop
+          path: ${{ runner.temp }}/siquester-dragdrop/receipt/
+          if-no-files-found: error
 
       - name: Upload compatibility receipt
         if: always()

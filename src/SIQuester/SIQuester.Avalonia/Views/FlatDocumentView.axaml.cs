@@ -380,7 +380,7 @@ public partial class FlatDocumentView : UserControl
         }
 
         var files = GetStorageFiles(e);
-        var targetQuestion = FindTargetQuestion(e.Source);
+        var targetQuestion = FindTargetQuestion(e);
         var canImport = DataContext is QDocument document
             && files.Any(file => document.CanImportExternalFile(
                 file.Name,
@@ -401,7 +401,7 @@ public partial class FlatDocumentView : UserControl
         }
 
         var files = GetStorageFiles(e);
-        var targetQuestion = FindTargetQuestion(e.Source);
+        var targetQuestion = FindTargetQuestion(e);
         var cancellationToken = _externalDropCancellation?.Token ?? CancellationToken.None;
         var imported = false;
         e.Handled = true;
@@ -435,12 +435,27 @@ public partial class FlatDocumentView : UserControl
     private static IReadOnlyList<IStorageFile> GetStorageFiles(DragEventArgs e) =>
         e.DataTransfer.TryGetFiles()?.OfType<IStorageFile>().ToArray() ?? Array.Empty<IStorageFile>();
 
-    private static QuestionViewModel? FindTargetQuestion(object? eventSource) =>
-        (eventSource as Visual)?.GetSelfAndVisualAncestors()
+    private QuestionViewModel? FindTargetQuestion(DragEventArgs e)
+    {
+        var sourceQuestion = (e.Source as Visual)?.GetSelfAndVisualAncestors()
             .OfType<Control>()
             .Select(control => control.DataContext)
             .OfType<QuestionViewModel>()
             .FirstOrDefault();
+
+        if (sourceQuestion != null)
+        {
+            return sourceQuestion;
+        }
+
+        return this.GetVisualDescendants()
+            .OfType<Border>()
+            .Where(border => border.IsEffectivelyVisible
+                && border.Classes.Contains("flat-question-card")
+                && border.DataContext is QuestionViewModel)
+            .FirstOrDefault(border => new Rect(border.Bounds.Size).Contains(e.GetPosition(border)))
+            ?.DataContext as QuestionViewModel;
+    }
 
     private static PickedFile ToPickedFile(IStorageFile file) => new(
         file.TryGetLocalPath(),
