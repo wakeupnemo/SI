@@ -134,6 +134,19 @@ public partial class FlatDocumentView : UserControl
         e.Handled = true;
     }
 
+    private void FlatRowRound_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not QDocument document
+            || sender is not Border { DataContext: FlatDetailRow row })
+        {
+            return;
+        }
+
+        Select(document, row.Round);
+        ((Border)sender).Focus();
+        e.Handled = true;
+    }
+
     private void MoveBackward_Click(object? sender, RoutedEventArgs e) =>
         ExecuteQuestionCommand(sender, document => document.MoveFlatQuestionBackward);
 

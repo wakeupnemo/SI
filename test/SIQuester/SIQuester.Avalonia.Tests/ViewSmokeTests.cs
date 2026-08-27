@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Headless.NUnit;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -1085,6 +1086,101 @@ internal sealed class ViewSmokeTests
         window.Close();
         documentViewModel.Dispose();
     }
+
+    [AvaloniaTest]
+    public void FlatWorkspace_LargePackageVirtualizesQuestionCardsAndScrollsToLastRound()
+    {
+        const int roundCount = 4;
+        const int themesPerRound = 100;
+        const int questionsPerTheme = 5;
+        const int totalQuestionCount = roundCount * themesPerRound * questionsPerTheme;
+        using var serviceProvider = CreateServiceProvider();
+        var package = SIDocument.Create("Large flat package", "Test author");
+
+        for (var roundIndex = 0; roundIndex < roundCount; roundIndex++)
+        {
+            var round = new Round { Name = $"Round {roundIndex + 1}" };
+
+            for (var themeIndex = 0; themeIndex < themesPerRound; themeIndex++)
+            {
+                var theme = new Theme { Name = $"Theme {roundIndex + 1}.{themeIndex + 1}" };
+
+                for (var questionIndex = 0; questionIndex < questionsPerTheme; questionIndex++)
+                {
+                    theme.Questions.Add(new Question { Price = (questionIndex + 1) * 100 });
+                }
+
+                round.Themes.Add(theme);
+            }
+
+            package.Package.Rounds.Add(round);
+        }
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Large flat package");
+        var previousView = AppSettings.Default.View;
+        var previousLayout = AppSettings.Default.FlatLayoutMode;
+        var previousScale = AppSettings.Default.FlatScale;
+        AppSettings.Default.View = ViewMode.Flat;
+        AppSettings.Default.FlatLayoutMode = FlatLayoutMode.List;
+        AppSettings.Default.FlatScale = FlatScale.Question;
+        var view = new FlatDocumentView { DataContext = document };
+        var window = new Window { Width = 1100, Height = 700, Content = view };
+
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            stopwatch.Stop();
+            var list = view.FindControl<ListBox>("DetailedListLayout")!;
+            var scroller = list.GetVisualDescendants().OfType<ScrollViewer>().Single();
+            var initiallyRealizedQuestions = CountRealizedQuestionCards(view);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(document.QuestionCount, Is.EqualTo(totalQuestionCount));
+                Assert.That(initiallyRealizedQuestions, Is.GreaterThan(0));
+                Assert.That(initiallyRealizedQuestions, Is.LessThan(totalQuestionCount / 4),
+                    "the list viewport must not realize the complete package");
+                Assert.That(scroller.Extent.Height, Is.GreaterThan(scroller.Viewport.Height));
+            });
+
+            scroller.Offset = new Vector(0, scroller.Extent.Height);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            var finallyRealizedQuestions = CountRealizedQuestionCards(view);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(finallyRealizedQuestions, Is.GreaterThan(0));
+                Assert.That(finallyRealizedQuestions, Is.LessThan(totalQuestionCount / 4));
+                Assert.That(view.GetVisualDescendants().OfType<TextBlock>()
+                    .Any(text => text.IsEffectivelyVisible
+                        && Equals(text.Text, $"Theme {roundCount}.{themesPerRound}")), Is.True);
+            });
+
+            TestContext.Progress.WriteLine(
+                $"Flat large-package receipt: questions={totalQuestionCount}; "
+                + $"initialRealized={initiallyRealizedQuestions}; finalRealized={finallyRealizedQuestions}; "
+                + $"firstLayoutMs={stopwatch.ElapsedMilliseconds}; "
+                + $"extent={scroller.Extent.Height:F0}; viewport={scroller.Viewport.Height:F0}");
+        }
+        finally
+        {
+            window.Close();
+            document.Dispose();
+            AppSettings.Default.View = previousView;
+            AppSettings.Default.FlatLayoutMode = previousLayout;
+            AppSettings.Default.FlatScale = previousScale;
+        }
+    }
+
+    private static int CountRealizedQuestionCards(FlatDocumentView view) =>
+        view.GetVisualDescendants()
+            .OfType<Border>()
+            .Count(border => border.Classes.Contains("flat-question-card"));
 
     [AvaloniaTest]
     public void MainWindow_CloseWithNoDocuments_CompletesWithoutReentrantPrompt()

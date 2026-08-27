@@ -147,6 +147,13 @@ public sealed class QDocument : WorkspaceViewModel
 
     public bool IsFlatDetailedScale => Settings.FlatScale is FlatScale.Theme or FlatScale.Question;
 
+    private IReadOnlyList<FlatDetailRow> _flatDetailRows = Array.Empty<FlatDetailRow>();
+
+    /// <summary>
+    /// Gets flattened theme rows used by the virtualized flat list layout.
+    /// </summary>
+    public IReadOnlyList<FlatDetailRow> FlatDetailRows => _flatDetailRows;
+
     private IItemViewModel? _activeNode = null;
 
     private IItemViewModel[] _activeChain = Array.Empty<IItemViewModel>();
@@ -1444,6 +1451,12 @@ public sealed class QDocument : WorkspaceViewModel
             case NotifyCollectionChangedAction.Reset:
                 // On reset, recompute the entire count
                 QuestionCount = CountTotalQuestions();
+
+                if (IsFlatDetailStructureCollection(sender))
+                {
+                    RebuildFlatDetailRows();
+                }
+
                 return;
         }
 
@@ -1451,6 +1464,37 @@ public sealed class QDocument : WorkspaceViewModel
         {
             OperationsManager.AddChange(new CollectionChange((IList)sender, e));
         }
+
+        if (IsFlatDetailStructureCollection(sender))
+        {
+            RebuildFlatDetailRows();
+        }
+    }
+
+    private bool IsFlatDetailStructureCollection(object sender) =>
+        ReferenceEquals(sender, Package.Rounds)
+        || Package.Rounds.Any(round => ReferenceEquals(sender, round.Themes));
+
+    private void RebuildFlatDetailRows()
+    {
+        var rows = new List<FlatDetailRow>();
+
+        foreach (var round in Package.Rounds)
+        {
+            if (round.Themes.Count == 0)
+            {
+                rows.Add(new FlatDetailRow(round, null, StartsRound: true));
+                continue;
+            }
+
+            for (var themeIndex = 0; themeIndex < round.Themes.Count; themeIndex++)
+            {
+                rows.Add(new FlatDetailRow(round, round.Themes[themeIndex], StartsRound: themeIndex == 0));
+            }
+        }
+
+        _flatDetailRows = rows;
+        OnPropertyChanged(nameof(FlatDetailRows));
     }
 
     private void DetachParametersLsteners(StepParametersViewModel parameters)
@@ -1793,6 +1837,7 @@ public sealed class QDocument : WorkspaceViewModel
         Document = document;
         Package = new PackageViewModel(Document.Package, this);
         FlatQuestions = new FlatQuestionOperations(this);
+        RebuildFlatDetailRows();
         Package.Info.Authors.UpdateCommands();
 
         Package.IsExpanded = true;

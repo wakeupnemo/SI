@@ -192,13 +192,18 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
-        <ListBox x:Name="DetailedListLayout" IsVisible="{Binding IsFlatListLayout}" ItemsSource="{Binding Package.Rounds}" Margin="{StaticResource Space12Thickness}">
+        <ListBox x:Name="DetailedListLayout" IsVisible="{Binding IsFlatListLayout}" ItemsSource="{Binding FlatDetailRows}" Margin="{StaticResource Space12Thickness}">
           <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:RoundViewModel">
-              <StackPanel Margin="{StaticResource FieldMargin}" Spacing="{StaticResource Space8}" PointerPressed="Item_PointerPressed">
-                <TextBlock Classes="section-title" Text="{Binding Model.Name}" />
-                <ItemsControl ItemsSource="{Binding Themes}" ItemTemplate="{StaticResource ThemeListTemplate}" />
+            <DataTemplate x:DataType="vm:FlatDetailRow">
+              <StackPanel Margin="{StaticResource FieldMargin}" Spacing="{StaticResource Space8}">
+                <Border IsVisible="{Binding StartsRound}" PointerPressed="FlatRowRound_PointerPressed" Focusable="True">
+                  <TextBlock Classes="section-title" Text="{Binding Round.Model.Name}" />
+                </Border>
+                <ContentControl
+                    IsVisible="{Binding HasTheme}"
+                    Content="{Binding Theme}"
+                    ContentTemplate="{StaticResource ThemeListTemplate}" />
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

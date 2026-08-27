@@ -348,6 +348,47 @@ internal sealed class FlatQuestionOperationsTests
         });
     }
 
+    [Test]
+    public void FlatDetailRows_TrackThemeStructureAndRetainEmptyRounds()
+    {
+        using var document = CreateDocument(
+            ("Theme A", new[] { ("A", 100) }),
+            ("Theme B", new[] { ("B", 200) }));
+        var firstRound = document.Package.Rounds[0];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.FlatDetailRows, Has.Count.EqualTo(2));
+            Assert.That(document.FlatDetailRows[0].StartsRound, Is.True);
+            Assert.That(document.FlatDetailRows[1].StartsRound, Is.False);
+        });
+
+        using (var change = document.OperationsManager.BeginComplexChange())
+        {
+            firstRound.Themes.RemoveAt(0);
+            change.Commit();
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.FlatDetailRows, Has.Count.EqualTo(1));
+            Assert.That(document.FlatDetailRows[0].Theme, Is.SameAs(firstRound.Themes[0]));
+            Assert.That(document.FlatDetailRows[0].StartsRound, Is.True);
+        });
+
+        document.OperationsManager.Undo.Execute(null);
+        var emptyRound = new RoundViewModel(new Round { Name = "Empty" });
+        document.Package.Rounds.Add(emptyRound);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.FlatDetailRows, Has.Count.EqualTo(3));
+            Assert.That(document.FlatDetailRows[^1].Round, Is.SameAs(emptyRound));
+            Assert.That(document.FlatDetailRows[^1].Theme, Is.Null);
+            Assert.That(document.FlatDetailRows[^1].StartsRound, Is.True);
+        });
+    }
+
     private QDocument CreateDocument(params (string Theme, (string Answer, int Price)[] Questions)[] themes)
     {
         var package = SIDocument.Create("Flat operations", "Test author");
