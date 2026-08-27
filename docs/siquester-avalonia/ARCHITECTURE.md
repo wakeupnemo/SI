@@ -41,6 +41,8 @@ Contracts are introduced only for real seams: file selection, dialogs, lifetime,
 
 The initial shell uses Fluent theme plus semantic tokens. A command surface and document tabs surround a three-pane document editor: hierarchy, typed editor, and inspector/media context. Pane sizes and settings are persisted outside the package.
 
+Scenario controls adapt the existing canonical objects instead of flattening them. Legacy question content remains in the top-level question parameters, while scripted questions expose one `ScriptStepViewModel` per existing `SIPackages.Step`; recursive parameter controls reuse `StepParametersViewModel` for simple/reference, content, group, and number-set values. Script-owned models are attached to the same document operation listeners as legacy parameters. Package cloning and XML parsing retain complete scripts before a save transaction is allowed to validate and commit them.
+
 ## Security boundaries
 
 - Package data is never executed.
