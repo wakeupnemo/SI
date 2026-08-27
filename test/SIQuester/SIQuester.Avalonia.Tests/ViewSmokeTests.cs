@@ -641,6 +641,56 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_RightAnswerEditorKeepsFocusDuringContinuousInput()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Answer editor", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        theme.Questions.Add(new Question { Price = 100 });
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Answer editor");
+        var question = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+        var inspector = new InspectorView { SelectedItem = question };
+        var window = new Window { Width = 720, Height = 1200, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var rightAnswersEditor = inspector.GetVisualDescendants()
+                .OfType<StringListEditorView>()
+                .Single(editor => editor.Header == UiStrings.RightAnswers);
+            rightAnswersEditor.Editor!.AddItem.Execute(string.Empty);
+            window.UpdateLayout();
+            var textBox = rightAnswersEditor.FindControl<TextBox>("SelectedItemEditor")!;
+            textBox.Focus();
+
+            window.KeyTextInput("Right");
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(textBox.IsFocused, Is.True, "Typing must not clear focus after replacing the selected list item");
+
+            window.KeyTextInput(" answer");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(textBox.IsFocused, Is.True);
+                Assert.That(textBox.Text, Is.EqualTo("Right answer"));
+                Assert.That(question.Right, Is.EqualTo(new[] { "Right answer" }));
+            });
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public async Task Inspector_QualityControlCommandsUpdateCanonicalStateAndVisibility()
     {
         using var serviceProvider = CreateServiceProvider();

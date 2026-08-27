@@ -11,7 +11,8 @@
     <ListBox
         x:Name="ItemsList"
         ItemsSource="{Binding Editor, ElementName=Root}"
-        SelectedIndex="{Binding Editor.CurrentPosition, ElementName=Root, Mode=TwoWay}"
+        SelectedIndex="{Binding Editor.CurrentPosition, ElementName=Root, Mode=OneWay}"
+        SelectionChanged="ItemsList_SelectionChanged"
         MinHeight="{StaticResource MetadataListHeight}"
         MaxHeight="{StaticResource MetadataListMaxHeight}"
         AutomationProperties.Name="{Binding Header, ElementName=Root}" />
