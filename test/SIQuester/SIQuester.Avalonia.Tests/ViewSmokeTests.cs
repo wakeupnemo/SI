@@ -1978,6 +1978,9 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.ParameterType, Is.EqualTo("Тип параметра"));
             Assert.That(UiStrings.Validation, Is.EqualTo("Проверка"));
             Assert.That(UiStrings.GoToIssue, Is.EqualTo("Перейти"));
+            Assert.That(UiStrings.TextImport, Is.EqualTo("Импорт текста"));
+            Assert.That(UiStrings.QuestionParsing, Is.EqualTo("Распознавание структуры пакета"));
+            Assert.That(UiStrings.InsertOptionalGroup, Is.EqualTo("Вставить необязательную группу"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

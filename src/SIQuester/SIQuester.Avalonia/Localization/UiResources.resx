@@ -192,4 +192,28 @@
   <data name="RenameParameter" xml:space="preserve"><value>Rename parameter</value></data>
   <data name="ConvertParameter" xml:space="preserve"><value>Convert parameter</value></data>
   <data name="ParameterType" xml:space="preserve"><value>Parameter type</value></data>
+  <data name="TextImport" xml:space="preserve"><value>Text import</value></data>
+  <data name="TextToImport" xml:space="preserve"><value>Paste text or select a UTF-8 or Windows-1251 text file.</value></data>
+  <data name="SourceText" xml:space="preserve"><value>Source text</value></data>
+  <data name="SelectingFile" xml:space="preserve"><value>Selecting text file</value></data>
+  <data name="SelectTextFile" xml:space="preserve"><value>Select text file</value></data>
+  <data name="StartImport" xml:space="preserve"><value>Start import</value></data>
+  <data name="FileImport" xml:space="preserve"><value>File import</value></data>
+  <data name="Encoding" xml:space="preserve"><value>Encoding</value></data>
+  <data name="ImportedTextPreview" xml:space="preserve"><value>Imported text preview</value></data>
+  <data name="EditText" xml:space="preserve"><value>Edit text</value></data>
+  <data name="QuestionSplitting" xml:space="preserve"><value>Split text into questions</value></data>
+  <data name="QuestionParsing" xml:space="preserve"><value>Parse package structure</value></data>
+  <data name="ImportProgress" xml:space="preserve"><value>Import progress</value></data>
+  <data name="ProcessedText" xml:space="preserve"><value>Processed text</value></data>
+  <data name="TextRequiringAttention" xml:space="preserve"><value>Text requiring attention</value></data>
+  <data name="SkipFragment" xml:space="preserve"><value>Skip fragment</value></data>
+  <data name="SourceFragments" xml:space="preserve"><value>Source fragments</value></data>
+  <data name="StandardLogic" xml:space="preserve"><value>Use standard package structure</value></data>
+  <data name="AutoDetectTemplates" xml:space="preserve"><value>Detect templates</value></data>
+  <data name="SnsTemplates" xml:space="preserve"><value>SNS templates</value></data>
+  <data name="SelectTemplateVariant" xml:space="preserve"><value>Select template variant</value></data>
+  <data name="InsertAlias" xml:space="preserve"><value>Insert structural alias</value></data>
+  <data name="InsertOptionalGroup" xml:space="preserve"><value>Insert optional group</value></data>
+  <data name="SpardTemplate" xml:space="preserve"><value>Structural import template</value></data>
 </root>

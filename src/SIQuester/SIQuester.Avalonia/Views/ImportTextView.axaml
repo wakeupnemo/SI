@@ -1,0 +1,197 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.ImportTextView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:text="using:System.Text"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:DataType="vm:ImportTextViewModel">
+  <Grid Margin="{StaticResource Space16Thickness}">
+    <Grid x:Name="InitialStatePanel" IsVisible="{Binding IsInitialState}" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.TextImport}" />
+        <TextBlock Text="{x:Static loc:UiStrings.TextToImport}" Opacity="0.72" />
+      </StackPanel>
+      <TextBox
+          x:Name="SourceTextEditor"
+          Grid.Row="1"
+          Text="{Binding Text, Mode=TwoWay}"
+          AcceptsReturn="True"
+          TextWrapping="Wrap"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          AutomationProperties.Name="{x:Static loc:UiStrings.SourceText}" />
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <ProgressBar
+            IsIndeterminate="True"
+            IsVisible="{Binding IsSelectingFile}"
+            Width="180"
+            VerticalAlignment="Center"
+            AutomationProperties.Name="{x:Static loc:UiStrings.SelectingFile}" />
+        <Button
+            Grid.Column="1"
+            Classes="command"
+            Content="{x:Static loc:UiStrings.SelectTextFile}"
+            Command="{Binding SelectFile}" />
+        <Button
+            Grid.Column="2"
+            Classes="command accent"
+            Content="{x:Static loc:UiStrings.StartImport}"
+            Command="{Binding Run}" />
+      </Grid>
+    </Grid>
+
+    <Grid x:Name="ImportFileStatePanel" IsVisible="{Binding IsImportFileState}" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.FileImport}" />
+          <TextBlock Text="{Binding FileName}" FontStyle="Italic" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding FileName}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="4">
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Encoding}" />
+          <ComboBox
+              x:Name="EncodingSelector"
+              ItemsSource="{Binding Encodings}"
+              SelectedItem="{Binding TextEncoding, Mode=TwoWay}"
+              MinWidth="220"
+              AutomationProperties.Name="{x:Static loc:UiStrings.Encoding}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="text:Encoding">
+                <TextBlock Text="{Binding EncodingName}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+      </Grid>
+      <TextBox
+          x:Name="ImportedTextPreview"
+          Grid.Row="1"
+          Text="{Binding ImportText}"
+          IsReadOnly="True"
+          AcceptsReturn="True"
+          TextWrapping="Wrap"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          AutomationProperties.Name="{x:Static loc:UiStrings.ImportedTextPreview}" />
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Classes="command" Content="{x:Static loc:UiStrings.Cancel}" Command="{Binding CancelImport}" />
+        <Button Classes="command" Content="{x:Static loc:UiStrings.EditText}" Command="{Binding ApproveImport}" />
+        <Button Classes="command accent" Content="{x:Static loc:UiStrings.StartImport}" Command="{Binding ApproveImportAndStart}" />
+      </StackPanel>
+    </Grid>
+
+    <Grid x:Name="SplitStatePanel" IsVisible="{Binding IsSplitState}" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+      <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.QuestionSplitting}" />
+      <ProgressBar
+          Grid.Row="1"
+          Minimum="0"
+          Maximum="100"
+          Value="{Binding Progress}"
+          AutomationProperties.Name="{x:Static loc:UiStrings.ImportProgress}" />
+      <Grid Grid.Row="2" ColumnDefinitions="3*,2*" ColumnSpacing="16">
+        <Grid RowDefinitions="*,6,*">
+          <TextBox
+              Text="{Binding GoodText}"
+              IsReadOnly="True"
+              AcceptsReturn="True"
+              TextWrapping="Wrap"
+              ScrollViewer.VerticalScrollBarVisibility="Auto"
+              AutomationProperties.Name="{x:Static loc:UiStrings.ProcessedText}" />
+          <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="Transparent" />
+          <TextBox
+              Grid.Row="2"
+              Text="{Binding BadText, Mode=TwoWay}"
+              IsEnabled="{Binding IsEditorOpened}"
+              AcceptsReturn="True"
+              TextWrapping="Wrap"
+              ScrollViewer.VerticalScrollBarVisibility="Auto"
+              AutomationProperties.Name="{x:Static loc:UiStrings.TextRequiringAttention}" />
+        </Grid>
+        <Grid Grid.Column="1" RowDefinitions="*,Auto" RowSpacing="12">
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding Info}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Problem}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="command accent" Content="{Binding GoText}" Command="{Binding Go}" />
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.SkipFragment}"
+                Command="{Binding Skip}"
+                ToolTip.Tip="{Binding SkipToolTip}" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <Grid x:Name="ParseStatePanel" IsVisible="{Binding IsParseState}" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+      <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.QuestionParsing}" />
+      <ProgressBar
+          Grid.Row="1"
+          Minimum="0"
+          Maximum="100"
+          Value="{Binding Progress}"
+          AutomationProperties.Name="{x:Static loc:UiStrings.ImportProgress}" />
+      <Grid Grid.Row="2" ColumnDefinitions="2*,3*" ColumnSpacing="16">
+        <Grid RowDefinitions="2*,6,*">
+          <ListBox
+              x:Name="SourceFragments"
+              ItemsSource="{Binding Fragments}"
+              SelectedIndex="{Binding CurrentFragmentIndex, Mode=TwoWay}"
+              AutomationProperties.Name="{x:Static loc:UiStrings.SourceFragments}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding}" TextWrapping="Wrap" Padding="4" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="Transparent" />
+          <TextBox
+              Grid.Row="2"
+              Text="{Binding BadText, Mode=TwoWay}"
+              IsEnabled="{Binding IsEditorOpened}"
+              AcceptsReturn="True"
+              TextWrapping="Wrap"
+              ScrollViewer.VerticalScrollBarVisibility="Auto"
+              AutomationProperties.Name="{x:Static loc:UiStrings.TextRequiringAttention}" />
+        </Grid>
+
+        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding Info}" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding Problem}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+          <CheckBox
+              Grid.Row="1"
+              Content="{x:Static loc:UiStrings.StandardLogic}"
+              IsChecked="{Binding StandartLogic, Mode=TwoWay}"
+              IsEnabled="{Binding CanChangeStandart}" />
+          <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="command" Content="{x:Static loc:UiStrings.AutoDetectTemplates}" Command="{Binding Auto}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.SnsTemplates}" Command="{Binding Sns}" />
+          </StackPanel>
+          <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Templates}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SpardTemplateViewModel">
+                  <views:SpardTemplateEditorView TemplateModel="{Binding}" Margin="0,0,0,8" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="command accent" Content="{Binding GoText}" Command="{Binding Go}" />
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.SkipFragment}"
+                Command="{Binding Skip}"
+                ToolTip.Tip="{Binding SkipToolTip}" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

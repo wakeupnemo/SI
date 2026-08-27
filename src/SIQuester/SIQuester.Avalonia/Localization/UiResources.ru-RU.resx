@@ -192,4 +192,28 @@
   <data name="RenameParameter" xml:space="preserve"><value>Переименовать параметр</value></data>
   <data name="ConvertParameter" xml:space="preserve"><value>Преобразовать параметр</value></data>
   <data name="ParameterType" xml:space="preserve"><value>Тип параметра</value></data>
+  <data name="TextImport" xml:space="preserve"><value>Импорт текста</value></data>
+  <data name="TextToImport" xml:space="preserve"><value>Вставьте текст или выберите текстовый файл в кодировке UTF-8 или Windows-1251.</value></data>
+  <data name="SourceText" xml:space="preserve"><value>Исходный текст</value></data>
+  <data name="SelectingFile" xml:space="preserve"><value>Выбор текстового файла</value></data>
+  <data name="SelectTextFile" xml:space="preserve"><value>Выбрать текстовый файл</value></data>
+  <data name="StartImport" xml:space="preserve"><value>Начать импорт</value></data>
+  <data name="FileImport" xml:space="preserve"><value>Импорт файла</value></data>
+  <data name="Encoding" xml:space="preserve"><value>Кодировка</value></data>
+  <data name="ImportedTextPreview" xml:space="preserve"><value>Предварительный просмотр текста</value></data>
+  <data name="EditText" xml:space="preserve"><value>Редактировать текст</value></data>
+  <data name="QuestionSplitting" xml:space="preserve"><value>Разбиение текста на вопросы</value></data>
+  <data name="QuestionParsing" xml:space="preserve"><value>Распознавание структуры пакета</value></data>
+  <data name="ImportProgress" xml:space="preserve"><value>Ход импорта</value></data>
+  <data name="ProcessedText" xml:space="preserve"><value>Обработанный текст</value></data>
+  <data name="TextRequiringAttention" xml:space="preserve"><value>Текст, требующий внимания</value></data>
+  <data name="SkipFragment" xml:space="preserve"><value>Пропустить фрагмент</value></data>
+  <data name="SourceFragments" xml:space="preserve"><value>Фрагменты исходного текста</value></data>
+  <data name="StandardLogic" xml:space="preserve"><value>Использовать стандартную структуру пакета</value></data>
+  <data name="AutoDetectTemplates" xml:space="preserve"><value>Определить шаблоны</value></data>
+  <data name="SnsTemplates" xml:space="preserve"><value>Шаблоны СНС</value></data>
+  <data name="SelectTemplateVariant" xml:space="preserve"><value>Выбрать вариант шаблона</value></data>
+  <data name="InsertAlias" xml:space="preserve"><value>Вставить структурный псевдоним</value></data>
+  <data name="InsertOptionalGroup" xml:space="preserve"><value>Вставить необязательную группу</value></data>
+  <data name="SpardTemplate" xml:space="preserve"><value>Структурный шаблон импорта</value></data>
 </root>

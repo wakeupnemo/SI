@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SIQuester.ViewModel.Configuration;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Contracts.Host;
+using SIQuester.ViewModel.Services;
 using SIQuester.ViewModel.Tests.Helpers;
 using System.Text;
 using Utils.Commands;
@@ -11,6 +12,17 @@ namespace SIQuester.ViewModel.Tests;
 [TestFixture]
 internal sealed class ImportTextWorkspaceTests
 {
+    [Test]
+    public void BufferedTextSource_ReleasesContentOnDispose()
+    {
+        var source = new BufferedTextSource("source.txt", "content"u8.ToArray());
+
+        Assert.That(source.GetText(Encoding.UTF8), Is.EqualTo("content"));
+        source.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => source.GetText(Encoding.UTF8));
+    }
+
     [Test]
     public async Task SelectFile_UsesNeutralStreamPickerAndPublishesExplicitUiState()
     {
@@ -61,8 +73,20 @@ internal sealed class ImportTextWorkspaceTests
                 Assert.That(source.WasDisposed, Is.True);
             });
 
+            workspace.ApproveImport.Execute(null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(workspace.IsInitialState, Is.True);
+                Assert.That(workspace.Text, Is.EqualTo("Пакет: портал 例"));
+                Assert.That(workspace.FileName, Is.EqualTo("вопросы 例.txt"));
+            });
+
             workspace.CancelImport.Execute(null);
-            Assert.That(workspace.IsInitialState, Is.True);
+            Assert.Multiple(() =>
+            {
+                Assert.That(workspace.IsInitialState, Is.True);
+                Assert.That(workspace.FileName, Is.Null);
+            });
         }
         finally
         {

@@ -1,0 +1,99 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.SpardTemplateEditorView"
+    x:Name="Root"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:SIQuester.Avalonia.Controls"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    xmlns:services="using:SIQuester.ViewModel.Services"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    x:DataType="views:SpardTemplateEditorView">
+  <Border
+      BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+      BorderThickness="1"
+      CornerRadius="{StaticResource RadiusSmall}"
+      Padding="{StaticResource Space8Thickness}"
+      IsEnabled="{Binding TemplateModel.Enabled, ElementName=Root}">
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+        <TextBlock
+            Classes="field-label"
+            Text="{Binding TemplateModel.Name, ElementName=Root}"
+            VerticalAlignment="Center" />
+        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding TemplateModel.Variants, ElementName=Root}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="4" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <Button
+                    Classes="command"
+                    Content="{Binding}"
+                    Command="{Binding Session.Template.ChangeTemplate, ElementName=Root}"
+                    CommandParameter="{Binding}"
+                    ToolTip.Tip="{x:Static loc:UiStrings.SelectTemplateVariant}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.SelectTemplateVariant}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+
+      <WrapPanel Grid.Row="1" Orientation="Horizontal">
+        <ItemsControl ItemsSource="{Binding Session.Aliases, ElementName=Root}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="services:SpardAliasDescriptor">
+              <Button
+                  Classes="command"
+                  Content="{Binding DisplayName}"
+                  Command="{Binding Session.Template.InsertAlias, ElementName=Root}"
+                  CommandParameter="{Binding Key}"
+                  Margin="0,0,4,4"
+                  ToolTip.Tip="{x:Static loc:UiStrings.InsertAlias}"
+                  AutomationProperties.Name="{Binding DisplayName}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button
+            Classes="command"
+            Content="?"
+            Command="{Binding Session.Template.InsertOptional, ElementName=Root}"
+            Margin="0,0,4,4"
+            ToolTip.Tip="{x:Static loc:UiStrings.InsertOptionalGroup}"
+            AutomationProperties.Name="{x:Static loc:UiStrings.InsertOptionalGroup}" />
+        <Button
+            Classes="command"
+            Content="{x:Static loc:UiStrings.Cut}"
+            Command="{Binding Session.Template.Cut, ElementName=Root}"
+            Margin="0,0,4,4" />
+        <Button
+            Classes="command"
+            Content="{x:Static loc:UiStrings.Copy}"
+            Command="{Binding Session.Template.Copy, ElementName=Root}"
+            Margin="0,0,4,4" />
+        <Button
+            Classes="command"
+            Content="{x:Static loc:UiStrings.Paste}"
+            Command="{Binding Session.Template.Paste, ElementName=Root}"
+            Margin="0,0,4,4" />
+      </WrapPanel>
+
+      <controls:SpardEditorControl
+          x:Name="StructuralEditor"
+          Grid.Row="2"
+          Controller="{Binding Session.Editor, ElementName=Root}"
+          MinHeight="76"
+          MaxHeight="180"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          AutomationProperties.Name="{x:Static loc:UiStrings.SpardTemplate}" />
+    </Grid>
+  </Border>
+</UserControl>

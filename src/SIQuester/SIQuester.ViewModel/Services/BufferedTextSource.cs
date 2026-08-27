@@ -8,7 +8,7 @@ namespace SIQuester.ViewModel.Services;
 /// </summary>
 internal sealed class BufferedTextSource : ITextSource
 {
-    private readonly byte[] _content;
+    private byte[]? _content;
 
     public string? FileName { get; }
 
@@ -20,10 +20,11 @@ internal sealed class BufferedTextSource : ITextSource
 
     public string GetText(Encoding encoding)
     {
+        ObjectDisposedException.ThrowIf(_content == null, this);
         using var stream = new MemoryStream(_content, writable: false);
         using var reader = new StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true);
         return reader.ReadToEnd();
     }
 
-    public void Dispose() { }
+    public void Dispose() => _content = null;
 }

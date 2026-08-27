@@ -89,7 +89,9 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
     public ICommand Run { get; private set; }
 
-    public string? FileName => _textSource?.FileName;
+    private string? _fileName;
+
+    public string? FileName => _fileName;
 
 
     private string _importText = "";
@@ -572,6 +574,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     {
         _textSource?.Dispose();
         _textSource = textSource;
+        _fileName = textSource.FileName;
         OnPropertyChanged(nameof(FileName));
         ReloadImportText();
         State = UIState.ImportFile;
@@ -589,6 +592,9 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     {
         State = UIState.Initial;
         _textSource?.Dispose();
+        _textSource = null;
+        _fileName = null;
+        OnPropertyChanged(nameof(FileName));
     }
 
     private void ApproveImport_Executed(object? arg)
@@ -601,6 +607,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     {
         Text = ImportText;
         _textSource?.Dispose();
+        _textSource = null;
     }
 
     private void ApproveImportAndStart_Executed(object? arg)
