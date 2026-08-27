@@ -181,6 +181,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
     public bool CanLinkCurrentToQuestion => CurrentFile != null && _document.ActiveNode is QuestionViewModel;
 
     private readonly ILogger<MediaStorageViewModel> _logger;
+    private readonly IMediaPreviewService _mediaPreviewService;
 
     private string _filter = "";
 
@@ -251,6 +252,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         string header,
         string temporaryMediaDirectory,
         ILogger<MediaStorageViewModel> logger,
+        IMediaPreviewService mediaPreviewService,
         bool canCompress = false)
     {
         _document = document;
@@ -258,6 +260,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
         _name = collection.Name;
         _temporaryMediaDirectory = temporaryMediaDirectory;
         _logger = logger;
+        _mediaPreviewService = mediaPreviewService;
 
         FillFiles(collection);
 
@@ -290,7 +293,8 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             model,
             _name,
             () => Wrap(model.Name),
-            () => TryGetStreamInfo(model.Name));
+            () => TryGetStreamInfo(model.Name),
+            _mediaPreviewService);
         AttachItem(named);
         return named;
     }

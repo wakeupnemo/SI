@@ -9,6 +9,7 @@
           x:Name="PreviewImage"
           Stretch="Uniform"
           AutomationProperties.Name="{x:Static loc:UiStrings.Images}" />
+      <ContentControl x:Name="PlaybackHost" />
       <TextBlock
           x:Name="StatusText"
           TextWrapping="Wrap"

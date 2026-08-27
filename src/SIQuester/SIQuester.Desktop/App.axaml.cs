@@ -105,7 +105,11 @@ public partial class App : Application
             services.AddSingleton<IApplicationLifetimeService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IMediaMaterializationService>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IPlatformCapabilities>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
-            services.AddSingleton<IQuestionPreviewService, DesktopQuestionPreviewService>();
+            services.AddSingleton<DesktopQuestionPreviewService>();
+            services.AddSingleton<IQuestionPreviewService>(serviceProvider =>
+                serviceProvider.GetRequiredService<DesktopQuestionPreviewService>());
+            services.AddSingleton<IMediaPreviewService>(serviceProvider =>
+                serviceProvider.GetRequiredService<DesktopQuestionPreviewService>());
             services.AddSingleton<IExternalLauncher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSingleton<IUiDispatcher>(serviceProvider => serviceProvider.GetRequiredService<DesktopPlatformServices>());
             services.AddSIQuester();

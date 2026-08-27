@@ -1867,6 +1867,7 @@ public sealed class QDocument : WorkspaceViewModel
     private readonly IAppPaths _appPaths;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IQuestionPreviewService _questionPreviewService;
+    private readonly IMediaPreviewService _mediaPreviewService;
     private string _recoveryId = Guid.NewGuid().ToString("N");
 
     internal string RecoveryId => _recoveryId;
@@ -1897,7 +1898,8 @@ public sealed class QDocument : WorkspaceViewModel
         IMediaMaterializationService mediaMaterializationService,
         IAppPaths appPaths,
         IUiDispatcher uiDispatcher,
-        IQuestionPreviewService questionPreviewService)
+        IQuestionPreviewService questionPreviewService,
+        IMediaPreviewService mediaPreviewService)
     {
         Lock = new Lock(document.Package.Name);
 
@@ -1917,6 +1919,7 @@ public sealed class QDocument : WorkspaceViewModel
         _appPaths = appPaths;
         _uiDispatcher = uiDispatcher;
         _questionPreviewService = questionPreviewService;
+        _mediaPreviewService = mediaPreviewService;
         _logger = loggerFactory.CreateLogger<QDocument>();
 
         StorageContext = storageContextViewModel;
@@ -1995,10 +1998,11 @@ public sealed class QDocument : WorkspaceViewModel
             Resources.Images,
             _appPaths.TemporaryMediaDirectory,
             msvmLogger,
+            _mediaPreviewService,
             true);
-        Audio = new MediaStorageViewModel(this, Document.Audio, Resources.Audio, _appPaths.TemporaryMediaDirectory, msvmLogger);
-        Video = new MediaStorageViewModel(this, Document.Video, Resources.Video, _appPaths.TemporaryMediaDirectory, msvmLogger);
-        Html = new MediaStorageViewModel(this, Document.Html, Resources.Html, _appPaths.TemporaryMediaDirectory, msvmLogger);
+        Audio = new MediaStorageViewModel(this, Document.Audio, Resources.Audio, _appPaths.TemporaryMediaDirectory, msvmLogger, _mediaPreviewService);
+        Video = new MediaStorageViewModel(this, Document.Video, Resources.Video, _appPaths.TemporaryMediaDirectory, msvmLogger, _mediaPreviewService);
+        Html = new MediaStorageViewModel(this, Document.Html, Resources.Html, _appPaths.TemporaryMediaDirectory, msvmLogger, _mediaPreviewService);
         _mediaStoragesInitialized = true;
 
         Images.Changed += OperationsManager.AddChange;

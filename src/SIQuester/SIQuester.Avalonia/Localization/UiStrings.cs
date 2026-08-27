@@ -152,6 +152,8 @@ public static class UiStrings
     public static string SelectPoint => Get(nameof(SelectPoint));
     public static string LoadingImage => Get(nameof(LoadingImage));
     public static string ImageUnavailable => Get(nameof(ImageUnavailable));
+    public static string LoadingMediaPreview => Get(nameof(LoadingMediaPreview));
+    public static string MediaPreviewFailed => Get(nameof(MediaPreviewFailed));
     public static string Publisher => Get(nameof(Publisher));
     public static string ContactAddress => Get(nameof(ContactAddress));
     public static string CreationDate => Get(nameof(CreationDate));

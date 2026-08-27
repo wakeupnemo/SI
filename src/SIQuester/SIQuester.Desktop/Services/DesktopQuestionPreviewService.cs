@@ -7,7 +7,7 @@ namespace SIQuester.Desktop.Services;
 /// <summary>
 /// Probes the official native WebView runtimes lazily and owns the controlled application-content origin.
 /// </summary>
-internal sealed class DesktopQuestionPreviewService : IQuestionPreviewService, IDisposable
+internal sealed class DesktopQuestionPreviewService : IQuestionPreviewService, IMediaPreviewService, IDisposable
 {
     private readonly Lock _sync = new();
     private readonly ILogger<DesktopQuestionPreviewService> _logger;
@@ -78,6 +78,20 @@ internal sealed class DesktopQuestionPreviewService : IQuestionPreviewService, I
             return host.IsAvailable && _contentServer is not null
                 ? _contentServer.CreateMediaSession(host)
                 : new QuestionPreviewHostSession(host);
+        }
+    }
+
+    public IMediaPreviewSession CreateSession(MediaPreviewSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var host = GetHostDescriptor();
+
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return host.IsAvailable && _contentServer is not null
+                ? _contentServer.CreatePlaybackSession(host, source)
+                : new UnavailablePlaybackSession(host.Availability, host.BackendRequirement);
         }
     }
 
@@ -156,4 +170,17 @@ internal sealed class DesktopQuestionPreviewService : IQuestionPreviewService, I
     private sealed record BackendProbe(
         DetailedWebViewAdapterInfo? Info,
         QuestionPreviewBackendRequirement Requirement);
+
+    private sealed class UnavailablePlaybackSession(
+        QuestionPreviewAvailability availability,
+        QuestionPreviewBackendRequirement backendRequirement) : IMediaPreviewSession
+    {
+        public Uri? Source => null;
+
+        public QuestionPreviewAvailability Availability { get; } = availability;
+
+        public QuestionPreviewBackendRequirement BackendRequirement { get; } = backendRequirement;
+
+        public void Dispose() { }
+    }
 }

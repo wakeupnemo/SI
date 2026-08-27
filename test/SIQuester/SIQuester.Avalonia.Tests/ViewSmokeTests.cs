@@ -807,6 +807,48 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public async Task MediaLibrary_AudioSelectionOwnsAndDisposesUnavailablePlaybackSession()
+    {
+        var previewService = new TrackingUnavailableMediaPreviewService();
+        using var serviceProvider = CreateServiceProvider(mediaPreviewService: previewService);
+        using var document = SIDocument.Create("Media playback", "Test author");
+        await document.Audio.AddFileAsync(
+            "звук 例.wav",
+            new MemoryStream([1, 2, 3, 4], writable: false));
+        var viewModel = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Media playback");
+        var editor = new MediaStorageEditorView { DataContext = viewModel.Audio };
+        var window = new Window { Width = 600, Height = 500, Content = editor };
+
+        try
+        {
+            window.Show();
+            viewModel.Audio.CurrentFile = viewModel.Audio.Files.Single();
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            var preview = editor.GetVisualDescendants().OfType<MediaItemPreview>().Single();
+            var status = preview.FindControl<TextBlock>("StatusText")!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(previewService.CreatedSessions, Is.EqualTo(1));
+                Assert.That(previewService.LastSource?.Kind, Is.EqualTo(MediaPreviewKind.Audio));
+                Assert.That(status.Text, Is.EqualTo(UiStrings.PreviewUnavailable));
+            });
+
+            viewModel.Audio.CurrentFile = null;
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(previewService.DisposedSessions, Is.EqualTo(1));
+        }
+        finally
+        {
+            window.Close();
+            viewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public async Task DocumentEditor_ValidationSidebarShowsTypedCountsAndNavigatesIssue()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -2174,9 +2216,46 @@ internal sealed class ViewSmokeTests
         public IQuestionPreviewSession CreateSession() => new QuestionPreviewHostSession(HostDescriptor);
     }
 
+    private sealed class TrackingUnavailableMediaPreviewService : IMediaPreviewService
+    {
+        public int CreatedSessions { get; private set; }
+
+        public int DisposedSessions { get; private set; }
+
+        public MediaPreviewSource? LastSource { get; private set; }
+
+        public IMediaPreviewSession CreateSession(MediaPreviewSource source)
+        {
+            CreatedSessions++;
+            LastSource = source;
+            return new UnavailableSession(() => DisposedSessions++);
+        }
+
+        private sealed class UnavailableSession(Action onDispose) : IMediaPreviewSession
+        {
+            private bool _disposed;
+
+            public Uri? Source => null;
+
+            public QuestionPreviewAvailability Availability => QuestionPreviewAvailability.BackendUnavailable;
+
+            public QuestionPreviewBackendRequirement BackendRequirement => QuestionPreviewBackendRequirement.None;
+
+            public void Dispose()
+            {
+                if (!_disposed)
+                {
+                    _disposed = true;
+                    onDispose();
+                }
+            }
+        }
+    }
+
     private static ServiceProvider CreateServiceProvider(
         IClipboardService? clipboardService = null,
-        IFilePickerService? filePickerService = null)
+        IFilePickerService? filePickerService = null,
+        IMediaPreviewService? mediaPreviewService = null)
     {
         AppSettings.Default = new AppSettings();
         var services = new ServiceCollection();
@@ -2196,6 +2275,10 @@ internal sealed class ViewSmokeTests
         services.AddSingleton(Substitute.For<IApplicationLifetimeService>());
         services.AddSingleton(Substitute.For<IMediaMaterializationService>());
         services.AddSingleton(Substitute.For<IPlatformService>());
+        if (mediaPreviewService is not null)
+        {
+            services.AddSingleton(mediaPreviewService);
+        }
         var platformCapabilities = Substitute.For<IPlatformCapabilities>();
         platformCapabilities.SupportsRecoveryManagementUi.Returns(true);
         services.AddSingleton(platformCapabilities);

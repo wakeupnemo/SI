@@ -23,7 +23,8 @@ internal sealed class QuestionPreviewContentServer : IDisposable
     private const int MaxRequestLineLength = 4096;
     private const int MaxHeaderLength = 16 * 1024;
     private static readonly string[] RequiredAssetNames =
-        ["index.html", "main.js", "vendor.js", "script.js", "siquester-bridge.js", "style.css"];
+        ["index.html", "main.js", "vendor.js", "script.js", "siquester-bridge.js", "style.css",
+            "media-preview.html", "media-preview.js"];
     private static readonly HashSet<string> AllowedExtensions = new(
         [".html", ".js", ".css", ".ttf", ".woff", ".woff2", ".png", ".jpg", ".jpeg", ".gif", ".svg"],
         StringComparer.OrdinalIgnoreCase);
@@ -50,11 +51,14 @@ internal sealed class QuestionPreviewContentServer : IDisposable
         _listener.Start(16);
         var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
         Source = new Uri($"http://127.0.0.1:{port}{_routePrefix}index.html");
+        MediaPreviewSource = new Uri(Source, $"{_routePrefix}media-preview.html");
         _expectedHost = Source.Authority;
         _acceptLoop = AcceptLoopAsync(_lifetime.Token);
     }
 
     public Uri Source { get; }
+
+    public Uri MediaPreviewSource { get; }
 
     public IQuestionPreviewSession CreateMediaSession(QuestionPreviewHostDescriptor host)
     {
@@ -67,6 +71,49 @@ internal sealed class QuestionPreviewContentServer : IDisposable
         }
 
         return new MediaSession(this, host);
+    }
+
+    public IMediaPreviewSession CreatePlaybackSession(
+        QuestionPreviewHostDescriptor host,
+        MediaPreviewSource media)
+    {
+        ArgumentNullException.ThrowIfNull(media);
+        var questionKind = media.Kind == MediaPreviewKind.Audio
+            ? QuestionPreviewMediaKind.Audio
+            : QuestionPreviewMediaKind.Video;
+        var registration = new MediaSession(this, host);
+
+        try
+        {
+            var registered = registration.TryGetMediaSource(
+                new QuestionPreviewMediaSource(questionKind, media.Name, media.OpenRead),
+                out var mediaSource);
+            if (!registered)
+            {
+                registration.Dispose();
+                return new PlaybackSession(
+                    null,
+                    QuestionPreviewAvailability.AssetsUnavailable,
+                    QuestionPreviewBackendRequirement.None,
+                    null);
+            }
+
+            var kind = media.Kind == MediaPreviewKind.Audio ? "audio" : "video";
+            var builder = new UriBuilder(MediaPreviewSource)
+            {
+                Fragment = kind + "=" + Uri.EscapeDataString(mediaSource),
+            };
+            return new PlaybackSession(
+                builder.Uri,
+                QuestionPreviewAvailability.Available,
+                QuestionPreviewBackendRequirement.None,
+                registration);
+        }
+        catch
+        {
+            registration.Dispose();
+            throw;
+        }
     }
 
     public static bool HasRequiredAssets(string assetsDirectory)
@@ -808,6 +855,21 @@ internal sealed class QuestionPreviewContentServer : IDisposable
                 _server._logger.LogInformation("Question preview media session disposed");
             }
         }
+    }
+
+    private sealed class PlaybackSession(
+        Uri? source,
+        QuestionPreviewAvailability availability,
+        QuestionPreviewBackendRequirement backendRequirement,
+        IDisposable? registration) : IMediaPreviewSession
+    {
+        public Uri? Source { get; } = source;
+
+        public QuestionPreviewAvailability Availability { get; } = availability;
+
+        public QuestionPreviewBackendRequirement BackendRequirement { get; } = backendRequirement;
+
+        public void Dispose() => registration?.Dispose();
     }
 
     private sealed record Asset(string Path, long Length, string ContentType);

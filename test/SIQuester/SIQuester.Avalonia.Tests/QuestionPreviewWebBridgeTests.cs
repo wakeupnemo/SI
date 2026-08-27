@@ -96,6 +96,8 @@ internal sealed class QuestionPreviewWebBridgeTests
                 "script.js",
                 "siquester-bridge.js",
                 "style.css",
+                "media-preview.html",
+                "media-preview.js",
             })
             {
                 await File.WriteAllTextAsync(Path.Combine(assetsDirectory, name), "asset:" + name);
@@ -173,6 +175,8 @@ internal sealed class QuestionPreviewWebBridgeTests
                 "script.js",
                 "siquester-bridge.js",
                 "style.css",
+                "media-preview.html",
+                "media-preview.js",
             })
             {
                 await File.WriteAllTextAsync(Path.Combine(assetsDirectory, name), "asset:" + name);
@@ -239,6 +243,70 @@ internal sealed class QuestionPreviewWebBridgeTests
                 Assert.That(rangeBytes, Is.EqualTo(bytes[5..12]));
                 Assert.That(invalidRange.StatusCode, Is.EqualTo(HttpStatusCode.RequestedRangeNotSatisfiable));
                 Assert.That(disposedStreamCount, Is.EqualTo(3));
+            });
+
+            session.Dispose();
+            using var removed = await client.GetAsync(mediaSource);
+            Assert.That(removed.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        }
+        finally
+        {
+            Directory.Delete(assetsDirectory, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task LoopbackPlaybackSession_UsesApplicationPageAndRemovesOpaqueAudioRoute()
+    {
+        var assetsDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "siquester-media-preview-assets-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(assetsDirectory);
+        var bytes = Enumerable.Range(0, 64).Select(value => (byte)value).ToArray();
+
+        try
+        {
+            foreach (var name in new[]
+            {
+                "index.html",
+                "main.js",
+                "vendor.js",
+                "script.js",
+                "siquester-bridge.js",
+                "style.css",
+                "media-preview.html",
+                "media-preview.js",
+            })
+            {
+                await File.WriteAllTextAsync(Path.Combine(assetsDirectory, name), "asset:" + name);
+            }
+
+            using var server = new QuestionPreviewContentServer(
+                assetsDirectory,
+                NullLogger<QuestionPreviewContentServer>.Instance);
+            var host = QuestionPreviewHostDescriptor.Available(server.Source);
+            var session = server.CreatePlaybackSession(
+                host,
+                new MediaPreviewSource(
+                    MediaPreviewKind.Audio,
+                    "секретное имя 例.wav",
+                    () => new QuestionPreviewMediaStream(new MemoryStream(bytes), bytes.Length)));
+
+            Assert.That(session.IsAvailable, Is.True);
+            Assert.That(session.Source!.AbsolutePath, Does.EndWith("/media-preview.html"));
+            Assert.That(session.Source.AbsoluteUri, Does.Not.Contain(Uri.EscapeDataString("секретное имя 例.wav")));
+            var fragment = session.Source.Fragment.TrimStart('#');
+            Assert.That(fragment, Does.StartWith("audio="));
+            var mediaSource = Uri.UnescapeDataString(fragment["audio=".Length..]);
+
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            using var page = await client.GetAsync(session.Source);
+            using var media = await client.GetAsync(mediaSource);
+            Assert.Multiple(() =>
+            {
+                Assert.That(page.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(media.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(media.Content.Headers.ContentType?.MediaType, Is.EqualTo("audio/wav"));
             });
 
             session.Dispose();

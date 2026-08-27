@@ -1,9 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using SIQuester.Avalonia.Helpers;
 using SIQuester.Avalonia.Localization;
 using SIQuester.ViewModel;
+using SIQuester.ViewModel.Contracts;
 
 namespace SIQuester.Avalonia.Views;
 
@@ -14,6 +16,8 @@ public partial class MediaItemPreview : UserControl
 
     private CancellationTokenSource? _loadCancellation;
     private Bitmap? _bitmap;
+    private IMediaPreviewSession? _playbackSession;
+    private NativeWebView? _webView;
     private bool _isAttached;
 
     public MediaItemViewModel? Item
@@ -49,7 +53,7 @@ public partial class MediaItemPreview : UserControl
 
     private void StartLoad()
     {
-        StopLoad();
+        ResetPreview(releasePlaybackHost: false);
         var item = Item;
 
         if (item == null)
@@ -60,7 +64,15 @@ public partial class MediaItemPreview : UserControl
 
         if (!item.IsImage)
         {
-            StatusText.Text = UiStrings.PreviewUnavailable;
+            if (item.IsPlayable)
+            {
+                StartPlayback(item);
+            }
+            else
+            {
+                StatusText.Text = UiStrings.PreviewUnavailable;
+            }
+
             return;
         }
 
@@ -69,6 +81,97 @@ public partial class MediaItemPreview : UserControl
         _loadCancellation = cancellation;
         _ = LoadAsync(item, cancellation);
     }
+
+    private void StartPlayback(MediaItemViewModel item)
+    {
+        try
+        {
+            var session = item.CreatePreviewSession();
+            _playbackSession = session;
+            if (!session.IsAvailable || session.Source is null)
+            {
+                StatusText.Text = GetUnavailableMessage(session);
+                return;
+            }
+
+            StatusText.Text = UiStrings.LoadingMediaPreview;
+            var webView = _webView;
+            if (webView is null)
+            {
+                webView = new NativeWebView { Source = session.Source };
+                webView.EnvironmentRequested += WebView_EnvironmentRequested;
+                webView.NavigationStarted += WebView_NavigationStarted;
+                webView.NavigationCompleted += WebView_NavigationCompleted;
+                webView.NewWindowRequested += WebView_NewWindowRequested;
+                webView.AdapterDestroyed += WebView_AdapterDestroyed;
+                _webView = webView;
+            }
+            else
+            {
+                webView.Navigate(session.Source);
+            }
+
+            PlaybackHost.Content = webView;
+        }
+        catch (Exception)
+        {
+            StopPlayback(releaseHost: false);
+            StatusText.Text = UiStrings.MediaPreviewFailed;
+        }
+    }
+
+    private static string GetUnavailableMessage(IMediaPreviewSession session) => session.BackendRequirement switch
+    {
+        QuestionPreviewBackendRequirement.LinuxWebKit => UiStrings.QuestionPreviewLinuxBackendUnavailable,
+        QuestionPreviewBackendRequirement.WindowsWebView2 => UiStrings.QuestionPreviewWindowsBackendUnavailable,
+        QuestionPreviewBackendRequirement.UnsupportedPlatform => UiStrings.QuestionPreviewPlatformUnsupported,
+        _ => UiStrings.PreviewUnavailable,
+    };
+
+    private static void WebView_EnvironmentRequested(object? sender, WebViewEnvironmentRequestedEventArgs e) =>
+        e.EnableDevTools = false;
+
+    private void WebView_NavigationStarted(object? sender, WebViewNavigationStartingEventArgs e)
+    {
+        if (_playbackSession?.Source is not { } source || !IsAllowedNavigation(source, e.Request))
+        {
+            e.Cancel = true;
+        }
+    }
+
+    private void WebView_NavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, _webView)
+            || _playbackSession?.Source is not { } source
+            || !IsAllowedNavigation(source, e.Request))
+        {
+            return;
+        }
+
+        StatusText.Text = e.IsSuccess ? null : UiStrings.MediaPreviewFailed;
+    }
+
+    private static void WebView_NewWindowRequested(object? sender, WebViewNewWindowRequestedEventArgs e) =>
+        e.Handled = true;
+
+    private void WebView_AdapterDestroyed(object? sender, WebViewAdapterEventArgs e)
+    {
+        if (ReferenceEquals(sender, _webView))
+        {
+            StatusText.Text = UiStrings.MediaPreviewFailed;
+        }
+    }
+
+    private static bool IsAllowedNavigation(Uri source, Uri? requested) =>
+        requested is { IsAbsoluteUri: true }
+        && string.Equals(source.Scheme, requested.Scheme, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(source.Host, requested.Host, StringComparison.OrdinalIgnoreCase)
+        && source.Port == requested.Port
+        && string.Equals(source.AbsolutePath, requested.AbsolutePath, StringComparison.Ordinal)
+        && string.IsNullOrEmpty(requested.Query)
+        && string.IsNullOrEmpty(requested.UserInfo)
+        && (string.Equals(source.Fragment, requested.Fragment, StringComparison.Ordinal)
+            || string.IsNullOrEmpty(requested.Fragment));
 
     private async Task LoadAsync(MediaItemViewModel item, CancellationTokenSource cancellation)
     {
@@ -101,7 +204,9 @@ public partial class MediaItemPreview : UserControl
         }
     }
 
-    private void StopLoad()
+    private void StopLoad() => ResetPreview(releasePlaybackHost: true);
+
+    private void ResetPreview(bool releasePlaybackHost)
     {
         var cancellation = _loadCancellation;
         _loadCancellation = null;
@@ -110,6 +215,30 @@ public partial class MediaItemPreview : UserControl
         PreviewImage.Source = null;
         _bitmap?.Dispose();
         _bitmap = null;
+        StopPlayback(releasePlaybackHost);
         StatusText.Text = null;
+    }
+
+    private void StopPlayback(bool releaseHost)
+    {
+        var webView = _webView;
+        if (webView is not null)
+        {
+            webView.Stop();
+
+            if (releaseHost)
+            {
+                webView.EnvironmentRequested -= WebView_EnvironmentRequested;
+                webView.NavigationStarted -= WebView_NavigationStarted;
+                webView.NavigationCompleted -= WebView_NavigationCompleted;
+                webView.NewWindowRequested -= WebView_NewWindowRequested;
+                webView.AdapterDestroyed -= WebView_AdapterDestroyed;
+                _webView = null;
+            }
+        }
+
+        PlaybackHost.Content = null;
+        _playbackSession?.Dispose();
+        _playbackSession = null;
     }
 }

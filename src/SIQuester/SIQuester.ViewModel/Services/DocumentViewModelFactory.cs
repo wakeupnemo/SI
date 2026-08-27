@@ -22,6 +22,7 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
     private readonly IAppPaths _appPaths;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IQuestionPreviewService _questionPreviewService;
+    private readonly IMediaPreviewService _mediaPreviewService;
 
     public DocumentViewModelFactory(
         StorageContextViewModel storageContextViewModel,
@@ -36,7 +37,8 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         IMediaMaterializationService mediaMaterializationService,
         IAppPaths appPaths,
         IUiDispatcher uiDispatcher,
-        IQuestionPreviewService questionPreviewService)
+        IQuestionPreviewService questionPreviewService,
+        IMediaPreviewService mediaPreviewService)
     {
         _storageContextViewModel = storageContextViewModel;
         _packageTemplatesRepository = packageTemplatesRepository;
@@ -51,6 +53,7 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         _appPaths = appPaths;
         _uiDispatcher = uiDispatcher;
         _questionPreviewService = questionPreviewService;
+        _mediaPreviewService = mediaPreviewService;
     }
 
     public QDocument CreateViewModelFor(SIDocument document, string? fileName = null) => new(
@@ -68,7 +71,8 @@ internal class DocumentViewModelFactory : IDocumentViewModelFactory
         _mediaMaterializationService,
         _appPaths,
         _uiDispatcher,
-        _questionPreviewService)
+        _questionPreviewService,
+        _mediaPreviewService)
     {
         FileName = fileName ?? document.Package.Name
     };

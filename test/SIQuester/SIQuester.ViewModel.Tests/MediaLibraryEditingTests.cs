@@ -154,6 +154,44 @@ internal sealed class MediaLibraryEditingTests
         });
     }
 
+    [Test]
+    public async Task AudioItem_CreatesFrameworkNeutralOwnedPlaybackSession()
+    {
+        var mediaBytes = Enumerable.Range(0, 32).Select(value => (byte)value).ToArray();
+        var previewService = new TrackingMediaPreviewService();
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider(
+            mediaPreviewService: previewService);
+        using var package = TestHelper.CreateSimpleTestPackage();
+        await package.Audio.AddFileAsync(
+            "звук 例.wav",
+            new MemoryStream(mediaBytes, writable: false));
+        using var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Audio preview");
+        var item = document.Audio.Files.Single();
+
+        using (var session = item.CreatePreviewSession())
+        {
+            Assert.That(session.IsAvailable, Is.True);
+            var captured = previewService.Source
+                ?? throw new AssertionException("The media preview source was not captured.");
+            using var stream = captured.OpenRead()
+                ?? throw new AssertionException("The selected media stream was unavailable.");
+            using var copy = new MemoryStream();
+            await stream.Stream.CopyToAsync(copy);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(item.IsPlayable, Is.True);
+                Assert.That(captured.Kind, Is.EqualTo(MediaPreviewKind.Audio));
+                Assert.That(captured.Name, Is.EqualTo("звук 例.wav"));
+                Assert.That(copy.ToArray(), Is.EqualTo(mediaBytes));
+                Assert.That(previewService.SessionDisposed, Is.False);
+            });
+        }
+
+        Assert.That(previewService.SessionDisposed, Is.True);
+    }
+
     private static PickedFile CreatePortalFile(string name, Stream stream) => new(
         localPath: null,
         displayName: name,
@@ -196,5 +234,29 @@ internal sealed class MediaLibraryEditingTests
             SaveFilePickerRequest request,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class TrackingMediaPreviewService : IMediaPreviewService
+    {
+        public MediaPreviewSource? Source { get; private set; }
+
+        public bool SessionDisposed { get; private set; }
+
+        public IMediaPreviewSession CreateSession(MediaPreviewSource source)
+        {
+            Source = source;
+            return new TrackingSession(() => SessionDisposed = true);
+        }
+
+        private sealed class TrackingSession(Action onDispose) : IMediaPreviewSession
+        {
+            public Uri? Source { get; } = new("http://127.0.0.1:5000/application/media-preview.html");
+
+            public QuestionPreviewAvailability Availability => QuestionPreviewAvailability.Available;
+
+            public QuestionPreviewBackendRequirement BackendRequirement => QuestionPreviewBackendRequirement.None;
+
+            public void Dispose() => onDispose();
+        }
     }
 }

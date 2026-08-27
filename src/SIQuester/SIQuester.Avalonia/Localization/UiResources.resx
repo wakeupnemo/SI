@@ -141,6 +141,8 @@
   <data name="SelectPoint" xml:space="preserve"><value>Select point</value></data>
   <data name="LoadingImage" xml:space="preserve"><value>Loading image…</value></data>
   <data name="ImageUnavailable" xml:space="preserve"><value>The image could not be loaded or exceeds the safe preview limits.</value></data>
+  <data name="LoadingMediaPreview" xml:space="preserve"><value>Loading media preview…</value></data>
+  <data name="MediaPreviewFailed" xml:space="preserve"><value>The media preview could not be started.</value></data>
   <data name="Publisher" xml:space="preserve"><value>Publisher</value></data>
   <data name="ContactAddress" xml:space="preserve"><value>Contact address</value></data>
   <data name="CreationDate" xml:space="preserve"><value>Creation date</value></data>
