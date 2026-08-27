@@ -1,0 +1,87 @@
+<Window
+    x:Class="SIQuester.Avalonia.Views.PointSelectionWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:PointSelectionController"
+    Width="800"
+    Height="600"
+    MinWidth="520"
+    MinHeight="420"
+    WindowStartupLocation="CenterOwner"
+    ShowInTaskbar="False"
+    Title="{x:Static loc:UiStrings.SelectPoint}">
+  <Grid RowDefinitions="*,Auto">
+    <Grid
+        x:Name="ReferenceGrid"
+        ClipToBounds="True"
+        Background="{DynamicResource LayerFillColorAltBrush}">
+      <Image x:Name="TargetImage" Stretch="Uniform" Opacity="0.7" />
+      <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False">
+        <Ellipse
+            x:Name="ErrorCircle"
+            Stroke="{DynamicResource SystemAccentColor}"
+            StrokeThickness="2"
+            Fill="Transparent"
+            IsVisible="False" />
+        <Ellipse
+            x:Name="SelectionMarker"
+            Width="18"
+            Height="18"
+            Stroke="{DynamicResource SystemAccentColor}"
+            StrokeThickness="4"
+            Fill="Transparent"
+            IsVisible="False" />
+      </Canvas>
+      <Border
+          x:Name="PointerSurface"
+          Background="Transparent"
+          IsHitTestVisible="False"
+          Focusable="True"
+          AutomationProperties.Name="{x:Static loc:UiStrings.SelectPoint}"
+          PointerPressed="PointerSurface_PointerPressed"
+          KeyDown="PointerSurface_KeyDown" />
+      <TextBlock
+          x:Name="LoadingText"
+          Text="{x:Static loc:UiStrings.LoadingImage}"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center" />
+      <TextBlock
+          x:Name="ImageErrorText"
+          Text="{x:Static loc:UiStrings.ImageUnavailable}"
+          TextWrapping="Wrap"
+          MaxWidth="420"
+          IsVisible="False"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center" />
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{StaticResource Space12}" Margin="{StaticResource Space16Thickness}">
+      <StackPanel>
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PointCoordinates}" />
+        <TextBlock Text="{Binding CurrentAnswer}" MinWidth="150" />
+      </StackPanel>
+      <StackPanel Grid.Column="1">
+        <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.AnswerDeviation}" />
+        <Slider
+            Minimum="0"
+            Maximum="0.5"
+            TickFrequency="0.01"
+            Value="{Binding CurrentDeviation, Mode=TwoWay}" />
+      </StackPanel>
+      <Button
+          Grid.Column="2"
+          Classes="command"
+          Content="{x:Static loc:UiStrings.OK}"
+          AutomationProperties.Name="{x:Static loc:UiStrings.OK}"
+          Click="Ok_Click" />
+      <Button
+          Grid.Column="3"
+          Classes="command"
+          Content="{x:Static loc:UiStrings.Cancel}"
+          AutomationProperties.Name="{x:Static loc:UiStrings.Cancel}"
+          Click="Cancel_Click" />
+    </Grid>
+  </Grid>
+</Window>

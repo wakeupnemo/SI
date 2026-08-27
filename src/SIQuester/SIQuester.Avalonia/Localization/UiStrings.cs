@@ -142,4 +142,7 @@ public static class UiStrings
     public static string AddGroupParameter => Get(nameof(AddGroupParameter));
     public static string AddNumberSetParameter => Get(nameof(AddNumberSetParameter));
     public static string AddReferenceParameter => Get(nameof(AddReferenceParameter));
+    public static string SelectPoint => Get(nameof(SelectPoint));
+    public static string LoadingImage => Get(nameof(LoadingImage));
+    public static string ImageUnavailable => Get(nameof(ImageUnavailable));
 }

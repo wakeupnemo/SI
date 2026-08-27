@@ -26,8 +26,10 @@ internal sealed class NonTextAnswerEditingTests
 
         pointQuestion.SetAnswerType.Execute(StepParameterValues.SetAnswerTypeType_Point);
         var pointAnswer = pointQuestion.PointAnswer!;
-        pointAnswer.Answer = "0.46,0.7";
-        pointAnswer.Deviation = 0.05;
+        var pointSelection = new PointSelectionController(pointAnswer.Answer, pointAnswer.Deviation);
+        pointSelection.SelectFromViewport(46, 65, 100, 100, 400, 300);
+        pointSelection.CurrentDeviation = 0.05;
+        pointSelection.ApplyTo(pointAnswer);
 
         Assert.Multiple(() =>
         {
@@ -38,7 +40,7 @@ internal sealed class NonTextAnswerEditingTests
                 Is.EqualTo(int.MaxValue.ToString()));
             Assert.That(pointQuestion.IsPointAnswer, Is.True);
             Assert.That(pointQuestion.PointAnswer, Is.SameAs(pointAnswer));
-            Assert.That(pointQuestion.Right, Is.EqualTo(new[] { "0.46,0.7" }));
+            Assert.That(pointQuestion.Right, Is.EqualTo(new[] { "0.46,0.7,1.33" }));
             Assert.That(pointQuestion.Parameters.Model[QuestionParameterNames.AnswerDeviation].SimpleValue,
                 Is.EqualTo("0.05"));
             Assert.That(qDocument.OperationsManager.Undo.CanExecute(null), Is.True);
@@ -149,8 +151,12 @@ internal sealed class NonTextAnswerEditingTests
             questions[0].NumericAnswer!.Deviation = 3;
 
             questions[1].SetAnswerType.Execute(StepParameterValues.SetAnswerTypeType_Point);
-            questions[1].PointAnswer!.Answer = "0.46,0.7";
-            questions[1].PointAnswer!.Deviation = 0.05;
+            var pointSelection = new PointSelectionController(
+                questions[1].PointAnswer!.Answer,
+                questions[1].PointAnswer!.Deviation);
+            pointSelection.SelectFromViewport(46, 65, 100, 100, 400, 300);
+            pointSelection.CurrentDeviation = 0.05;
+            pointSelection.ApplyTo(questions[1].PointAnswer!);
 
             questions[2].SetAnswerType.Execute(StepParameterValues.SetAnswerTypeType_Select);
             var options = questions[2].AnswerOptions!.GroupValue!;
@@ -179,7 +185,7 @@ internal sealed class NonTextAnswerEditingTests
                     Is.EqualTo("3"));
                 Assert.That(reloadedQuestions[1].Parameters[QuestionParameterNames.AnswerType].SimpleValue,
                     Is.EqualTo(StepParameterValues.SetAnswerTypeType_Point));
-                Assert.That(reloadedQuestions[1].Right, Is.EqualTo(new[] { "0.46,0.7" }));
+                Assert.That(reloadedQuestions[1].Right, Is.EqualTo(new[] { "0.46,0.7,1.33" }));
                 Assert.That(reloadedQuestions[1].Parameters[QuestionParameterNames.AnswerDeviation].SimpleValue,
                     Is.EqualTo("0.05"));
                 Assert.That(reloadedQuestions[2].Parameters[QuestionParameterNames.AnswerType].SimpleValue,

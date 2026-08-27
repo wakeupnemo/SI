@@ -5,7 +5,7 @@
     xmlns:vm="using:SIQuester.ViewModel"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:PointAnswerViewModel">
-  <Grid ColumnDefinitions="*,*" ColumnSpacing="{StaticResource Space8}" Margin="{StaticResource FieldMargin}">
+  <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="{StaticResource Space8}" Margin="{StaticResource FieldMargin}">
     <StackPanel>
       <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PointCoordinates}" />
       <TextBox
@@ -19,5 +19,12 @@
           Text="{Binding Deviation, Mode=TwoWay}"
           AutomationProperties.Name="{x:Static loc:UiStrings.AnswerDeviation}" />
     </StackPanel>
+    <Button
+        Grid.Column="2"
+        Classes="command"
+        Content="{x:Static loc:UiStrings.SelectPoint}"
+        AutomationProperties.Name="{x:Static loc:UiStrings.SelectPoint}"
+        Command="{Binding SelectPoint}"
+        VerticalAlignment="Bottom" />
   </Grid>
 </UserControl>

@@ -131,4 +131,7 @@
   <data name="AddGroupParameter" xml:space="preserve"><value>Add group</value></data>
   <data name="AddNumberSetParameter" xml:space="preserve"><value>Add number set</value></data>
   <data name="AddReferenceParameter" xml:space="preserve"><value>Add reference</value></data>
+  <data name="SelectPoint" xml:space="preserve"><value>Select point</value></data>
+  <data name="LoadingImage" xml:space="preserve"><value>Loading image…</value></data>
+  <data name="ImageUnavailable" xml:space="preserve"><value>The image could not be loaded or exceeds the safe preview limits.</value></data>
 </root>

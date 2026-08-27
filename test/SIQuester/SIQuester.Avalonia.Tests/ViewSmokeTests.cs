@@ -30,6 +30,68 @@ namespace SIQuester.Avalonia.Tests;
 internal sealed class ViewSmokeTests
 {
     [AvaloniaTest]
+    public void PointSelectionWindow_InstantiatesWithCompiledBindingsAndLocalizedActions()
+    {
+        var dialog = new PointSelectionWindow("0.25,0.75,2", 0.1, streamInfo: null);
+
+        try
+        {
+            dialog.Show();
+            dialog.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(dialog.Controller.CurrentAnswer, Is.EqualTo("0.25,0.75,2"));
+                Assert.That(dialog.GetVisualDescendants().OfType<Button>().Select(button => button.Content),
+                    Does.Contain(UiStrings.OK));
+                Assert.That(dialog.GetVisualDescendants().OfType<Button>().Select(button => button.Content),
+                    Does.Contain(UiStrings.Cancel));
+            });
+        }
+        finally
+        {
+            dialog.Close();
+        }
+    }
+
+    [AvaloniaTest]
+    public async Task PointSelectionWindow_LoadsPackageImageWithoutRetainingSourceStream()
+    {
+        var imageBytes = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZqxQAAAAASUVORK5CYII=");
+        var source = new MemoryStream(imageBytes, writable: false);
+        var dialog = new PointSelectionWindow(
+            "",
+            0.1,
+            new StreamInfo(source, imageBytes.Length));
+
+        try
+        {
+            dialog.Show();
+            dialog.UpdateLayout();
+            var image = dialog.FindControl<Image>("TargetImage")!;
+            var error = dialog.FindControl<TextBlock>("ImageErrorText")!;
+
+            for (var i = 0; i < 100 && image.Source == null && !error.IsVisible; i++)
+            {
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(image.Source, Is.Not.Null);
+                Assert.That(error.IsVisible, Is.False);
+                Assert.That(source.CanRead, Is.False);
+            });
+        }
+        finally
+        {
+            dialog.Close();
+        }
+    }
+
+    [AvaloniaTest]
     public void MainWindow_InstantiatesWithCompiledBindings()
     {
         var window = new MainWindow();

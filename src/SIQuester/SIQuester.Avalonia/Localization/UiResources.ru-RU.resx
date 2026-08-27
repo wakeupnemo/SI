@@ -131,4 +131,7 @@
   <data name="AddGroupParameter" xml:space="preserve"><value>Добавить группу</value></data>
   <data name="AddNumberSetParameter" xml:space="preserve"><value>Добавить набор чисел</value></data>
   <data name="AddReferenceParameter" xml:space="preserve"><value>Добавить ссылку</value></data>
+  <data name="SelectPoint" xml:space="preserve"><value>Выбрать точку</value></data>
+  <data name="LoadingImage" xml:space="preserve"><value>Загрузка изображения…</value></data>
+  <data name="ImageUnavailable" xml:space="preserve"><value>Не удалось загрузить изображение, либо оно превышает безопасные ограничения предпросмотра.</value></data>
 </root>
