@@ -216,4 +216,13 @@
   <data name="InsertAlias" xml:space="preserve"><value>Insert structural alias</value></data>
   <data name="InsertOptionalGroup" xml:space="preserve"><value>Insert optional group</value></data>
   <data name="SpardTemplate" xml:space="preserve"><value>Structural import template</value></data>
+  <data name="SpardTokenPreview" xml:space="preserve"><value>Structural token preview</value></data>
+  <data name="SpardTextToken" xml:space="preserve"><value>Plain text</value></data>
+  <data name="SpardAliasToken" xml:space="preserve"><value>Alias</value></data>
+  <data name="SpardLineToken" xml:space="preserve"><value>Line break</value></data>
+  <data name="SpardOptionalStartToken" xml:space="preserve"><value>Optional group start</value></data>
+  <data name="SpardOptionalEndToken" xml:space="preserve"><value>Optional group end</value></data>
+  <data name="SpardOpaqueToken" xml:space="preserve"><value>Preserved expression</value></data>
+  <data name="SpardTokenDepth" xml:space="preserve"><value>Nesting level</value></data>
+  <data name="SpardTokenPreviewTruncated" xml:space="preserve"><value>Token preview truncated for safety</value></data>
 </root>

@@ -216,4 +216,13 @@
   <data name="InsertAlias" xml:space="preserve"><value>Вставить структурный псевдоним</value></data>
   <data name="InsertOptionalGroup" xml:space="preserve"><value>Вставить необязательную группу</value></data>
   <data name="SpardTemplate" xml:space="preserve"><value>Структурный шаблон импорта</value></data>
+  <data name="SpardTokenPreview" xml:space="preserve"><value>Предварительный просмотр структурных токенов</value></data>
+  <data name="SpardTextToken" xml:space="preserve"><value>Обычный текст</value></data>
+  <data name="SpardAliasToken" xml:space="preserve"><value>Псевдоним</value></data>
+  <data name="SpardLineToken" xml:space="preserve"><value>Перенос строки</value></data>
+  <data name="SpardOptionalStartToken" xml:space="preserve"><value>Начало необязательной группы</value></data>
+  <data name="SpardOptionalEndToken" xml:space="preserve"><value>Конец необязательной группы</value></data>
+  <data name="SpardOpaqueToken" xml:space="preserve"><value>Сохранённое выражение</value></data>
+  <data name="SpardTokenDepth" xml:space="preserve"><value>Уровень вложенности</value></data>
+  <data name="SpardTokenPreviewTruncated" xml:space="preserve"><value>Предварительный просмотр токенов ограничен для безопасности</value></data>
 </root>

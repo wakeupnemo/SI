@@ -14,7 +14,7 @@
       CornerRadius="{StaticResource RadiusSmall}"
       Padding="{StaticResource Space8Thickness}"
       IsEnabled="{Binding TemplateModel.Enabled, ElementName=Root}">
-    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8">
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
         <TextBlock
             Classes="field-label"
@@ -86,12 +86,24 @@
             Margin="0,0,4,4" />
       </WrapPanel>
 
+      <ScrollViewer
+          Grid.Row="2"
+          MaxHeight="{StaticResource SpardTokenPreviewMaxHeight}"
+          HorizontalScrollBarVisibility="Disabled"
+          VerticalScrollBarVisibility="Auto"
+          AutomationProperties.Name="{x:Static loc:UiStrings.SpardTokenPreview}">
+        <controls:SpardTokenPresenter
+            x:Name="TokenPresenter"
+            Controller="{Binding Session.Editor, ElementName=Root}"
+            Aliases="{Binding Session.Aliases, ElementName=Root}" />
+      </ScrollViewer>
+
       <controls:SpardEditorControl
           x:Name="StructuralEditor"
-          Grid.Row="2"
+          Grid.Row="3"
           Controller="{Binding Session.Editor, ElementName=Root}"
-          MinHeight="76"
-          MaxHeight="180"
+          MinHeight="{StaticResource SpardEditorMinHeight}"
+          MaxHeight="{StaticResource SpardEditorMaxHeight}"
           ScrollViewer.VerticalScrollBarVisibility="Auto"
           AutomationProperties.Name="{x:Static loc:UiStrings.SpardTemplate}" />
     </Grid>

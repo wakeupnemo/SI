@@ -1981,6 +1981,10 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.TextImport, Is.EqualTo("Импорт текста"));
             Assert.That(UiStrings.QuestionParsing, Is.EqualTo("Распознавание структуры пакета"));
             Assert.That(UiStrings.InsertOptionalGroup, Is.EqualTo("Вставить необязательную группу"));
+            Assert.That(UiStrings.SpardTokenPreview, Is.EqualTo("Предварительный просмотр структурных токенов"));
+            Assert.That(UiStrings.SpardAliasToken, Is.EqualTo("Псевдоним"));
+            Assert.That(UiStrings.SpardLineToken, Is.EqualTo("Перенос строки"));
+            Assert.That(UiStrings.SpardTokenDepth, Is.EqualTo("Уровень вложенности"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

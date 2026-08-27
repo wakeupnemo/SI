@@ -142,6 +142,7 @@ internal sealed class ImportTextViewTests
             var templateView = view.GetVisualDescendants().OfType<SpardTemplateEditorView>().First();
             var session = templateView.Session!;
             var editor = templateView.GetVisualDescendants().OfType<SpardEditorControl>().Single();
+            var tokenPresenter = templateView.GetVisualDescendants().OfType<SpardTokenPresenter>().Single();
             session.Editor.SetCaret(session.Editor.DisplayText.Length);
             var aliasButton = templateView.GetVisualDescendants().OfType<Button>()
                 .Single(button => ReferenceEquals(button.Command, template.InsertAlias)
@@ -157,6 +158,11 @@ internal sealed class ImportTextViewTests
                 Assert.That(template.Transform, Is.EqualTo(session.Editor.SerializedText));
                 Assert.That(editor.Text, Does.Contain("start"));
                 Assert.That(editor.Text, Does.Contain("()?"));
+                Assert.That(tokenPresenter.Children, Has.Count.EqualTo(session.Editor.Tokens.Count));
+                Assert.That(tokenPresenter.Children.OfType<Border>()
+                    .Any(border => border.Classes.Contains("alias")), Is.True);
+                Assert.That(tokenPresenter.Children.OfType<Border>()
+                    .Count(border => border.Classes.Contains("optional")), Is.EqualTo(2));
                 Assert.That(templateView.GetVisualDescendants().OfType<Button>()
                     .Any(button => ReferenceEquals(button.Command, template.ChangeTemplate)), Is.True);
             });
@@ -169,6 +175,7 @@ internal sealed class ImportTextViewTests
             {
                 Assert.That(templateView.Session, Is.Null);
                 Assert.That(editor.Text, Is.Empty);
+                Assert.That(tokenPresenter.Children, Is.Empty);
             });
             template.Transform = "[ignoresp]detached";
             Assert.That(editor.Text, Is.Empty);

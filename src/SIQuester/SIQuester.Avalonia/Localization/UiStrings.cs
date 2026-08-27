@@ -227,4 +227,13 @@ public static class UiStrings
     public static string InsertAlias => Get(nameof(InsertAlias));
     public static string InsertOptionalGroup => Get(nameof(InsertOptionalGroup));
     public static string SpardTemplate => Get(nameof(SpardTemplate));
+    public static string SpardTokenPreview => Get(nameof(SpardTokenPreview));
+    public static string SpardTextToken => Get(nameof(SpardTextToken));
+    public static string SpardAliasToken => Get(nameof(SpardAliasToken));
+    public static string SpardLineToken => Get(nameof(SpardLineToken));
+    public static string SpardOptionalStartToken => Get(nameof(SpardOptionalStartToken));
+    public static string SpardOptionalEndToken => Get(nameof(SpardOptionalEndToken));
+    public static string SpardOpaqueToken => Get(nameof(SpardOpaqueToken));
+    public static string SpardTokenDepth => Get(nameof(SpardTokenDepth));
+    public static string SpardTokenPreviewTruncated => Get(nameof(SpardTokenPreviewTruncated));
 }
