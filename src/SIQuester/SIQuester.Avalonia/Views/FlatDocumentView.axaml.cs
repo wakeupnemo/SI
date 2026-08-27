@@ -2,7 +2,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
+using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel;
 using SIQuester.ViewModel.Serializers;
 using SIQuester.ViewModel.Services;
@@ -21,6 +23,7 @@ public partial class FlatDocumentView : UserControl
     private QuestionViewModel? _pendingQuestion;
     private Point _dragStart;
     private bool _isDragging;
+    private CancellationTokenSource? _externalDropCancellation;
     private QDocument? _subscribedDocument;
     private bool _showQuestionDetails;
 
@@ -49,11 +52,15 @@ public partial class FlatDocumentView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        _externalDropCancellation ??= new CancellationTokenSource();
         SubscribeToDocument(DataContext as QDocument);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        _externalDropCancellation?.Cancel();
+        _externalDropCancellation?.Dispose();
+        _externalDropCancellation = null;
         SubscribeToDocument(null);
         base.OnDetachedFromVisualTree(e);
     }
@@ -287,8 +294,13 @@ public partial class FlatDocumentView : UserControl
 
     private void DropTarget_DragOver(object? sender, DragEventArgs e)
     {
-        var isValid = TryGetDragData(e, out _)
-            && TryGetTargetLocation(sender, out _);
+        if (!TryGetDragData(e, out _))
+        {
+            SetDropIndicator(sender, isActive: false);
+            return;
+        }
+
+        var isValid = TryGetTargetLocation(sender, out _);
 
         e.DragEffects = isValid ? GetRequestedEffect(e) : DragDropEffects.None;
         SetDropIndicator(sender, isValid);
@@ -309,8 +321,12 @@ public partial class FlatDocumentView : UserControl
     {
         SetDropIndicator(sender, isActive: false);
 
+        if (!TryGetDragData(e, out var dragData))
+        {
+            return;
+        }
+
         if (DataContext is not QDocument document
-            || !TryGetDragData(e, out var dragData)
             || !TryGetTargetLocation(sender, out var target))
         {
             e.DragEffects = DragDropEffects.None;
@@ -332,6 +348,88 @@ public partial class FlatDocumentView : UserControl
             : DragDropEffects.None;
         e.Handled = true;
     }
+
+    private void ExternalFiles_DragOver(object? sender, DragEventArgs e)
+    {
+        if (TryGetDragData(e, out _))
+        {
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var files = GetStorageFiles(e);
+        var targetQuestion = FindTargetQuestion(e.Source);
+        var canImport = DataContext is QDocument document
+            && files.Any(file => document.CanImportExternalFile(
+                file.Name,
+                Path.GetExtension(file.Name),
+                targetQuestion));
+
+        e.DragEffects = canImport ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void ExternalFiles_Drop(object? sender, DragEventArgs e)
+    {
+        if (TryGetDragData(e, out _))
+        {
+            e.DragEffects = DragDropEffects.None;
+            e.Handled = true;
+            return;
+        }
+
+        var files = GetStorageFiles(e);
+        var targetQuestion = FindTargetQuestion(e.Source);
+        var cancellationToken = _externalDropCancellation?.Token ?? CancellationToken.None;
+        var imported = false;
+        e.Handled = true;
+
+        if (DataContext is not QDocument document || files.Count == 0)
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+
+        try
+        {
+            foreach (var file in files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var result = await document.ImportExternalFileAsync(
+                    ToPickedFile(file),
+                    targetQuestion,
+                    cancellationToken);
+                imported |= result == ExternalFileImportResult.Imported;
+            }
+
+            e.DragEffects = imported ? DragDropEffects.Copy : DragDropEffects.None;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            e.DragEffects = DragDropEffects.None;
+        }
+    }
+
+    private static IReadOnlyList<IStorageFile> GetStorageFiles(DragEventArgs e) =>
+        e.DataTransfer.TryGetFiles()?.OfType<IStorageFile>().ToArray() ?? Array.Empty<IStorageFile>();
+
+    private static QuestionViewModel? FindTargetQuestion(object? eventSource) =>
+        (eventSource as Visual)?.GetSelfAndVisualAncestors()
+            .OfType<Control>()
+            .Select(control => control.DataContext)
+            .OfType<QuestionViewModel>()
+            .FirstOrDefault();
+
+    private static PickedFile ToPickedFile(IStorageFile file) => new(
+        file.TryGetLocalPath(),
+        file.Name,
+        Path.GetExtension(file.Name),
+        async cancellationToken =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return await file.OpenReadAsync();
+        });
 
     private static DragDropEffects GetRequestedEffect(DragEventArgs e) =>
         e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)

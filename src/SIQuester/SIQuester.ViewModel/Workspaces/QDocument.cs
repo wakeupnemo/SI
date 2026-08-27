@@ -97,6 +97,8 @@ public sealed class QDocument : WorkspaceViewModel
     /// </summary>
     public FlatQuestionOperations FlatQuestions { get; }
 
+    internal event Func<PickedFile, ExternalDropFileKind, CancellationToken, Task<bool>>? ExternalFileImportRequested;
+
     /// <summary>
     /// Switches between hierarchical and flat document presentations.
     /// </summary>
@@ -170,6 +172,99 @@ public sealed class QDocument : WorkspaceViewModel
 
     public MediaStorageViewModel GetCollectionByMediaType(string mediaType) => TryGetCollectionByMediaType(mediaType)
         ?? throw new ArgumentException($"Invalid media type {mediaType}", nameof(mediaType));
+
+    /// <summary>
+    /// Determines whether an external file can be accepted at the supplied editor target.
+    /// </summary>
+    public bool CanImportExternalFile(string displayName, string? extension, QuestionViewModel? targetQuestion)
+    {
+        var classification = ExternalDropClassifier.Classify(displayName, extension);
+        return classification.IsSupported && (!classification.IsMedia || OwnsQuestion(targetQuestion));
+    }
+
+    /// <summary>
+    /// Imports one external file without exposing frontend storage objects to the view model.
+    /// </summary>
+    public async Task<ExternalFileImportResult> ImportExternalFileAsync(
+        PickedFile file,
+        QuestionViewModel? targetQuestion,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        var classification = ExternalDropClassifier.Classify(file);
+
+        if (!classification.IsSupported)
+        {
+            return ExternalFileImportResult.Unsupported;
+        }
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!classification.IsMedia)
+            {
+                var hostHandler = ExternalFileImportRequested;
+
+                if (hostHandler == null)
+                {
+                    return ExternalFileImportResult.HostUnavailable;
+                }
+
+                return await hostHandler(file, classification.Kind, cancellationToken)
+                    ? ExternalFileImportResult.Imported
+                    : ExternalFileImportResult.Failed;
+            }
+
+            if (!OwnsQuestion(targetQuestion))
+            {
+                return ExternalFileImportResult.QuestionTargetRequired;
+            }
+
+            var collection = GetCollection(classification.CollectionName!);
+            using var stagedFile = await collection.StageFileAsync(file, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            using var change = OperationsManager.BeginComplexChange();
+            var mediaItem = collection.AddFile(stagedFile);
+            var content = targetQuestion!.GetOrCreatePrimaryContent();
+
+            if (content.Count > 0 && string.IsNullOrWhiteSpace(content[^1].Model.Value))
+            {
+                content.RemoveAt(content.Count - 1);
+            }
+
+            content.Add(new ContentItemViewModel(new ContentItem
+            {
+                Type = classification.ContentType!,
+                IsRef = true,
+                Value = mediaItem.Model.Name,
+                Placement = classification.ContentType == ContentTypes.Audio
+                    ? ContentPlacements.Background
+                    : ContentPlacements.Screen,
+            }));
+
+            if (AppSettings.Default.SetRightAnswerFromFileName)
+            {
+                targetQuestion.TryAddRightAnswerFromFileName(mediaItem.Model.Name);
+            }
+
+            change.Commit();
+            return ExternalFileImportResult.Imported;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exc)
+        {
+            _logger.LogError(exc, "External file import failed for {fileName}", file.DisplayName);
+            OnError(exc);
+            return ExternalFileImportResult.Failed;
+        }
+    }
+
+    private bool OwnsQuestion(QuestionViewModel? question) =>
+        question?.OwnerTheme?.OwnerRound?.OwnerPackage?.Document == this;
 
     private readonly ILogger<QDocument> _logger;
 

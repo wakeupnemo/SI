@@ -420,13 +420,68 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
                 ContentValue = new List<ContentItem>(),
             });
             Parameters.AddParameter(QuestionParameterNames.Question, questionParameter);
-            LegacyContent = questionParameter.ContentValue;
-            OnPropertyChanged(nameof(LegacyContent));
-            OnPropertyChanged(nameof(HasLegacyContent));
         }
 
         return questionParameter.ContentValue!;
     }
+
+    /// <summary>
+    /// Gets the primary editable question content, creating a canonical container without changing
+    /// whether the question uses legacy parameters or an explicit script.
+    /// </summary>
+    internal ContentItemsViewModel GetOrCreatePrimaryContent()
+    {
+        if (Model.Script == null)
+        {
+            return EnsureLegacyQuestionContent();
+        }
+
+        ScriptStepViewModel? firstShowContentStep = null;
+        var insertionIndex = ScriptSteps.Count;
+
+        for (var i = 0; i < ScriptSteps.Count; i++)
+        {
+            var step = ScriptSteps[i];
+
+            if (step.Model.Type == StepTypes.AskAnswer)
+            {
+                insertionIndex = i;
+                break;
+            }
+
+            if (step.Model.Type != StepTypes.ShowContent)
+            {
+                continue;
+            }
+
+            firstShowContentStep ??= step;
+
+            if (step.Parameters.TryGetValue(StepParameterNames.Content, out var parameter)
+                && parameter.ContentValue != null)
+            {
+                return parameter.ContentValue;
+            }
+        }
+
+        if (firstShowContentStep == null)
+        {
+            var step = new Step { Type = StepTypes.ShowContent };
+            step.Parameters[StepParameterNames.Content] = CreateContentParameter();
+            var stepViewModel = new ScriptStepViewModel(ScriptSteps, this, step);
+            ScriptSteps.Insert(insertionIndex, stepViewModel);
+            return stepViewModel.Parameters.Single().Value.ContentValue!;
+        }
+
+        var contentParameter = new StepParameterViewModel(this, CreateContentParameter(), isTopLevel: true);
+        firstShowContentStep.Parameters.AddParameter(StepParameterNames.Content, contentParameter);
+        return contentParameter.ContentValue!;
+    }
+
+    private static StepParameter CreateContentParameter() => new()
+    {
+        Type = StepParameterTypes.Content,
+        ContentValue = new List<ContentItem>(),
+    };
 
     private void SetScriptQuestionText(string value)
     {
@@ -899,10 +954,33 @@ public sealed class QuestionViewModel : ItemViewModel<Question>
 
     private void Parameters_AnswerTypeCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        RefreshLegacyContent();
+
         if (RefreshAnswerTypeParameterSubscription())
         {
             OnAnswerTypeChanged();
         }
+    }
+
+    private void RefreshLegacyContent()
+    {
+        if (Model.Script != null)
+        {
+            return;
+        }
+
+        var content = Parameters.TryGetValue(QuestionParameterNames.Question, out var questionParameter)
+            ? questionParameter.ContentValue
+            : null;
+
+        if (ReferenceEquals(LegacyContent, content))
+        {
+            return;
+        }
+
+        LegacyContent = content;
+        OnPropertyChanged(nameof(LegacyContent));
+        OnPropertyChanged(nameof(HasLegacyContent));
     }
 
     private bool RefreshAnswerTypeParameterSubscription()

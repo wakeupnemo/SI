@@ -136,7 +136,12 @@
     </DataTemplate>
   </UserControl.Resources>
 
-  <Grid RowDefinitions="Auto,Auto,*">
+  <Grid
+      x:Name="ExternalDropSurface"
+      RowDefinitions="Auto,Auto,*"
+      DragDrop.AllowDrop="True"
+      DragDrop.DragOver="ExternalFiles_DragOver"
+      DragDrop.Drop="ExternalFiles_Drop">
     <WrapPanel Margin="{StaticResource FieldMargin}" VerticalAlignment="Center">
       <TextBlock Text="{x:Static loc:UiStrings.FlatLayout}" VerticalAlignment="Center" Margin="{StaticResource MetadataCommandMargin}" />
       <Button Classes="command" Content="{x:Static loc:UiStrings.TableLayout}" Command="{Binding SetFlatLayoutMode}" CommandParameter="{x:Static model:FlatLayoutMode.Table}" IsEnabled="{Binding IsFlatListLayout}" Margin="{StaticResource MetadataCommandMargin}" />

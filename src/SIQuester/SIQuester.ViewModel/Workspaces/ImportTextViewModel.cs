@@ -795,7 +795,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
         if (_task != null && _existing != null)
         {
-            if (!string.IsNullOrEmpty(FileName))
+            if (!string.IsNullOrEmpty(FileName) && Path.IsPathFullyQualified(FileName))
             {
                 string filename = Path.GetFileNameWithoutExtension(FileName);
 

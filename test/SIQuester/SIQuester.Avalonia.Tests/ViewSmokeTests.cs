@@ -830,6 +830,7 @@ internal sealed class ViewSmokeTests
                 .Single(button => Equals(button.CommandParameter, ViewMode.Flat));
             var tree = view.FindControl<TreeView>("Navigator")!;
             var flatView = view.FindControl<FlatDocumentView>("FlatWorkspace")!;
+            var externalDropSurface = flatView.FindControl<Grid>("ExternalDropSurface")!;
             var treeInspector = view.FindControl<InspectorView>("Inspector")!;
             var flatInspector = view.FindControl<InspectorView>("FlatInspector")!;
 
@@ -843,6 +844,7 @@ internal sealed class ViewSmokeTests
                 Assert.That(documentViewModel.IsFlatView, Is.True);
                 Assert.That(tree.IsVisible, Is.True, "the hierarchy remains available beside the main flat workspace");
                 Assert.That(flatView.IsVisible, Is.True);
+                Assert.That(externalDropSurface.GetValue(DragDrop.AllowDropProperty), Is.True);
                 Assert.That(treeInspector.IsVisible, Is.False);
                 Assert.That(flatInspector.IsVisible, Is.True);
                 Assert.That(flatView.GetVisualDescendants()

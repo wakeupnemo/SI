@@ -474,6 +474,12 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
                     item.Error += ReportError;
                     item.NewItem += Item_NewDoc;
                     item.Closed += Item_Closed;
+
+                    if (item is QDocument document)
+                    {
+                        document.ExternalFileImportRequested += Document_ExternalFileImportRequested;
+                    }
+
                     ActiveWorkspace = item;
                 }
 
@@ -491,6 +497,11 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
                     item.NewItem -= Item_NewDoc;
                     item.Closed -= Item_Closed;
 
+                    if (item is QDocument document)
+                    {
+                        document.ExternalFileImportRequested -= Document_ExternalFileImportRequested;
+                    }
+
                     if (ActiveWorkspace == item)
                     {
                         ActiveWorkspace = DocList.LastOrDefault();
@@ -504,6 +515,19 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             default:
                 break;
         }
+    }
+
+    private async Task<bool> Document_ExternalFileImportRequested(
+        PickedFile file,
+        ExternalDropFileKind kind,
+        CancellationToken cancellationToken)
+    {
+        return kind switch
+        {
+            ExternalDropFileKind.Package => await OpenPickedFileAsync(file, cancellationToken) != null,
+            ExternalDropFileKind.Text => await ImportPickedTextAsync(file, cancellationToken),
+            _ => false,
+        };
     }
 
     private void Item_NewDoc(WorkspaceViewModel doc)
@@ -595,47 +619,57 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     /// Opens the existing file.
     /// </summary>
     /// <param name="path">File path.</param>
-    internal async Task<QDocument?> OpenFileAsync(string path)
+    internal async Task<QDocument?> OpenFileAsync(
+        string path,
+        CancellationToken cancellationToken = default)
     {
-        Task<QDocument> loader(CancellationToken cancellationToken) => Task.Run(() =>
+        async Task<QDocument> loader(CancellationToken loaderCancellationToken)
         {
-            FileStream? stream = null;
-            SIDocument? document = null;
+            using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                loaderCancellationToken,
+                cancellationToken);
+            var operationCancellationToken = linkedCancellation.Token;
 
-            try
+            return await Task.Run(() =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                stream = File.OpenRead(path);
+                FileStream? stream = null;
+                SIDocument? document = null;
 
-                // Loads in read only mode to keep file LastUpdate time unmodified
-                document = SIDocument.Load(stream);
-                cancellationToken.ThrowIfCancellationRequested();
-
-                _logger.LogInformation("Document has been successfully opened. Path: {path}", path);
-
-                var docViewModel = _documentViewModelFactory.CreateViewModelFor(
-                    document,
-                    Path.GetFileNameWithoutExtension(path));
-                docViewModel.Path = path;
-
-                docViewModel.CheckFileSize();
-
-                document = null; // Ownership has moved to the returned view model.
-                return docViewModel;
-            }
-            catch (Exception exc)
-            {
-                document?.Dispose();
-                stream?.Dispose();
-
-                if (exc is UnauthorizedAccessException && (new FileInfo(path).Attributes & FileAttributes.ReadOnly) > 0)
+                try
                 {
-                    throw new Exception(Resources.FileIsReadOnly, exc);
-                }
+                    operationCancellationToken.ThrowIfCancellationRequested();
+                    stream = File.OpenRead(path);
 
-                throw;
-            }
-        }, cancellationToken);
+                    // Loads in read only mode to keep file LastUpdate time unmodified
+                    document = SIDocument.Load(stream);
+                    operationCancellationToken.ThrowIfCancellationRequested();
+
+                    _logger.LogInformation("Document has been successfully opened. Path: {path}", path);
+
+                    var docViewModel = _documentViewModelFactory.CreateViewModelFor(
+                        document,
+                        Path.GetFileNameWithoutExtension(path));
+                    docViewModel.Path = path;
+
+                    docViewModel.CheckFileSize();
+
+                    document = null; // Ownership has moved to the returned view model.
+                    return docViewModel;
+                }
+                catch (Exception exc)
+                {
+                    document?.Dispose();
+                    stream?.Dispose();
+
+                    if (exc is UnauthorizedAccessException && (new FileInfo(path).Attributes & FileAttributes.ReadOnly) > 0)
+                    {
+                        throw new Exception(Resources.FileIsReadOnly, exc);
+                    }
+
+                    throw;
+                }
+            }, operationCancellationToken);
+        }
 
         var loaderViewModel = new DocumentLoaderViewModel(path);
         DocList.Add(loaderViewModel);
@@ -646,22 +680,140 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
             AppSettings.Default.History.Add(path);
             return document;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            RemoveFailedLoader(loaderViewModel);
+            throw;
+        }
         catch (InvalidDataException exc)
         {
+            if (cancellationToken.CanBeCanceled)
+            {
+                RemoveFailedLoader(loaderViewModel);
+            }
+
             _logger.LogError(exc, "File {path} open error: {error}", path, exc.Message);
             await ShowCorruptedPackageErrorAsync(path);
             return null;
         }
         catch (Exception exc)
         {
+            if (cancellationToken.CanBeCanceled)
+            {
+                RemoveFailedLoader(loaderViewModel);
+            }
+
             if (exc is FileNotFoundException)
             {
                 AppSettings.Default.History.Remove(path);
             }
 
             _logger.LogError(exc, "File {path} open error: {error}", path, exc.Message);
-            ReportError(exc, Resources.FileOpenError);
+            await ReportErrorAsync(exc, Resources.FileOpenError);
             return null;
+        }
+    }
+
+    private async Task<QDocument?> OpenPickedFileAsync(PickedFile file, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(file.LocalPath))
+        {
+            return await OpenFileAsync(file.LocalPath, cancellationToken);
+        }
+
+        async Task<QDocument> loader(CancellationToken loaderCancellationToken)
+        {
+            using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                loaderCancellationToken,
+                cancellationToken);
+            var operationCancellationToken = linkedCancellation.Token;
+            Stream? stream = null;
+            SIDocument? document = null;
+
+            try
+            {
+                stream = await file.OpenReadAsync(operationCancellationToken);
+                document = await Task.Run(() => SIDocument.Load(stream), operationCancellationToken);
+                operationCancellationToken.ThrowIfCancellationRequested();
+                var viewModel = _documentViewModelFactory.CreateViewModelFor(
+                    document,
+                    Path.GetFileNameWithoutExtension(file.DisplayName));
+                viewModel.Path = "";
+                document = null;
+                stream = null;
+                return viewModel;
+            }
+            catch
+            {
+                document?.Dispose();
+                stream?.Dispose();
+                throw;
+            }
+        }
+
+        var loaderViewModel = new DocumentLoaderViewModel(file.DisplayName);
+        DocList.Add(loaderViewModel);
+
+        try
+        {
+            return await loaderViewModel.LoadAsync(loader);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            RemoveFailedLoader(loaderViewModel);
+            throw;
+        }
+        catch (Exception exc)
+        {
+            RemoveFailedLoader(loaderViewModel);
+            _logger.LogError(exc, "Dropped package {fileName} open error: {error}", file.DisplayName, exc.Message);
+            await ReportErrorAsync(exc, Resources.FileOpenError);
+            return null;
+        }
+    }
+
+    private async Task<bool> ImportPickedTextAsync(PickedFile file, CancellationToken cancellationToken)
+    {
+        ITextSource textSource;
+
+        if (!string.IsNullOrWhiteSpace(file.LocalPath))
+        {
+            textSource = new FileTextSource(file.LocalPath);
+        }
+        else
+        {
+            await using var source = await file.OpenReadAsync(cancellationToken);
+            using var buffer = new MemoryStream();
+            await source.CopyToAsync(buffer, cancellationToken);
+            textSource = new BufferedTextSource(file.DisplayName, buffer.ToArray());
+        }
+
+        ImportTextViewModel? model = null;
+
+        try
+        {
+            model = new ImportTextViewModel(_appOptions, _clipboardService, _documentViewModelFactory);
+            DocList.Add(model);
+            model.Import(textSource);
+            return true;
+        }
+        catch
+        {
+            if (model != null && DocList.Remove(model))
+            {
+                model.Dispose();
+            }
+
+            textSource.Dispose();
+            throw;
+        }
+    }
+
+    private void RemoveFailedLoader(DocumentLoaderViewModel loaderViewModel)
+    {
+        if (DocList.Remove(loaderViewModel))
+        {
+            loaderViewModel.Dispose();
         }
     }
 
@@ -932,6 +1084,11 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
 
         foreach (var item in DocList)
         {
+            if (item is QDocument document)
+            {
+                document.ExternalFileImportRequested -= Document_ExternalFileImportRequested;
+            }
+
             item.Dispose();
         }
 
