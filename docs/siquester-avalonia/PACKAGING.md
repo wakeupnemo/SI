@@ -54,7 +54,7 @@ Question preview uses the official MIT-licensed Avalonia WebView adapter and pro
 - Fedora: `sudo dnf install webkit2gtk4.1`
 - Arch: `sudo pacman -S webkit2gtk-4.1`
 
-Missing WebKit leaves the editor usable and produces an actionable preview message. Distribution GStreamer plugins determine optional audio/video codec coverage; native audio/video preview is not yet claimed by the text-player receipt.
+Missing WebKit leaves the editor usable and produces an actionable preview message. Embedded package media uses controlled per-dialog loopback routes and package HTML is excluded. Distribution GStreamer plugins determine optional audio/video codec coverage; native audio/video playback is not yet claimed by the verified text/image-player receipt.
 
 ## macOS application bundles
 
@@ -89,4 +89,4 @@ Cross-platform CI publishes a self-contained Avalonia `win-x64` ZIP as an additi
 
 ## CI receipts
 
-`.github/workflows/siquester-cross-platform.yml` builds and tests on Linux, macOS, and Windows, then publishes `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`, and `win-x64`. The Linux x64 package job also extracts and launches the self-contained tarball under Xvfb, opens a real SIQ, exits through the application command, and uploads its settings/log receipt. A dedicated Linux WebKit job installs WebKitGTK, requires the native capability path, renders and advances the retained player from the semantic compatibility SIQ, applies a deterministic screenshot-content threshold, and uploads the screenshot, log, and receipt.
+`.github/workflows/siquester-cross-platform.yml` builds and tests on Linux, macOS, and Windows, then publishes `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`, and `win-x64`. The Linux x64 package job also extracts and launches the self-contained tarball under Xvfb, opens a real SIQ, exits through the application command, and uploads its settings/log receipt. A dedicated Linux WebKit job installs WebKitGTK, requires the native capability path, renders and advances the retained player from the semantic compatibility SIQ, requires a successful controlled package-image request plus a deterministic screenshot-content threshold, and uploads the screenshot, log, and receipt.

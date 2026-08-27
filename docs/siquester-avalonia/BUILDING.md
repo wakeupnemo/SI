@@ -9,7 +9,7 @@
   - Fedora: `sudo dnf install webkit2gtk4.1`
   - Arch: `sudo pacman -S webkit2gtk-4.1`
 
-The desktop host probes WebKit only when Preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Audio/video codecs depend on the distribution's GStreamer packages and are tracked separately from the verified text-player slice.
+The desktop host probes WebKit only when Preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Embedded image/audio/video references are streamed through per-dialog controlled loopback URLs; package HTML is not executed. Audio/video codecs depend on the distribution's GStreamer packages and are tracked separately from the verified text/image-player slice.
 
 ## Commands
 

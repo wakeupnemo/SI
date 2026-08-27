@@ -37,6 +37,8 @@ Recovery uses a separate non-mutating snapshot path. Each document has a random 
 
 Contracts are introduced only for real seams: file selection, dialogs, lifetime, paths, settings/secrets, launcher, dispatcher, capabilities, persistence/materialization, preview, media preview, and export. Picker results expose neutral metadata and stream operations, not Avalonia storage objects. `IExternalLauncher` owns trusted shell reveal operations; `IPlatformCapabilities` lets Avalonia opt into the recovery center while WPF retains its compatible startup prompt without frontend-type checks in the view-model layer.
 
+Question preview uses an owned `IQuestionPreviewSession` per dialog. `SIQuester.ViewModel` supplies only a media kind, canonical name, and factory for a newly owned readable stream; the desktop host maps that source to an opaque random URL under the existing application-owned loopback origin. The server never exposes package names or filesystem paths, accepts only vetted image/audio/video extensions, supports one bounded byte range for media seeking, and cancels active reads when the dialog or host closes. The WPF adapter implements the same contract with session-owned random temporary files and exact cleanup, preserving the legacy frontend without importing Avalonia.
+
 `IUiDispatcher` is the narrow publication seam for background view-model work. Avalonia and WPF register their framework dispatchers; non-UI hosts receive an inline fallback. `QDocument` search owns one debounced run at a time, builds results off the UI thread, and publishes only when the run still belongs to the live document. Replacing a query or disposing the document cancels the prior run, while cancellation-token sources remain owned until the observed task completes.
 
 Cross-process SIQuester item clipboard payloads use schema 2 and embed referenced media bytes rather than materialized source paths. Raw embedded data is bounded to 20 MiB and 512 entries inside a 32 MiB JSON envelope; media names are path-neutral and paste stages bytes under `IAppPaths` with ownership transferred to the existing pending-media transaction. Byte-identical target names are reused, unequal collisions fail without inserting the item, and version-1 plus WPF `siqdata` readers remain for migration.
@@ -64,7 +66,8 @@ Image-backed point selection retains the existing neutral `PointAnswerViewModel.
 ## Security boundaries
 
 - Package data is never executed.
-- Question-player web content uses a bounded application-owned loopback origin under a random route, restrictive response headers, exact navigation policy, and denied popups. Package media and package-provided HTML are not admitted to that origin without a separate validated service path.
+- Question-player web content uses a bounded application-owned loopback origin under a random route, restrictive response headers, exact navigation policy, denied popups, strict Host validation, pre-allocation request-line/header limits, request concurrency/timeouts, and deterministic shutdown.
+- Package image/audio/video bytes are admitted only through per-dialog opaque routes with an explicit MIME/extension allowlist, item/session size bounds, no-store/nosniff responses, exact-length streaming, single-range support, and cancellation-aware ownership. SVG and HTML are excluded. Package HTML is replaced by an inert localized warning and is never served or executed.
 - External links require an explicit launcher action.
 - Secrets use OS secure storage or remain memory-only.
 - Native preview and Steam dependencies load only after capability checks and explicit use.
