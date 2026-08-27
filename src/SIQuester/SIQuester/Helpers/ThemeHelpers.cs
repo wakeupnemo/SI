@@ -6,7 +6,10 @@ namespace SIQuester.Helpers;
 
 internal static class ThemeHelpers
 {
-    internal static int[] CapturePrices(this ThemeViewModel themeViewModel) => themeViewModel.Questions.Select(q => q.Model.Price).ToArray();
+    internal static int[] CapturePrices(this ThemeViewModel themeViewModel) => themeViewModel.Questions
+        .Where(question => question.Model.Price != Question.InvalidPrice)
+        .Select(question => question.Model.Price)
+        .ToArray();
 
     internal static void ResetPrices(this ThemeViewModel themeViewModel, int[] prices)
     {

@@ -797,6 +797,67 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void DocumentEditor_FlatModeRealizesTypedQuestionRowsAndPersistsModeSelection()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        var package = SIDocument.Create("Flat view", "Test author");
+        var round = new Round { Name = "Unicode Раунд" };
+        var theme = new Theme { Name = "Theme" };
+        theme.Questions.Add(new Question { Price = 100 });
+        theme.Questions.Add(new Question { Price = 200 });
+        round.Themes.Add(theme);
+        package.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Flat view");
+        var previousView = AppSettings.Default.View;
+        AppSettings.Default.View = ViewMode.TreeFull;
+        var view = new DocumentEditorView { DataContext = documentViewModel };
+        var window = new Window { Width = 1100, Height = 700, Content = view };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var flatButton = view.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => Equals(button.CommandParameter, ViewMode.Flat));
+            var tree = view.FindControl<TreeView>("Navigator")!;
+            var flatView = view.GetVisualDescendants().OfType<FlatDocumentView>().Single();
+
+            flatButton.Command!.Execute(flatButton.CommandParameter);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(AppSettings.Default.View, Is.EqualTo(ViewMode.Flat));
+                Assert.That(documentViewModel.IsFlatView, Is.True);
+                Assert.That(tree.IsVisible, Is.False);
+                Assert.That(flatView.IsVisible, Is.True);
+                Assert.That(flatView.GetVisualDescendants()
+                    .OfType<Border>()
+                    .Count(border => border.DataContext is QuestionViewModel), Is.GreaterThanOrEqualTo(4));
+                Assert.That(flatView.GetVisualDescendants()
+                    .OfType<Border>()
+                    .Count(border => border.Classes.Contains("flat-drop-target")), Is.EqualTo(3));
+                Assert.That(flatView.GetVisualDescendants()
+                    .OfType<TextBlock>()
+                    .Any(text => Equals(text.Text, "Unicode Раунд")), Is.True);
+                Assert.That(flatView.GetVisualDescendants()
+                    .OfType<TextBlock>()
+                    .Any(text => Equals(text.Text, UiStrings.FlatViewDragHint)), Is.True);
+            });
+        }
+        finally
+        {
+            AppSettings.Default.View = previousView;
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public async Task DocumentEditor_SearchBarRoutesFocusAndPublishesLatestResultState()
     {
         using var serviceProvider = CreateServiceProvider();

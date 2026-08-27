@@ -132,8 +132,8 @@ public sealed class ThemeViewModel : ItemViewModel<Theme>
 
             case NotifyCollectionChangedAction.Move:
                 var temp = Model.Questions[e.OldStartingIndex];
+                Model.Questions.RemoveAt(e.OldStartingIndex);
                 Model.Questions.Insert(e.NewStartingIndex, temp);
-                Model.Questions.RemoveAt(e.OldStartingIndex + (e.NewStartingIndex < e.OldStartingIndex ? 1 : 0));
                 break;
 
             case NotifyCollectionChangedAction.Remove:

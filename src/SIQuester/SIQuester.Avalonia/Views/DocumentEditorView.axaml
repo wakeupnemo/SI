@@ -3,6 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:model="using:SIQuester.Model"
     xmlns:views="using:SIQuester.Avalonia.Views"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     x:DataType="vm:QDocument">
@@ -70,11 +71,27 @@
     </Border>
 
     <Border Grid.Row="1" Grid.Column="0" Padding="{StaticResource Space12Thickness}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
-      <Grid RowDefinitions="Auto,*">
+      <Grid RowDefinitions="Auto,Auto,*">
         <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Navigator}" />
+        <WrapPanel Grid.Row="1" Margin="{StaticResource FieldMargin}">
+          <Button
+              Classes="command"
+              Content="{x:Static loc:UiStrings.TreeView}"
+              Command="{Binding SetViewMode}"
+              CommandParameter="{x:Static model:ViewMode.TreeFull}"
+              Margin="{StaticResource MetadataCommandMargin}"
+              IsEnabled="{Binding IsFlatView}" />
+          <Button
+              Classes="command"
+              Content="{x:Static loc:UiStrings.FlatView}"
+              Command="{Binding SetViewMode}"
+              CommandParameter="{x:Static model:ViewMode.Flat}"
+              IsEnabled="{Binding IsTreeView}" />
+        </WrapPanel>
         <TreeView
             x:Name="Navigator"
-            Grid.Row="1"
+            Grid.Row="2"
+            IsVisible="{Binding IsTreeView}"
             ItemsSource="{Binding Packages}"
             SelectedItem="{Binding ActiveNode, Mode=OneWay}"
             SelectionChanged="Navigator_SelectionChanged"
@@ -99,6 +116,7 @@
             </TreeDataTemplate>
           </TreeView.DataTemplates>
         </TreeView>
+        <views:FlatDocumentView Grid.Row="2" IsVisible="{Binding IsFlatView}" />
       </Grid>
     </Border>
 

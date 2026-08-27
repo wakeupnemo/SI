@@ -92,6 +92,20 @@ public sealed class QDocument : WorkspaceViewModel
 
     public OperationsManager OperationsManager { get; } = new();
 
+    /// <summary>
+    /// Data-level operations used by flat document views.
+    /// </summary>
+    public FlatQuestionOperations FlatQuestions { get; }
+
+    /// <summary>
+    /// Switches between hierarchical and flat document presentations.
+    /// </summary>
+    public ICommand SetViewMode { get; }
+
+    public bool IsTreeView => Settings.View == ViewMode.TreeFull;
+
+    public bool IsFlatView => Settings.View == ViewMode.Flat;
+
     private IItemViewModel? _activeNode = null;
 
     private IItemViewModel[] _activeChain = Array.Empty<IItemViewModel>();
@@ -1631,6 +1645,7 @@ public sealed class QDocument : WorkspaceViewModel
         NextSearchResult = new SimpleCommand(NextSearchResult_Executed) { CanBeExecuted = false };
         PreviousSearchResult = new SimpleCommand(PreviousSearchResult_Executed) { CanBeExecuted = false };
         ClearSearchText = new SimpleCommand(ClearSearchText_Executed) { CanBeExecuted = false };
+        SetViewMode = new SimpleCommand(SetViewMode_Executed);
 
         _filename = "";
         _path = "";
@@ -1638,6 +1653,7 @@ public sealed class QDocument : WorkspaceViewModel
 
         Document = document;
         Package = new PackageViewModel(Document.Package, this);
+        FlatQuestions = new FlatQuestionOperations(this);
         Package.Info.Authors.UpdateCommands();
 
         Package.IsExpanded = true;
@@ -1677,6 +1693,7 @@ public sealed class QDocument : WorkspaceViewModel
         // Initialize question count after package is loaded and listeners are set up
         QuestionCount = CountTotalQuestions();
         FilledQuestionCount = CountFilledQuestions();
+        Settings.PropertyChanged += Settings_PropertyChanged;
     }
 
     private void OperationsManager_Error(Exception exc) => OnError(exc);
@@ -3978,6 +3995,8 @@ public sealed class QDocument : WorkspaceViewModel
 
         searchRun?.Cancel();
 
+        Settings.PropertyChanged -= Settings_PropertyChanged;
+
         if (searchRun != null)
         {
             _ = DisposeSearchRunWhenCompleteAsync(searchRun);
@@ -3999,6 +4018,23 @@ public sealed class QDocument : WorkspaceViewModel
         _isDisposed = true;
 
         base.Dispose(disposing);
+    }
+
+    private void SetViewMode_Executed(object? value)
+    {
+        if (value is ViewMode viewMode)
+        {
+            Settings.View = viewMode;
+        }
+    }
+
+    private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(AppSettings.View))
+        {
+            OnPropertyChanged(nameof(IsTreeView));
+            OnPropertyChanged(nameof(IsFlatView));
+        }
     }
 
     internal IMedia Wrap(ContentItem contentItem)

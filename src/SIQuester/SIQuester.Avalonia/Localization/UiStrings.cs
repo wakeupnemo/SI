@@ -167,4 +167,7 @@ public static class UiStrings
     public static string PreviousSearchResult => Get(nameof(PreviousSearchResult));
     public static string NextSearchResult => Get(nameof(NextSearchResult));
     public static string ClearSearch => Get(nameof(ClearSearch));
+    public static string TreeView => Get(nameof(TreeView));
+    public static string FlatView => Get(nameof(FlatView));
+    public static string FlatViewDragHint => Get(nameof(FlatViewDragHint));
 }

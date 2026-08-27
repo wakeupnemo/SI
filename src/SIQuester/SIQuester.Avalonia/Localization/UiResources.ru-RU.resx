@@ -156,4 +156,7 @@
   <data name="PreviousSearchResult" xml:space="preserve"><value>Предыдущее совпадение</value></data>
   <data name="NextSearchResult" xml:space="preserve"><value>Следующее совпадение</value></data>
   <data name="ClearSearch" xml:space="preserve"><value>Очистить поиск</value></data>
+  <data name="TreeView" xml:space="preserve"><value>Дерево</value></data>
+  <data name="FlatView" xml:space="preserve"><value>Плоский вид</value></data>
+  <data name="FlatViewDragHint" xml:space="preserve"><value>Перетащите вопрос, чтобы переместить его. Удерживайте Ctrl или Command для копирования.</value></data>
 </root>
