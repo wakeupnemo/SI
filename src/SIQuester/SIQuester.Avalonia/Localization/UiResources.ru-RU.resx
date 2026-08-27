@@ -47,6 +47,15 @@
   <data name="RightAnswer" xml:space="preserve"><value>Основной правильный ответ</value></data>
   <data name="WrongAnswer" xml:space="preserve"><value>Основной неправильный ответ</value></data>
   <data name="Comments" xml:space="preserve"><value>Комментарии</value></data>
+  <data name="Metadata" xml:space="preserve"><value>Метаданные</value></data>
+  <data name="Authors" xml:space="preserve"><value>Авторы</value></data>
+  <data name="Sources" xml:space="preserve"><value>Источники</value></data>
+  <data name="Tags" xml:space="preserve"><value>Теги</value></data>
+  <data name="ShowmanComments" xml:space="preserve"><value>Комментарии ведущему</value></data>
+  <data name="SelectedEntry" xml:space="preserve"><value>Изменить выбранную запись</value></data>
+  <data name="Add" xml:space="preserve"><value>Добавить</value></data>
+  <data name="MoveUp" xml:space="preserve"><value>Переместить вверх</value></data>
+  <data name="MoveDown" xml:space="preserve"><value>Переместить вниз</value></data>
   <data name="AddRound" xml:space="preserve"><value>Добавить раунд</value></data>
   <data name="AddTheme" xml:space="preserve"><value>Добавить тему</value></data>
   <data name="AddQuestion" xml:space="preserve"><value>Добавить вопрос</value></data>

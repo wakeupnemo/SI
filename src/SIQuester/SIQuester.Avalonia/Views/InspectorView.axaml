@@ -16,8 +16,8 @@
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Package}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
           <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
-          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
-          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="120" Margin="{StaticResource FieldMargin}" />
+          <views:StringListEditorView Header="{x:Static loc:UiStrings.Tags}" Editor="{Binding Tags}" />
+          <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <Button Classes="command" Content="{x:Static loc:UiStrings.AddRound}" Command="{Binding AddRound}" HorizontalAlignment="Left" />
         </StackPanel>
       </ScrollViewer>
@@ -29,8 +29,7 @@
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Round}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
           <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
-          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
-          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="120" Margin="{StaticResource FieldMargin}" />
+          <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
             <Button Classes="command" Content="{x:Static loc:UiStrings.AddTheme}" Command="{Binding AddTheme}" />
             <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
@@ -45,8 +44,7 @@
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Theme}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
           <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
-          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
-          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="120" Margin="{StaticResource FieldMargin}" />
+          <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
             <Button Classes="command" Content="{x:Static loc:UiStrings.AddQuestion}" Command="{Binding AddQuestion}" />
             <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" />
@@ -67,8 +65,7 @@
           <TextBox Text="{Binding PrimaryRightAnswer, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.WrongAnswer}" />
           <TextBox Text="{Binding PrimaryWrongAnswer, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
-          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
-          <TextBox Text="{Binding Info.Comments.Text, Mode=TwoWay}" AcceptsReturn="True" MinHeight="100" Margin="{StaticResource FieldMargin}" />
+          <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Remove}" HorizontalAlignment="Left" />
         </StackPanel>
       </ScrollViewer>

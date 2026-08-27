@@ -1,0 +1,30 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.ItemMetadataEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:DataType="vm:InfoViewModel">
+  <StackPanel>
+    <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Metadata}" />
+    <views:StringListEditorView Header="{x:Static loc:UiStrings.Authors}" Editor="{Binding Authors}" />
+    <views:StringListEditorView Header="{x:Static loc:UiStrings.Sources}" Editor="{Binding Sources}" />
+    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
+    <TextBox
+        x:Name="CommentsEditor"
+        Text="{Binding Comments.Text, Mode=TwoWay}"
+        AcceptsReturn="True"
+        MinHeight="{StaticResource MetadataTextHeight}"
+        AutomationProperties.Name="{x:Static loc:UiStrings.Comments}"
+        Margin="{StaticResource FieldMargin}" />
+    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ShowmanComments}" />
+    <TextBox
+        x:Name="ShowmanCommentsEditor"
+        Text="{Binding ShowmanComments.Text, Mode=TwoWay}"
+        AcceptsReturn="True"
+        MinHeight="{StaticResource MetadataTextHeight}"
+        AutomationProperties.Name="{x:Static loc:UiStrings.ShowmanComments}"
+        Margin="{StaticResource FieldMargin}" />
+  </StackPanel>
+</UserControl>

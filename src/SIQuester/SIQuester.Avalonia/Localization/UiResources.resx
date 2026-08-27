@@ -47,6 +47,15 @@
   <data name="RightAnswer" xml:space="preserve"><value>Primary right answer</value></data>
   <data name="WrongAnswer" xml:space="preserve"><value>Primary wrong answer</value></data>
   <data name="Comments" xml:space="preserve"><value>Comments</value></data>
+  <data name="Metadata" xml:space="preserve"><value>Metadata</value></data>
+  <data name="Authors" xml:space="preserve"><value>Authors</value></data>
+  <data name="Sources" xml:space="preserve"><value>Sources</value></data>
+  <data name="Tags" xml:space="preserve"><value>Tags</value></data>
+  <data name="ShowmanComments" xml:space="preserve"><value>Showman comments</value></data>
+  <data name="SelectedEntry" xml:space="preserve"><value>Edit selected entry</value></data>
+  <data name="Add" xml:space="preserve"><value>Add</value></data>
+  <data name="MoveUp" xml:space="preserve"><value>Move up</value></data>
+  <data name="MoveDown" xml:space="preserve"><value>Move down</value></data>
   <data name="AddRound" xml:space="preserve"><value>Add round</value></data>
   <data name="AddTheme" xml:space="preserve"><value>Add theme</value></data>
   <data name="AddQuestion" xml:space="preserve"><value>Add question</value></data>

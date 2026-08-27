@@ -1,0 +1,47 @@
+<UserControl
+    x:Class="SIQuester.Avalonia.Views.StringListEditorView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:SIQuester.Avalonia.Views"
+    xmlns:loc="using:SIQuester.Avalonia.Localization"
+    x:Name="Root"
+    x:DataType="views:StringListEditorView">
+  <StackPanel Margin="{StaticResource FieldMargin}">
+    <TextBlock Classes="field-label" Text="{Binding Header, ElementName=Root}" />
+    <ListBox
+        x:Name="ItemsList"
+        ItemsSource="{Binding Editor, ElementName=Root}"
+        SelectedIndex="{Binding Editor.CurrentPosition, ElementName=Root, Mode=TwoWay}"
+        MinHeight="{StaticResource MetadataListHeight}"
+        MaxHeight="{StaticResource MetadataListMaxHeight}"
+        AutomationProperties.Name="{Binding Header, ElementName=Root}" />
+    <TextBox
+        x:Name="SelectedItemEditor"
+        Text="{Binding Editor.CurrentItemValue, ElementName=Root, Mode=TwoWay}"
+        IsEnabled="{Binding Editor.HasCurrentItem, ElementName=Root}"
+        PlaceholderText="{x:Static loc:UiStrings.SelectedEntry}"
+        AutomationProperties.Name="{Binding Header, ElementName=Root}"
+        Margin="{StaticResource MetadataEditorMargin}" />
+    <WrapPanel Orientation="Horizontal">
+      <Button
+          Classes="command"
+          Content="{x:Static loc:UiStrings.Add}"
+          Command="{Binding Editor.AddItem, ElementName=Root}"
+          Margin="{StaticResource MetadataCommandMargin}" />
+      <Button
+          Classes="command"
+          Content="{x:Static loc:UiStrings.MoveUp}"
+          Command="{Binding Editor.MoveLeft, ElementName=Root}"
+          Margin="{StaticResource MetadataCommandMargin}" />
+      <Button
+          Classes="command"
+          Content="{x:Static loc:UiStrings.MoveDown}"
+          Command="{Binding Editor.MoveRight, ElementName=Root}"
+          Margin="{StaticResource MetadataCommandMargin}" />
+      <Button
+          Classes="command"
+          Content="{x:Static loc:UiStrings.Delete}"
+          Command="{Binding Editor.RemoveItem, ElementName=Root}" />
+    </WrapPanel>
+  </StackPanel>
+</UserControl>

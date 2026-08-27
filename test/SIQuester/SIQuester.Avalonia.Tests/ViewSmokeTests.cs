@@ -46,6 +46,62 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void Inspector_MetadataEditorsMutateExistingViewModelsThroughCompiledBindings()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var document = SIDocument.Create("Metadata inspector", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        theme.Questions.Add(new Question { Price = 100 });
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        var documentViewModel = serviceProvider
+            .GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(document, "Metadata inspector");
+        var inspector = new InspectorView { SelectedItem = documentViewModel.Package };
+        var window = new Window { Width = 720, Height = 1200, Content = inspector };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var editors = inspector.GetVisualDescendants().OfType<StringListEditorView>().ToArray();
+            var tagsEditor = editors.Single(editor => editor.Header == UiStrings.Tags);
+            var authorsEditor = editors.Single(editor => editor.Header == UiStrings.Authors);
+            var metadataEditor = inspector.GetVisualDescendants().OfType<ItemMetadataEditorView>().Single();
+
+            tagsEditor.Editor!.AddItem.Execute(string.Empty);
+            tagsEditor.Editor.CurrentItemValue = "Avalonia tag";
+            authorsEditor.Editor!.AddItem.Execute(string.Empty);
+            authorsEditor.Editor.CurrentItemValue = "author-2";
+            metadataEditor.FindControl<TextBox>("CommentsEditor")!.Text = "Package comments";
+            metadataEditor.FindControl<TextBox>("ShowmanCommentsEditor")!.Text = "Showman comments";
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(editors.Select(editor => editor.Header),
+                    Is.EquivalentTo(new[] { UiStrings.Tags, UiStrings.Authors, UiStrings.Sources }));
+                Assert.That(documentViewModel.Package.Tags, Does.Contain("Avalonia tag"));
+                Assert.That(documentViewModel.Package.Info.Authors, Does.Contain("author-2"));
+                Assert.That(documentViewModel.Package.Info.Comments.Text, Is.EqualTo("Package comments"));
+                Assert.That(documentViewModel.Package.Info.ShowmanComments.Text, Is.EqualTo("Showman comments"));
+            });
+
+            inspector.SelectedItem = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
+            window.UpdateLayout();
+
+            Assert.That(
+                inspector.GetVisualDescendants().OfType<StringListEditorView>().Select(editor => editor.Header),
+                Is.EquivalentTo(new[] { UiStrings.Authors, UiStrings.Sources }));
+        }
+        finally
+        {
+            window.Close();
+            documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void DocumentEditor_InitialSelectionFlowsToTypedInspector()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -447,6 +503,8 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.New, Is.EqualTo("Создать"));
             Assert.That(UiStrings.Save, Is.EqualTo("Сохранить"));
             Assert.That(UiStrings.Options, Is.EqualTo("Настройки"));
+            Assert.That(UiStrings.Authors, Is.EqualTo("Авторы"));
+            Assert.That(UiStrings.ShowmanComments, Is.EqualTo("Комментарии ведущему"));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,

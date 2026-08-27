@@ -58,6 +58,15 @@ public static class UiStrings
     public static string RightAnswer => Get(nameof(RightAnswer));
     public static string WrongAnswer => Get(nameof(WrongAnswer));
     public static string Comments => Get(nameof(Comments));
+    public static string Metadata => Get(nameof(Metadata));
+    public static string Authors => Get(nameof(Authors));
+    public static string Sources => Get(nameof(Sources));
+    public static string Tags => Get(nameof(Tags));
+    public static string ShowmanComments => Get(nameof(ShowmanComments));
+    public static string SelectedEntry => Get(nameof(SelectedEntry));
+    public static string Add => Get(nameof(Add));
+    public static string MoveUp => Get(nameof(MoveUp));
+    public static string MoveDown => Get(nameof(MoveDown));
     public static string AddRound => Get(nameof(AddRound));
     public static string AddTheme => Get(nameof(AddTheme));
     public static string AddQuestion => Get(nameof(AddQuestion));

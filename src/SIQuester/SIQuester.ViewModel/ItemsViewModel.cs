@@ -27,15 +27,24 @@ public abstract class ItemsViewModel<T> : ObservableCollection<T>, IItemsViewMod
         {
             if (_currentPosition != value)
             {
+                var oldValue = _currentItem;
                 _currentPosition = value;
 
                 if (_currentPosition > -1 && _currentPosition < Count)
                 {
-                    CurrentItem = this[_currentPosition];
-                    UpdateCommands();
+                    _currentItem = this[_currentPosition];
+                }
+                else
+                {
+                    _currentItem = default;
                 }
 
+                OnCurrentItemChanged(oldValue, _currentItem);
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentPosition)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItem)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItemValue)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(HasCurrentItem)));
+                UpdateCommands();
             }
         }
     }
@@ -51,13 +60,48 @@ public abstract class ItemsViewModel<T> : ObservableCollection<T>, IItemsViewMod
             {
                 var oldValue = _currentItem;
                 _currentItem = value;
-                CurrentPosition = _currentItem == null ? -1 : IndexOf(_currentItem);
+                var newPosition = _currentItem == null ? -1 : IndexOf(_currentItem);
+
+                if (_currentPosition != newPosition)
+                {
+                    _currentPosition = newPosition;
+                    OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentPosition)));
+                    OnPropertyChanged(new PropertyChangedEventArgs(nameof(HasCurrentItem)));
+                    UpdateCommands();
+                }
+
                 OnCurrentItemChanged(oldValue, value);
 
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItem)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItemValue)));
             }
         }
     }
+
+    /// <summary>
+    /// Gets or replaces the item at <see cref="CurrentPosition" />.
+    /// Unlike <see cref="CurrentItem" />, this property preserves the selected index when a collection contains equal items.
+    /// </summary>
+    public T? CurrentItemValue
+    {
+        get => HasCurrentItem ? this[_currentPosition] : default;
+        set
+        {
+            if (!HasCurrentItem || EqualityComparer<T>.Default.Equals(this[_currentPosition], value))
+            {
+                return;
+            }
+
+            var oldValue = this[_currentPosition];
+            this[_currentPosition] = value!;
+            _currentItem = value;
+            OnCurrentItemChanged(oldValue, value);
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItem)));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItemValue)));
+        }
+    }
+
+    public bool HasCurrentItem => _currentPosition > -1 && _currentPosition < Count;
 
     protected virtual void OnCurrentItemChanged(T? oldValue, T? newValue) { }
 
@@ -85,7 +129,20 @@ public abstract class ItemsViewModel<T> : ObservableCollection<T>, IItemsViewMod
     {
         if (e.PropertyName == nameof(Count))
         {
-            CurrentPosition = _currentItem != null ? IndexOf(_currentItem) : -1;
+            var newPosition = Count == 0 ? -1 : Math.Clamp(_currentPosition, 0, Count - 1);
+
+            if (_currentPosition != newPosition)
+            {
+                CurrentPosition = newPosition;
+            }
+            else
+            {
+                _currentItem = HasCurrentItem ? this[_currentPosition] : default;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItem)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(CurrentItemValue)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(HasCurrentItem)));
+            }
+
             UpdateCommands();
         }
     }
@@ -97,12 +154,16 @@ public abstract class ItemsViewModel<T> : ObservableCollection<T>, IItemsViewMod
         MoveLeft.CanBeExecuted = position > 0;
         MoveRight.CanBeExecuted = position > -1 && position + 1 < Count;
 
-        RemoveItem.CanBeExecuted = CanRemove();
+        RemoveItem.CanBeExecuted = HasCurrentItem && CanRemove();
     }
 
     protected virtual bool CanRemove() => true;
 
-    private void AddItem_Executed(object? arg) => Add((T)(arg ?? ""));
+    private void AddItem_Executed(object? arg)
+    {
+        Add((T)(arg ?? ""));
+        CurrentPosition = Count - 1;
+    }
 
     private void RemoveItem_Executed(object? arg)
     {
