@@ -716,6 +716,10 @@ internal sealed class ViewSmokeTests
             var contentEditor = scenarioEditor.GetVisualDescendants()
                 .OfType<ContentItemsEditorView>()
                 .Single(editor => editor.IsEffectivelyVisible);
+            var mediaPickerButtons = contentEditor.GetVisualDescendants()
+                .OfType<Button>()
+                .Where(button => ReferenceEquals(button.Command, contentEditor.Editor!.AddFile))
+                .ToArray();
             contentEditor.Editor!.CurrentPosition = 0;
             window.UpdateLayout();
             contentEditor.GetVisualDescendants()
@@ -732,6 +736,17 @@ internal sealed class ViewSmokeTests
 
             Assert.Multiple(() =>
             {
+                Assert.That(mediaPickerButtons.Where(button => button.IsEffectivelyVisible)
+                    .Select(button => button.CommandParameter),
+                    Is.EquivalentTo(new[]
+                    {
+                        ContentTypes.Image,
+                        ContentTypes.Audio,
+                        ContentTypes.Video,
+                        ContentTypes.Html,
+                    }));
+                Assert.That(mediaPickerButtons.Select(button => button.Content),
+                    Is.EquivalentTo(new[] { UiStrings.Images, UiStrings.Audio, UiStrings.Video, UiStrings.Html }));
                 Assert.That(questionViewModel.ScriptSteps, Has.Count.EqualTo(2));
                 Assert.That(question.Script.Steps[0].Parameters[StepParameterNames.Content].ContentValue![0].Value,
                     Is.EqualTo("Текст из Avalonia 例"));
@@ -745,6 +760,78 @@ internal sealed class ViewSmokeTests
         {
             window.Close();
             documentViewModel.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
+    public async Task ContentItemsEditor_ShowsProgressAndDisablesDirectPickerUntilDocumentCloseCancelsIt()
+    {
+        var filePicker = new BlockingOpenFilePicker();
+        using var serviceProvider = CreateServiceProvider(filePickerService: filePicker);
+        using var package = SIDocument.Create("Content picker progress", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 100, Script = new Script() };
+        question.Script.Steps.Add(new Step
+        {
+            Type = StepTypes.ShowContent,
+            Parameters =
+            {
+                [StepParameterNames.Content] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = [new ContentItem { Type = ContentTypes.Text, Value = "Question" }],
+                },
+            },
+        });
+        question.Right.Add("Answer");
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        package.Package.Rounds.Add(round);
+        var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Content picker progress");
+        var content = document.Package.Rounds[0].Themes[0].Questions[0].ScriptSteps[0].Parameters
+            .Single(parameter => parameter.Key == StepParameterNames.Content)
+            .Value.ContentValue!;
+        var editor = new ContentItemsEditorView { Editor = content };
+        var window = new Window { Width = 720, Height = 700, Content = editor };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var imageButton = editor.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, content.AddFile)
+                    && Equals(button.CommandParameter, ContentTypes.Image));
+            var progress = editor.GetVisualDescendants().OfType<ProgressBar>().Single();
+            var addTask = content.AddFile.ExecuteAsync(ContentTypes.Image);
+            await filePicker.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(content.IsAddingMediaFiles, Is.True);
+                Assert.That(imageButton.IsEnabled, Is.False);
+                Assert.That(progress.IsEffectivelyVisible, Is.True);
+                Assert.That(progress.IsIndeterminate, Is.True);
+            });
+
+            document.Dispose();
+            await addTask.WaitAsync(TimeSpan.FromSeconds(2));
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(content.IsAddingMediaFiles, Is.False);
+                Assert.That(progress.IsEffectivelyVisible, Is.False);
+            });
+        }
+        finally
+        {
+            window.Close();
+            document.Dispose();
         }
     }
 
@@ -1792,6 +1879,25 @@ internal sealed class ViewSmokeTests
         {
             CultureInfo.CurrentUICulture = previousCulture;
         }
+    }
+
+    private sealed class BlockingOpenFilePicker : IFilePickerService
+    {
+        internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask<IReadOnlyList<PickedFile>> PickOpenFilesAsync(
+            OpenFilePickerRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            Started.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return Array.Empty<PickedFile>();
+        }
+
+        public ValueTask<PickedFile?> PickSaveFileAsync(
+            SaveFilePickerRequest request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private static ServiceProvider CreateServiceProvider(

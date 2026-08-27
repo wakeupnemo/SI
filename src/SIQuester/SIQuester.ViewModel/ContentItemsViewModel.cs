@@ -5,6 +5,7 @@ using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.PlatformSpecific;
 using SIQuester.ViewModel.Properties;
+using SIQuester.ViewModel.Services;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows.Input;
@@ -51,7 +52,39 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
 
     public SimpleCommand LinkUri { get; private set; }
 
-    public ICommand AddFile { get; private set; }
+    /// <summary>
+    /// Adds package-owned media through the platform-neutral picker.
+    /// </summary>
+    public AsyncCommand AddFile { get; }
+
+    ICommand IContentCollection.AddFile => AddFile;
+
+    private bool _isAddingMediaFiles;
+
+    /// <summary>
+    /// Gets whether this content collection currently owns a media picker operation.
+    /// </summary>
+    public bool IsAddingMediaFiles
+    {
+        get => _isAddingMediaFiles;
+        private set
+        {
+            if (_isAddingMediaFiles == value)
+            {
+                return;
+            }
+
+            _isAddingMediaFiles = value;
+            AddFile.CanBeExecuted = !value;
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsAddingMediaFiles)));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(CanAddMediaFiles)));
+        }
+    }
+
+    /// <summary>
+    /// Gets whether a new media-picker operation may be started for this collection.
+    /// </summary>
+    public bool CanAddMediaFiles => !_isAddingMediaFiles;
 
     public bool IsTopLevel { get; private set; }
 
@@ -83,7 +116,7 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
 
         LinkFile = new SimpleCommand(LinkFile_Executed);
         LinkUri = new SimpleCommand(LinkUri_Executed);
-        AddFile = new SimpleCommand(AddFile_Executed);
+        AddFile = new AsyncCommand(AddFile_ExecutedAsync);
         IsTopLevel = isTopLevel;
     }
 
@@ -373,23 +406,154 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         }
     }
 
-    private void AddFile_Executed(object? arg)
+    private async Task AddFile_ExecutedAsync(object? arg)
     {
         var contentType = arg?.ToString();
 
-        if (contentType == null)
+        if (contentType == null || _isAddingMediaFiles)
         {
             return;
         }
 
+        var document = OwnerDocument;
+
+        if (document == null)
+        {
+            return;
+        }
+
+        MediaStorageViewModel collection;
+
         try
         {
-            AddContentFile(contentType);
+            collection = document.GetCollectionByMediaType(contentType);
+        }
+        catch (ArgumentException exc)
+        {
+            document.OnError(exc);
+            return;
+        }
+
+        IsAddingMediaFiles = true;
+        var stagedFiles = new List<MediaStorageViewModel.StagedMediaFile>();
+        var cancellationToken = document.LifetimeToken;
+
+        try
+        {
+            var extensions = Quality.FileExtensions[collection.Name]
+                .Select(extension => extension.TrimStart('.'))
+                .ToArray();
+            var pickedFiles = await document.FilePickerService.PickOpenFilesAsync(
+                new OpenFilePickerRequest(
+                    collection.Header,
+                    [new FileTypeFilter(collection.Header, extensions)],
+                    AllowMultiple: IsTopLevel),
+                cancellationToken);
+
+            if (pickedFiles.Count == 0)
+            {
+                return;
+            }
+
+            var filesToImport = (IsTopLevel ? pickedFiles : pickedFiles.Take(1)).ToArray();
+
+            foreach (var pickedFile in filesToImport)
+            {
+                var classification = ExternalDropClassifier.Classify(pickedFile);
+
+                if (!classification.IsMedia || classification.ContentType != contentType)
+                {
+                    var extension = Path.GetExtension(pickedFile.DisplayName);
+                    throw new InvalidOperationException(string.Format(
+                        Resources.InvalidFileExtension,
+                        pickedFile.DisplayName,
+                        extension,
+                        string.Join(", ", Quality.FileExtensions[collection.Name])));
+                }
+            }
+
+            foreach (var pickedFile in filesToImport)
+            {
+                stagedFiles.Add(await collection.StageFileAsync(pickedFile, cancellationToken));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            using var change = document.OperationsManager.BeginComplexChange();
+            var addedFiles = stagedFiles.Select(collection.AddFile).ToArray();
+            InsertMediaReferences(document, contentType, addedFiles);
+            change.Commit();
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception exc)
         {
-            PlatformManager.Instance.ShowExclamationMessage(exc.Message);
+            document.OnError(exc);
         }
+        finally
+        {
+            foreach (var stagedFile in stagedFiles)
+            {
+                stagedFile.Dispose();
+            }
+
+            IsAddingMediaFiles = false;
+        }
+    }
+
+    private void InsertMediaReferences(
+        QDocument document,
+        string contentType,
+        IReadOnlyList<MediaItemViewModel> files)
+    {
+        var index = CurrentPosition;
+
+        if (Count > 0)
+        {
+            if (index < 0 || index >= Count)
+            {
+                index = Count - 1;
+            }
+
+            if (string.IsNullOrWhiteSpace(this[index].Model.Value))
+            {
+                RemoveAt(index--);
+            }
+        }
+        else
+        {
+            index = -1;
+        }
+
+        for (var fileIndex = 0; fileIndex < files.Count; fileIndex++)
+        {
+            var file = files[fileIndex];
+            Insert(index + 1 + fileIndex, new ContentItemViewModel(new ContentItem
+            {
+                Type = contentType,
+                IsRef = true,
+                Value = file.Model.Name,
+                Placement = contentType == ContentTypes.Audio
+                    ? ContentPlacements.Background
+                    : ContentPlacements.Screen,
+                Duration = document.GetDurationByContentType(contentType),
+            }));
+
+            if (AppSettings.Default.SetRightAnswerFromFileName)
+            {
+                Owner.TryAddRightAnswerFromFileName(file.Model.Name);
+            }
+        }
+
+        if (!IsTopLevel)
+        {
+            while (Count > 1)
+            {
+                RemoveAt(0);
+            }
+        }
+
+        document.ActiveItem = null;
     }
 
     private void LinkUri_Executed(object? arg)
@@ -571,108 +735,4 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         }
     }
 
-    private bool AddContentFile(string contentType)
-    {
-        QDocument? document;
-
-        try
-        {
-            document = OwnerDocument;
-        }
-        catch (Exception exc)
-        {
-            PlatformManager.Instance.ShowErrorMessage(exc.Message);
-            return false;
-        }
-
-        if (document == null)
-        {
-            return false;
-        }
-
-        var collection = document.GetCollectionByMediaType(contentType);
-        var initialItemCount = collection.Files.Count;
-
-        try
-        {
-            using var change = document.OperationsManager.BeginComplexChange();
-
-            collection.AddItem.Execute(IsTopLevel);
-
-            if (!collection.HasPendingChanges)
-            {
-                return false;
-            }
-
-            if (initialItemCount == collection.Files.Count)
-            {
-                return false;
-            }
-
-            var index = CurrentPosition;
-
-            if (Count > 0)
-            {
-                if (index == -1 || index >= Count)
-                {
-                    if (Count == 0)
-                    {
-                        return false;
-                    }
-
-                    index = Count - 1;
-                }
-
-                if (string.IsNullOrWhiteSpace(this[index].Model.Value))
-                {
-                    RemoveAt(index--);
-                }
-            }
-            else
-            {
-                index = -1;
-            }
-
-            for (var i = initialItemCount; i < collection.Files.Count; i++)
-            {
-                var contentItemViewModel = new ContentItemViewModel(new ContentItem
-                {
-                    Type = contentType,
-                    Value = "",
-                    Placement = contentType == ContentTypes.Audio ? ContentPlacements.Background : ContentPlacements.Screen,
-                    Duration = document.GetDurationByContentType(contentType),
-                });
-
-                Insert(index + 1 + (i - initialItemCount), contentItemViewModel);
-
-                var file = collection.Files[i];
-
-                contentItemViewModel.Model.IsRef = true;
-                contentItemViewModel.Model.Value = file.Model.Name;
-
-                if (AppSettings.Default.SetRightAnswerFromFileName)
-                {
-                    Owner.TryAddRightAnswerFromFileName(file.Model.Name);
-                }
-            }
-
-            if (!IsTopLevel)
-            {
-                while (Count > 1)
-                {
-                    RemoveAt(0);
-                }
-            }
-
-            document.ActiveItem = null;
-
-            change.Commit();
-            return true;
-        }
-        catch (Exception exc)
-        {
-            document.OnError(exc);
-            return false;
-        }
-    }
 }

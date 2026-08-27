@@ -844,6 +844,9 @@ public sealed class QDocument : WorkspaceViewModel
     }
 
     private bool _isDisposed = false;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+
+    internal CancellationToken LifetimeToken => _lifetimeCancellation.Token;
 
     public SIDocument Document { get; private set; }
 
@@ -4290,6 +4293,7 @@ public sealed class QDocument : WorkspaceViewModel
         }
 
         searchRun?.Cancel();
+        _lifetimeCancellation.Cancel();
 
         Settings.PropertyChanged -= Settings_PropertyChanged;
 
@@ -4310,6 +4314,7 @@ public sealed class QDocument : WorkspaceViewModel
         Video.Dispose();
         Html.Dispose();
         Document.Dispose();
+        _lifetimeCancellation.Dispose();
 
         _logger.LogInformation("Document closed: {path}", _path);
 

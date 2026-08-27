@@ -3,6 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:SIQuester.ViewModel"
+    xmlns:core="using:SIPackages.Core"
     xmlns:loc="using:SIQuester.Avalonia.Localization"
     xmlns:views="using:SIQuester.Avalonia.Views"
     x:Name="Root"
@@ -63,9 +64,17 @@
     <WrapPanel Orientation="Horizontal">
       <Button Classes="command" Content="{x:Static loc:UiStrings.AddScreenText}" Command="{Binding Editor.AddText, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
       <Button Classes="command" Content="{x:Static loc:UiStrings.AddReplicText}" Command="{Binding Editor.AddVoice, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Images}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Image}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Audio}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Audio}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Video}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Video}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Html}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Html}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
       <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" Command="{Binding Editor.MoveLeft, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
       <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" Command="{Binding Editor.MoveRight, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
       <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Editor.RemoveItem, ElementName=Root}" />
     </WrapPanel>
+    <StackPanel IsVisible="{Binding Editor.IsAddingMediaFiles, ElementName=Root}" Margin="{StaticResource FieldMargin}">
+      <TextBlock Text="{x:Static loc:UiStrings.Loading}" />
+      <ProgressBar IsIndeterminate="True" />
+    </StackPanel>
   </StackPanel>
 </UserControl>
