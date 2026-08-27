@@ -8,8 +8,12 @@
   - Debian/Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`
   - Fedora: `sudo dnf install webkit2gtk4.1`
   - Arch: `sudo pacman -S webkit2gtk-4.1`
+- Linux audio/video codec plugins for media-library and question playback:
+  - Debian/Ubuntu: `sudo apt install gstreamer1.0-libav gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly`
+  - Fedora: `sudo dnf install gstreamer1-libav gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-ugly-free`
+  - Arch: `sudo pacman -S gst-libav gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly`
 
-The desktop host probes WebKit only when Preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Embedded image/audio/video references are streamed through per-dialog controlled loopback URLs; package HTML is not executed. Audio/video codecs depend on the distribution's GStreamer packages and are tracked separately from the verified text/image-player slice.
+The desktop host probes WebKit only when question or media preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Embedded image/audio/video references are streamed through per-session controlled loopback URLs; package HTML is not executed. The retained application page provides native HTML5 audio/video transport controls and tears playback down on selection, view, document, or application closure. Codec coverage depends on the distribution's GStreamer packages.
 
 ## Commands
 

@@ -54,7 +54,7 @@ Question preview uses the official MIT-licensed Avalonia WebView adapter and pro
 - Fedora: `sudo dnf install webkit2gtk4.1`
 - Arch: `sudo pacman -S webkit2gtk-4.1`
 
-Missing WebKit leaves the editor usable and produces an actionable preview message. Embedded package media uses controlled per-dialog loopback routes and package HTML is excluded. Distribution GStreamer plugins determine optional audio/video codec coverage; native audio/video playback is not yet claimed by the verified text/image-player receipt.
+Missing WebKit leaves the editor usable and produces an actionable preview message. Embedded package media uses controlled per-session loopback routes and package HTML is excluded. The Debian package recommends `gstreamer1.0-plugins-base`, `-good`, `-bad`, `-ugly`, and `gstreamer1.0-libav`; portable users should install equivalent distribution packages for broad codec coverage. WebKitGTK 2.52.6 on Debian 13 has been verified with the repository's MP3 and MP4 fixtures, while exact codec availability remains distribution-dependent.
 
 ## macOS application bundles
 
