@@ -5,7 +5,7 @@ Priority: optional
 Architecture: @ARCHITECTURE@
 Installed-Size: @INSTALLED_SIZE@
 Maintainer: SI contributors <VladimirKhil@users.noreply.github.com>
-Depends: libc6, libfontconfig1, libgcc-s1, libice6, libicu70 | libicu72 | libicu74 | libicu76, libsm6, libssl3, libstdc++6, libx11-6, zlib1g
+Depends: libc6, libfontconfig1, libgcc-s1, libice6, libicu70 | libicu72 | libicu74 | libicu76, libsm6, libssl3, libstdc++6, libwayland-client0, libx11-6, libxkbcommon0, zlib1g
 Recommends: desktop-file-utils, gstreamer1.0-libav, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-ugly, libwebkit2gtk-4.1-0 | libwpewebkit-2.0-1, shared-mime-info, xdg-utils
 Homepage: https://github.com/VladimirKhil/SI
 Description: Cross-platform SIGame package editor

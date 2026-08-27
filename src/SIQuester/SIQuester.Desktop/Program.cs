@@ -25,11 +25,14 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp()
     {
+        // Packaged Linux builds use the native launcher to set this before the
+        // apphost starts. Keep this fallback for direct executable launches.
         ConfigureLinuxWebKitEnvironment();
 
         return AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
+            .UseWaylandWithFallback()
             .LogToTrace();
     }
 

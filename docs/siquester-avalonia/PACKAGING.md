@@ -42,11 +42,17 @@ The Debian package installs immutable files under `/usr/lib/siquester`, a launch
 
 ### Linux runtime dependencies
 
-The Debian package declares the native .NET/Avalonia runtime set: `libc6`, `libfontconfig1`, `libgcc-s1`, `libice6`, a supported ICU runtime (`libicu70`, `libicu72`, `libicu74`, or `libicu76`), `libsm6`, `libssl3`, `libstdc++6`, `libx11-6`, and `zlib1g`. Equivalent base packages are required by portable tarball users:
+The Debian package declares the native .NET/Avalonia runtime set: `libc6`, `libfontconfig1`, `libgcc-s1`, `libice6`, a supported ICU runtime (`libicu70`, `libicu72`, `libicu74`, or `libicu76`), `libsm6`, `libssl3`, `libstdc++6`, `libwayland-client0`, `libx11-6`, `libxkbcommon0`, and `zlib1g`. Equivalent base packages are required by portable tarball users. Avalonia selects a usable Wayland compositor when available and otherwise retains its X11 backend:
 
 - Debian/Ubuntu: the names above;
-- Fedora: `fontconfig`, `libICE`, `libicu`, `libSM`, `openssl-libs`, `libstdc++`, `libX11`, and `zlib`;
-- Arch: `fontconfig`, `libice`, `icu`, `libsm`, `openssl`, `gcc-libs`, `libx11`, and `zlib`.
+- Fedora: `fontconfig`, `libICE`, `libicu`, `libSM`, `openssl-libs`, `libstdc++`, `libwayland-client`, `libX11`, `libxkbcommon`, and `zlib`;
+- Arch: `fontconfig`, `libice`, `icu`, `libsm`, `openssl`, `gcc-libs`, `wayland`, `libx11`, `libxkbcommon`, and `zlib`.
+
+Both Linux artifact forms include a `siquester` launcher. It applies the tested
+WebKitGTK compositing workaround before native process initialization while
+preserving any explicitly supplied `WEBKIT_DISABLE_COMPOSITING_MODE` value.
+Portable users should launch `./siquester`; the Debian package installs the same
+launcher under `/usr/bin/siquester`.
 
 Question preview uses the official MIT-licensed Avalonia WebView adapter and probes it only when requested. The Debian package therefore recommends, rather than requires, `libwebkit2gtk-4.1-0` (with `libwpewebkit-2.0-1` as an alternative). Portable users can install the GTK backend with:
 

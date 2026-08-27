@@ -110,8 +110,15 @@ if [ ! -x "$publish_directory/SIQuester.Desktop" ]; then
   exit 1
 fi
 
+if ! sh -n "$repository_root/deploy/siquester-desktop/linux/siquester"; then
+  echo "Linux launcher failed shell syntax validation." >&2
+  exit 1
+fi
+
 mkdir -p "$portable_directory"
 cp -a "$publish_directory/." "$portable_directory/"
+install -m 0755 "$repository_root/deploy/siquester-desktop/linux/siquester" \
+  "$portable_directory/siquester"
 install -m 0644 "$repository_root/LICENSE" "$portable_directory/LICENSE"
 install -m 0644 "$repository_root/THIRD_PARTY_NOTICES.md" "$portable_directory/THIRD_PARTY_NOTICES.md"
 
@@ -134,7 +141,8 @@ install -d \
   "$debian_root/usr/share/icons/hicolor/64x64/apps" \
   "$debian_root/usr/share/mime/packages"
 cp -a "$publish_directory/." "$debian_root/usr/lib/siquester/"
-ln -s ../lib/siquester/SIQuester.Desktop "$debian_root/usr/bin/siquester"
+install -m 0755 "$repository_root/deploy/siquester-desktop/linux/siquester" \
+  "$debian_root/usr/bin/siquester"
 install -m 0644 "$repository_root/deploy/siquester-desktop/linux/siquester.desktop" \
   "$debian_root/usr/share/applications/siquester.desktop"
 install -m 0644 "$repository_root/deploy/siquester-desktop/linux/siquester.xml" \
@@ -146,6 +154,11 @@ install -m 0644 "$repository_root/THIRD_PARTY_NOTICES.md" \
   "$debian_root/usr/share/doc/siquester/THIRD_PARTY_NOTICES.md"
 install -m 0755 "$repository_root/deploy/siquester-desktop/linux/postinst" "$debian_root/DEBIAN/postinst"
 install -m 0755 "$repository_root/deploy/siquester-desktop/linux/postrm" "$debian_root/DEBIAN/postrm"
+
+if [ ! -f "$debian_root/usr/bin/siquester" ] || [ ! -x "$debian_root/usr/bin/siquester" ]; then
+  echo "Debian launcher must be a regular executable file." >&2
+  exit 1
+fi
 
 installed_size="$(du -sk "$debian_root/usr" | awk '{print $1}')"
 sed \

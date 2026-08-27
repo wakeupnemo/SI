@@ -39,6 +39,10 @@ No parallel model or alternate serializer was introduced.
 - Added bounded managed and native stability procedures covering repeated
   package/preview/media/edit/autosave/save/reload/close operations and settled
   process/RSS/thread/file-descriptor measurements.
+- Added the official Avalonia Wayland backend with automatic X11 fallback.
+- Moved the Debian 13 WebKitGTK compositing default into the packaged Linux
+  launcher so it is present before native apphost initialization. Explicit user
+  values remain authoritative; portable tar users should run `./siquester`.
 
 ## Verification
 

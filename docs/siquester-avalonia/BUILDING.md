@@ -15,7 +15,18 @@
 
 The desktop host probes WebKit only when question or media preview is requested. If the runtime is absent, SIQuester shows an actionable localized message and does not attempt to navigate or fail application startup. Embedded image/audio/video references are streamed through per-session controlled loopback URLs; package HTML is not executed. The retained application page provides native HTML5 audio/video transport controls and tears playback down on selection, view, document, or application closure. Codec coverage depends on the distribution's GStreamer packages.
 
-On Linux the desktop host defaults `WEBKIT_DISABLE_COMPOSITING_MODE` to `1` before Avalonia initializes. This works around blank WebKitGTK preview surfaces reproduced on Debian 13. An explicitly supplied environment value is always preserved, so advanced users can override the default before launching SIQuester.
+Packaged Linux builds start through the `siquester` launcher, which defaults
+`WEBKIT_DISABLE_COMPOSITING_MODE` to `1` before the native apphost starts. This
+works around blank WebKitGTK preview surfaces reproduced on Debian 13 with an
+NVIDIA/GBM failure. An explicitly supplied value, including `0` or an empty
+value, is always preserved. Direct `SIQuester.Desktop` launches retain a managed
+fallback, but portable users should normally run `./siquester`.
+
+The desktop host registers Avalonia's official Wayland backend after ordinary
+platform detection. A usable Wayland compositor is selected natively; sessions
+without one retain the X11 backend. Debian packages depend on
+`libwayland-client0` and `libxkbcommon0`; equivalent Wayland client and XKB
+runtime libraries are required by portable builds when using Wayland.
 
 ## Commands
 
