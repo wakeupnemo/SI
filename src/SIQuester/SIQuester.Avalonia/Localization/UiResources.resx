@@ -134,4 +134,13 @@
   <data name="SelectPoint" xml:space="preserve"><value>Select point</value></data>
   <data name="LoadingImage" xml:space="preserve"><value>Loading image…</value></data>
   <data name="ImageUnavailable" xml:space="preserve"><value>The image could not be loaded or exceeds the safe preview limits.</value></data>
+  <data name="Publisher" xml:space="preserve"><value>Publisher</value></data>
+  <data name="ContactAddress" xml:space="preserve"><value>Contact address</value></data>
+  <data name="CreationDate" xml:space="preserve"><value>Creation date</value></data>
+  <data name="PackageLanguage" xml:space="preserve"><value>Package language</value></data>
+  <data name="Restriction" xml:space="preserve"><value>Restriction</value></data>
+  <data name="Difficulty" xml:space="preserve"><value>Difficulty</value></data>
+  <data name="RoundType" xml:space="preserve"><value>Round type</value></data>
+  <data name="StandardRound" xml:space="preserve"><value>Standard round</value></data>
+  <data name="FinalRound" xml:space="preserve"><value>Final round</value></data>
 </root>

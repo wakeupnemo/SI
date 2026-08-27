@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SIPackages;
+using SIPackages.Core;
 using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Tests.Helpers;
 
@@ -122,6 +123,61 @@ internal sealed class MetadataEditingTests
                 AssertInfo(reloadedRound.Info, "round-author", "round-source", "Комментарий раунда", "Ведущему раунда");
                 AssertInfo(reloadedTheme.Info, "theme-author", "theme-source", "Комментарий темы", "Ведущему темы");
                 AssertInfo(reloadedQuestion.Info, "question-author", "question-source", "Комментарий вопроса", "Ведущему вопроса");
+            });
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Test]
+    public async Task TypedPackageAndRoundFields_SaveAndReloadWithoutNormalizingFutureValues()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        var document = TestHelper.CreateSimpleTestPackage();
+        using var qDocument = factory.CreateViewModelFor(document, "Поля пакета 例");
+        var filePath = Path.Combine(Path.GetTempPath(), $"SIQuester package fields {Guid.NewGuid():N} 例.siq");
+        qDocument.Path = filePath;
+
+        try
+        {
+            var package = qDocument.Package.Model;
+            package.Publisher = "Издатель 例";
+            Assert.That(qDocument.OperationsManager.Undo.CanExecute(null), Is.True);
+            qDocument.OperationsManager.Undo.Execute(null);
+            Assert.That(package.Publisher, Is.Empty);
+            qDocument.OperationsManager.Redo.Execute(null);
+            Assert.That(package.Publisher, Is.EqualTo("Издатель 例"));
+            package.ContactUri = "mailto:автор@example.test";
+            package.Date = "осень 2026 例";
+            package.Language = "x-future-例";
+            package.Restriction = "16+ — регион 例";
+            package.Difficulty = 10;
+            var round = qDocument.Package.Rounds[0];
+            round.SetType.Execute(RoundTypes.Final);
+            Assert.That(round.Model.Type, Is.EqualTo(RoundTypes.Final));
+            qDocument.OperationsManager.Undo.Execute(null);
+            Assert.That(round.Model.Type, Is.EqualTo(RoundTypes.Standart));
+            qDocument.OperationsManager.Redo.Execute(null);
+            Assert.That(round.Model.Type, Is.EqualTo(RoundTypes.Final));
+            round.Model.Type = "future-round-例";
+
+            await qDocument.Save.ExecuteAsync(null);
+
+            await using var stream = File.OpenRead(filePath);
+            using var reloaded = SIDocument.Load(stream);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(reloaded.Package.Publisher, Is.EqualTo("Издатель 例"));
+                Assert.That(reloaded.Package.ContactUri, Is.EqualTo("mailto:автор@example.test"));
+                Assert.That(reloaded.Package.Date, Is.EqualTo("осень 2026 例"));
+                Assert.That(reloaded.Package.Language, Is.EqualTo("x-future-例"));
+                Assert.That(reloaded.Package.Restriction, Is.EqualTo("16+ — регион 例"));
+                Assert.That(reloaded.Package.Difficulty, Is.EqualTo(10));
+                Assert.That(reloaded.Package.Rounds[0].Type, Is.EqualTo("future-round-例"));
             });
         }
         finally

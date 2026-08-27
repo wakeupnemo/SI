@@ -145,4 +145,13 @@ public static class UiStrings
     public static string SelectPoint => Get(nameof(SelectPoint));
     public static string LoadingImage => Get(nameof(LoadingImage));
     public static string ImageUnavailable => Get(nameof(ImageUnavailable));
+    public static string Publisher => Get(nameof(Publisher));
+    public static string ContactAddress => Get(nameof(ContactAddress));
+    public static string CreationDate => Get(nameof(CreationDate));
+    public static string PackageLanguage => Get(nameof(PackageLanguage));
+    public static string Restriction => Get(nameof(Restriction));
+    public static string Difficulty => Get(nameof(Difficulty));
+    public static string RoundType => Get(nameof(RoundType));
+    public static string StandardRound => Get(nameof(StandardRound));
+    public static string FinalRound => Get(nameof(FinalRound));
 }

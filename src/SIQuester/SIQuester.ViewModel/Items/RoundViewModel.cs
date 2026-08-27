@@ -30,6 +30,8 @@ public sealed class RoundViewModel : ItemViewModel<Round>
 
     public ICommand AddTheme { get; private set; }
 
+    public SimpleCommand SetType { get; }
+
     public RoundViewModel(Round round)
         : base(round)
     {
@@ -43,6 +45,15 @@ public sealed class RoundViewModel : ItemViewModel<Round>
         Clone = new SimpleCommand(CloneRound_Executed);
         Remove = new SimpleCommand(RemoveRound_Executed);
         Add = AddTheme = new SimpleCommand(AddTheme_Executed);
+        SetType = new SimpleCommand(SetType_Executed);
+    }
+
+    private void SetType_Executed(object? arg)
+    {
+        if (arg is string type && !string.IsNullOrWhiteSpace(type))
+        {
+            Model.Type = type;
+        }
     }
 
     private void Themes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

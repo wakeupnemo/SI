@@ -113,6 +113,7 @@ internal sealed class ViewSmokeTests
     {
         using var serviceProvider = CreateServiceProvider();
         using var document = SIDocument.Create("Metadata inspector", "Test author");
+        document.Package.Difficulty = 99;
         var round = new Round { Name = "Round" };
         var theme = new Theme { Name = "Theme" };
         theme.Questions.Add(new Question { Price = 100 });
@@ -128,13 +129,33 @@ internal sealed class ViewSmokeTests
         {
             window.Show();
             window.UpdateLayout();
-            var editors = inspector.GetVisualDescendants().OfType<StringListEditorView>().ToArray();
-            var tagsEditor = editors.Single(editor => editor.Header == UiStrings.Tags);
-            var authorsEditor = editors.Single(editor => editor.Header == UiStrings.Authors);
-            var metadataEditor = inspector.GetVisualDescendants().OfType<ItemMetadataEditorView>().Single();
+            Assert.That(document.Package.Difficulty, Is.EqualTo(99),
+                "Opening the inspector must not normalize an out-of-range legacy value");
+            var tagsEditor = inspector.GetVisualDescendants()
+                .OfType<StringListEditorView>()
+                .Single(editor => editor.Name == "PackageTagsEditor");
 
+            var packageTextEditors = inspector.GetVisualDescendants().OfType<TextBox>().ToArray();
+            packageTextEditors.Single(editor => editor.Name == "PackagePublisherEditor").Text = "Avalonia publisher 例";
+            packageTextEditors.Single(editor => editor.Name == "PackageContactEditor").Text = "mailto:avalonia@example.test";
+            packageTextEditors.Single(editor => editor.Name == "PackageDateEditor").Text = "2026-08-27";
+            packageTextEditors.Single(editor => editor.Name == "PackageLanguageEditor").Text = "x-ui-例";
+            packageTextEditors.Single(editor => editor.Name == "PackageRestrictionEditor").Text = "18+ 例";
+            inspector.GetVisualDescendants().OfType<NumericUpDown>()
+                .Single(editor => editor.Name == "PackageDifficultyEditor").Value = 9;
             tagsEditor.Editor!.AddItem.Execute(string.Empty);
             tagsEditor.Editor.CurrentItemValue = "Avalonia tag";
+            var packageScroller = inspector.GetVisualDescendants()
+                .OfType<ScrollViewer>()
+                .Where(scrollViewer => ReferenceEquals(scrollViewer.DataContext, documentViewModel.Package))
+                .OrderByDescending(scrollViewer => scrollViewer.Extent.Height)
+                .First();
+            packageScroller.Offset = new global::Avalonia.Vector(0, packageScroller.Extent.Height);
+            window.UpdateLayout();
+            var metadataEditor = inspector.GetVisualDescendants()
+                .OfType<ItemMetadataEditorView>()
+                .Single(editor => editor.Name == "PackageMetadataEditor");
+            var authorsEditor = metadataEditor.FindControl<StringListEditorView>("AuthorsEditor")!;
             authorsEditor.Editor!.AddItem.Execute(string.Empty);
             authorsEditor.Editor.CurrentItemValue = "author-2";
             metadataEditor.FindControl<TextBox>("CommentsEditor")!.Text = "Package comments";
@@ -142,13 +163,30 @@ internal sealed class ViewSmokeTests
 
             Assert.Multiple(() =>
             {
-                Assert.That(editors.Select(editor => editor.Header),
-                    Is.EquivalentTo(new[] { UiStrings.Tags, UiStrings.Authors, UiStrings.Sources }));
                 Assert.That(documentViewModel.Package.Tags, Does.Contain("Avalonia tag"));
                 Assert.That(documentViewModel.Package.Info.Authors, Does.Contain("author-2"));
                 Assert.That(documentViewModel.Package.Info.Comments.Text, Is.EqualTo("Package comments"));
                 Assert.That(documentViewModel.Package.Info.ShowmanComments.Text, Is.EqualTo("Showman comments"));
+                Assert.That(document.Package.Publisher, Is.EqualTo("Avalonia publisher 例"));
+                Assert.That(document.Package.ContactUri, Is.EqualTo("mailto:avalonia@example.test"));
+                Assert.That(document.Package.Date, Is.EqualTo("2026-08-27"));
+                Assert.That(document.Package.Language, Is.EqualTo("x-ui-例"));
+                Assert.That(document.Package.Restriction, Is.EqualTo("18+ 例"));
+                Assert.That(document.Package.Difficulty, Is.EqualTo(9));
             });
+
+            inspector.SelectedItem = documentViewModel.Package.Rounds[0];
+            window.UpdateLayout();
+            var roundViewModel = documentViewModel.Package.Rounds[0];
+            var finalRoundButton = inspector.GetVisualDescendants()
+                .OfType<Button>()
+                .Single(button => ReferenceEquals(button.Command, roundViewModel.SetType)
+                    && Equals(button.CommandParameter, RoundTypes.Final));
+            finalRoundButton.Command!.Execute(finalRoundButton.CommandParameter);
+            Assert.That(document.Package.Rounds[0].Type, Is.EqualTo(RoundTypes.Final));
+            inspector.GetVisualDescendants().OfType<TextBox>()
+                .Single(editor => editor.Name == "RoundTypeEditor").Text = "future-ui-round-例";
+            Assert.That(document.Package.Rounds[0].Type, Is.EqualTo("future-ui-round-例"));
 
             inspector.SelectedItem = documentViewModel.Package.Rounds[0].Themes[0].Questions[0];
             window.UpdateLayout();

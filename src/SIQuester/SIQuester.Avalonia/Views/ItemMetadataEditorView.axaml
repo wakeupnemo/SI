@@ -8,8 +8,8 @@
     x:DataType="vm:InfoViewModel">
   <StackPanel>
     <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Metadata}" />
-    <views:StringListEditorView Header="{x:Static loc:UiStrings.Authors}" Editor="{Binding Authors}" />
-    <views:StringListEditorView Header="{x:Static loc:UiStrings.Sources}" Editor="{Binding Sources}" />
+    <views:StringListEditorView x:Name="AuthorsEditor" Header="{x:Static loc:UiStrings.Authors}" Editor="{Binding Authors}" />
+    <views:StringListEditorView x:Name="SourcesEditor" Header="{x:Static loc:UiStrings.Sources}" Editor="{Binding Sources}" />
     <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Comments}" />
     <TextBox
         x:Name="CommentsEditor"

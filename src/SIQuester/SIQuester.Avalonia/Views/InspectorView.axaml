@@ -17,8 +17,20 @@
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Package}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
           <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
-          <views:StringListEditorView Header="{x:Static loc:UiStrings.Tags}" Editor="{Binding Tags}" />
-          <views:ItemMetadataEditorView DataContext="{Binding Info}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Publisher}" />
+          <TextBox x:Name="PackagePublisherEditor" Text="{Binding Model.Publisher, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.Publisher}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ContactAddress}" />
+          <TextBox x:Name="PackageContactEditor" Text="{Binding Model.ContactUri, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.ContactAddress}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.CreationDate}" />
+          <TextBox x:Name="PackageDateEditor" Text="{Binding Model.Date, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.CreationDate}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.PackageLanguage}" />
+          <TextBox x:Name="PackageLanguageEditor" Text="{Binding Model.Language, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.PackageLanguage}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Restriction}" />
+          <TextBox x:Name="PackageRestrictionEditor" Text="{Binding Model.Restriction, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.Restriction}" AcceptsReturn="True" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Difficulty}" />
+          <NumericUpDown x:Name="PackageDifficultyEditor" Value="{Binding Model.Difficulty, Mode=TwoWay}" Minimum="0" Maximum="10" AutomationProperties.Name="{x:Static loc:UiStrings.Difficulty}" Margin="{StaticResource FieldMargin}" />
+          <views:StringListEditorView x:Name="PackageTagsEditor" Header="{x:Static loc:UiStrings.Tags}" Editor="{Binding Tags}" />
+          <views:ItemMetadataEditorView x:Name="PackageMetadataEditor" DataContext="{Binding Info}" />
           <Button Classes="command" Content="{x:Static loc:UiStrings.AddRound}" Command="{Binding AddRound}" HorizontalAlignment="Left" />
         </StackPanel>
       </ScrollViewer>
@@ -30,6 +42,12 @@
           <TextBlock Classes="section-title" Text="{x:Static loc:UiStrings.Round}" />
           <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Name}" />
           <TextBox Text="{Binding Model.Name, Mode=TwoWay}" Margin="{StaticResource FieldMargin}" />
+          <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.RoundType}" />
+          <TextBox x:Name="RoundTypeEditor" Text="{Binding Model.Type, Mode=TwoWay}" AutomationProperties.Name="{x:Static loc:UiStrings.RoundType}" Margin="{StaticResource FieldMargin}" />
+          <WrapPanel Margin="{StaticResource FieldMargin}">
+            <Button Classes="command" Content="{x:Static loc:UiStrings.StandardRound}" AutomationProperties.Name="{x:Static loc:UiStrings.StandardRound}" Command="{Binding SetType}" CommandParameter="{x:Static core:RoundTypes.Standart}" Margin="{StaticResource MetadataCommandMargin}" />
+            <Button Classes="command" Content="{x:Static loc:UiStrings.FinalRound}" AutomationProperties.Name="{x:Static loc:UiStrings.FinalRound}" Command="{Binding SetType}" CommandParameter="{x:Static core:RoundTypes.Final}" />
+          </WrapPanel>
           <views:ItemMetadataEditorView DataContext="{Binding Info}" />
           <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space8}">
             <Button Classes="command" Content="{x:Static loc:UiStrings.AddTheme}" Command="{Binding AddTheme}" />
