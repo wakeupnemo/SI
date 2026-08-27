@@ -143,6 +143,7 @@ public partial class App : Application
                 _serviceProvider.GetRequiredService<ILoggerFactory>(),
                 _serviceProvider.GetRequiredService<IFilePickerService>(),
                 _serviceProvider.GetRequiredService<IDialogService>(),
+                _serviceProvider.GetRequiredService<IUiDispatcher>(),
                 _serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
                 _serviceProvider.GetRequiredService<IDocumentRecoveryService>(),
                 _serviceProvider.GetRequiredService<IPlatformCapabilities>(),

@@ -6,6 +6,11 @@
 public sealed class SITemplate
 {
     /// <summary>
+    /// Indicates that this template uses the built-in Russian SNS text convention.
+    /// </summary>
+    internal bool IsSns { get; set; }
+
+    /// <summary>
     /// Использовать стандартную логику
     /// </summary>
     public bool StandartLogic { get; internal set; }

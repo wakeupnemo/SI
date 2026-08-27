@@ -76,6 +76,10 @@ internal sealed class ImportTextViewTests
                 Assert.That(view.FindControl<TextBox>("ImportedTextPreview")!.Text, Is.EqualTo("Пакет 例"));
                 Assert.That(view.GetVisualDescendants().OfType<Button>().Select(button => button.Content),
                     Does.Contain(UiStrings.StartImport));
+                Assert.That(workspace.Run, Is.InstanceOf<IAsyncCommand>());
+                Assert.That(workspace.ApproveImportAndStart, Is.InstanceOf<IAsyncCommand>());
+                Assert.That(view.GetVisualDescendants().OfType<Button>().Any(button =>
+                    ReferenceEquals(button.Command, workspace.ApproveImportAndStart)), Is.True);
             });
         }
         finally
@@ -182,6 +186,18 @@ internal sealed class ImportTextViewTests
             new AppOptions(),
             Substitute.For<IClipboardService>(),
             Substitute.For<IDocumentViewModelFactory>(),
-            picker);
+            picker,
+            Substitute.For<IDialogService>(),
+            new InlineUiDispatcher());
+    }
+
+    private sealed class InlineUiDispatcher : IUiDispatcher
+    {
+        public ValueTask InvokeAsync(Action action, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            action();
+            return ValueTask.CompletedTask;
+        }
     }
 }

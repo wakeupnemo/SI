@@ -64,19 +64,29 @@ public sealed class QConverter
     /// Splits text into array of themes and questions.
     /// </summary>
     /// <param name="source">Text containing questions.</param>
+    /// <param name="cancellationToken">Token used to cancel a long-running split.</param>
     /// <returns>Array of splitted themes and questions.</returns>
-    public SIPart[][]? ExtractQuestions(string source)
+    public SIPart[][]? ExtractQuestions(string source, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var list = new List<SIPart[]>();
         int progress = 0, progressBase = 0;
 
         var expressionTree = Spard.TreeTransformer.Create(Resources.QuestsExtractorRules3);
         expressionTree.Mode = Spard.Core.TransformMode.Function;
-        expressionTree.ProgressChanged += (pos) => progress = pos;
+        expressionTree.ProgressChanged += pos =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            progress = pos;
+        };
 
         var skipTree = Spard.TreeTransformer.Create(Resources.ExtractorRules2);
         skipTree.Mode = Spard.Core.TransformMode.Function;
-        skipTree.ProgressChanged += (pos) => progress = pos;
+        skipTree.ProgressChanged += pos =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            progress = pos;
+        };
 
         int previousPosition = -1;
         var matchEnumerator = expressionTree.Transform(source).GetEnumerator();
@@ -85,10 +95,21 @@ public sealed class QConverter
 
         do
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
-                while ((next = matchEnumerator.MoveNext()) && (match = matchEnumerator.Current) != null)
+                while (true)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    next = matchEnumerator.MoveNext();
+                    match = next ? matchEnumerator.Current : null;
+
+                    if (!next || match == null)
+                    {
+                        break;
+                    }
+
                     if (match is not TupleValue tupleValue) // Head
                     {
                         list.Add(new SIPart[] { new() { Value = match.ToString() ?? "" } });
@@ -100,6 +121,7 @@ public sealed class QConverter
 
                         while (tupleValues.Any())
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             var value = tupleValues.Dequeue();
 
                             foreach (var namedValue in value.Items.Cast<NamedValue>())
@@ -146,6 +168,7 @@ public sealed class QConverter
 
                 if (args.Skip)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     source = source.Substring(progress);
                     progressBase += progress;
                     progress = 0;
@@ -176,10 +199,16 @@ public sealed class QConverter
                         var counter = last.Length + 1;
                         var appendTree = TextMatchTreeTransformer.Create(string.Format(Resources.AppendRules, price, counter));
                         appendTree.Mode = TransformMode.Function;
-                        appendTree.ProgressChanged += (pos) => progress = pos;
+                        appendTree.ProgressChanged += pos =>
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            progress = pos;
+                        };
 
                         var matchesEnumerator = appendTree.Transform(source).GetEnumerator();
                         Match<char>? matches = null;
+
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         if (matchesEnumerator.MoveNext() && (matches = matchesEnumerator.Current) != null && matches.Matches.Count > 0)
                         {
@@ -1200,14 +1229,21 @@ public sealed class QConverter
     /// <param name="list">Список тем с разбивкой по вопросам входного файла</param>
     /// <param name="standardLogic">Применять ли стандартную логику распознавания</param>
     /// <returns>Сформированные шаблоны</returns>
-    public SITemplate GetGeneratedTemplates(SIPart[][] list, bool standardLogic)
+    public SITemplate GetGeneratedTemplates(
+        SIPart[][] list,
+        bool standardLogic,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var siTemplate = CreateQuestionTemplate(list, standardLogic);
         Progress?.Invoke(40);
+        cancellationToken.ThrowIfCancellationRequested();
         CreateThemeTemplate(list, siTemplate);
         Progress?.Invoke(80);
+        cancellationToken.ThrowIfCancellationRequested();
         PrepareTemplates(siTemplate);
         Progress?.Invoke(100);
+        cancellationToken.ThrowIfCancellationRequested();
         return siTemplate;
     }
 
@@ -1221,6 +1257,7 @@ public sealed class QConverter
     {
         return new SITemplate()
         {
+            IsSns = true,
             StandartLogic = true,
             Multiplier = 10,
             PackageTemplate = new List<string>(new string[] { "[m]<PName>" }),
@@ -1250,8 +1287,18 @@ public sealed class QConverter
     /// <param name="templates"></param>
     /// <param name="document"></param>
     /// <param name="addToExisting"></param>
-    public bool ReadFile(SIPart[][] list, SITemplate templates, ref SIDocument document, bool addToExisting, string docName, string authorName, string emptyRoundName, out int themesNum)
+    public bool ReadFile(
+        SIPart[][] list,
+        SITemplate templates,
+        ref SIDocument document,
+        bool addToExisting,
+        string docName,
+        string authorName,
+        string emptyRoundName,
+        out int themesNum,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         // Title reading
         var titleTemplate = new StringBuilder("<Body> := (<P>?<R>)?<T><SP>*$")
             .AppendLine()
@@ -1321,7 +1368,15 @@ public sealed class QConverter
             newTitle.AppendLine();
         }
 
-        var matches = Analyze(titleParser, list, 0, 0, newTitle.ToString(), new Follow[] { roundFollow, themeFollow, packageFollow }, out Decision decision);
+        var matches = Analyze(
+            titleParser,
+            list,
+            0,
+            0,
+            newTitle.ToString(),
+            new Follow[] { roundFollow, themeFollow, packageFollow },
+            out Decision decision,
+            cancellationToken);
 
         switch (decision)
         {
@@ -1464,6 +1519,8 @@ public sealed class QConverter
 
         for (int i = 1; i < list.Length && (templates.StandartLogic || i + 1 < list.Length); i += templates.StandartLogic ? 1 : 2)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (roundName.Length > 0 || roundIndex == -1)
             {
                 var roundComments = ExtractComments(ref roundName);
@@ -1477,6 +1534,11 @@ public sealed class QConverter
             }
 
             var themeComments = ExtractComments(ref themeName);
+
+            if (templates.IsSns && themeAuthor.Length == 0)
+            {
+                ExtractSnsThemeAuthor(ref themeComments, ref themeAuthor);
+            }
             var theme = document.Package.Rounds[roundIndex].CreateTheme(themeName.ClearPoints().GrowFirstLetter());
             themeIndex++;
             questIndex = -1;
@@ -1503,6 +1565,7 @@ public sealed class QConverter
 
             for (int j = 0; j < list[i].Length && (templates.StandartLogic || j < list[i + 1].Length); j++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 Follow[] use;
                 if (i > 1 && j == 0)
                 {
@@ -1517,7 +1580,7 @@ public sealed class QConverter
                 else
                     use = new Follow[] { questFollow };
 
-                matches = Analyze(parser, list, i, j, null, use, out decision);
+                matches = Analyze(parser, list, i, j, null, use, out decision, cancellationToken);
 
                 switch (decision)
                 {
@@ -1534,7 +1597,15 @@ public sealed class QConverter
                                 parser.ReplaceSetDefinition(nsAnswerWithoutTheme);
                                 use = new Follow[] { answerFollow };
                             }
-                            var matches2 = Analyze(parser, list, i + 1, j, null, use, out decision);
+                            var matches2 = Analyze(
+                                parser,
+                                list,
+                                i + 1,
+                                j,
+                                null,
+                                use,
+                                out decision,
+                                cancellationToken);
 
                             switch (decision)
                             {
@@ -1586,6 +1657,11 @@ public sealed class QConverter
                             questAuthor = match.Value.ToString().Trim();
                         else
                             questAuthor = string.Empty;
+
+                        if (templates.IsSns)
+                        {
+                            ExtractSnsQuestionMetadata(ref questAnswer, ref questComment, ref questSource);
+                        }
 
                         if (j == list[i].Length - 1)
                         {
@@ -1667,6 +1743,82 @@ public sealed class QConverter
         return comments;
     }
 
+    private static void ExtractSnsThemeAuthor(ref string comments, ref string author)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return;
+        }
+
+        var lines = comments.Split(new string[] { Environment.NewLine, "\r", "\n" }, StringSplitOptions.None);
+        const string authorPrefix = "Автор:";
+        var authorLineIndex = Array.FindIndex(
+            lines,
+            line => line.TrimStart().StartsWith(authorPrefix, StringComparison.OrdinalIgnoreCase));
+
+        if (authorLineIndex < 0)
+        {
+            return;
+        }
+
+        var authorLine = lines[authorLineIndex].TrimStart();
+        author = authorLine[authorPrefix.Length..].Trim();
+        comments = string.Join(
+            Environment.NewLine,
+            lines.Where((_, index) => index != authorLineIndex)).Trim();
+    }
+
+    private static void ExtractSnsQuestionMetadata(ref string answer, ref string comment, ref string source)
+    {
+        const string commentPrefix = "Комментарий:";
+        const string sourcePrefix = "Источник:";
+        var lines = answer.Split(new string[] { Environment.NewLine, "\r", "\n" }, StringSplitOptions.None);
+        var answerLines = new List<string>();
+        var commentLines = new List<string>();
+        var sourceLines = new List<string>();
+        List<string> target = answerLines;
+        var metadataFound = false;
+
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.TrimStart();
+
+            if (trimmedLine.StartsWith(commentPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                metadataFound = true;
+                target = commentLines;
+                target.Add(trimmedLine[commentPrefix.Length..].TrimStart());
+            }
+            else if (trimmedLine.StartsWith(sourcePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                metadataFound = true;
+                target = sourceLines;
+                target.Add(trimmedLine[sourcePrefix.Length..].TrimStart());
+            }
+            else
+            {
+                target.Add(line);
+            }
+        }
+
+        if (!metadataFound)
+        {
+            return;
+        }
+
+        answer = string.Join(Environment.NewLine, answerLines).Trim();
+
+        if (comment.Length == 0)
+        {
+            comment = string.Join(Environment.NewLine, commentLines).Trim();
+        }
+
+        if (source.Length == 0)
+        {
+            source = string.Join(Environment.NewLine, sourceLines).Trim();
+        }
+    }
+
     /// <summary>
     /// Принятое решение пользователя
     /// </summary>
@@ -1703,8 +1855,10 @@ public sealed class QConverter
         int j,
         string top,
         Follow[] follow,
-        out Decision decision)
+        out Decision decision,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var input = (top ?? string.Empty) + list[i][j].Value;
 
         try
@@ -1712,6 +1866,8 @@ public sealed class QConverter
             Match<char> matches = null;
             while ((matches = parser.Transform(input).FirstOrDefault()) == null || matches.Matches.Count == 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (ReadError == null)
                 {
                     decision = Decision.Cancel;
@@ -1783,6 +1939,10 @@ public sealed class QConverter
             decision = Decision.Go;
 
             return matches.Matches;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception exc)
         {

@@ -161,6 +161,7 @@ public partial class App : Application
                 loggerFactory,
                 filePickerService,
                 dialogService,
+                _host.Services.GetRequiredService<IUiDispatcher>(),
                 applicationLifetimeService,
                 _host.Services.GetRequiredService<IDocumentRecoveryService>(),
                 _host.Services.GetRequiredService<IPlatformCapabilities>(),

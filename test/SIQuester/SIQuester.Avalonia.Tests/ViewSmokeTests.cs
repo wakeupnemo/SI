@@ -2064,6 +2064,7 @@ internal sealed class ViewSmokeTests
         serviceProvider.GetRequiredService<ILoggerFactory>(),
         serviceProvider.GetRequiredService<IFilePickerService>(),
         serviceProvider.GetRequiredService<IDialogService>(),
+        serviceProvider.GetRequiredService<IUiDispatcher>(),
         serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
         serviceProvider.GetRequiredService<IDocumentRecoveryService>(),
         serviceProvider.GetRequiredService<IPlatformCapabilities>(),

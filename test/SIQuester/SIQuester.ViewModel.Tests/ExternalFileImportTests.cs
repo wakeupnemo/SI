@@ -201,6 +201,7 @@ internal sealed class ExternalFileImportTests
                 serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>(),
                 serviceProvider.GetRequiredService<IFilePickerService>(),
                 serviceProvider.GetRequiredService<IDialogService>(),
+                serviceProvider.GetRequiredService<IUiDispatcher>(),
                 serviceProvider.GetRequiredService<IApplicationLifetimeService>(),
                 serviceProvider.GetRequiredService<IDocumentRecoveryService>(),
                 serviceProvider.GetRequiredService<IPlatformCapabilities>(),

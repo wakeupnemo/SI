@@ -48,7 +48,9 @@ internal sealed class ImportTextWorkspaceTests
                 new AppOptions(),
                 serviceProvider.GetRequiredService<IClipboardService>(),
                 serviceProvider.GetRequiredService<IDocumentViewModelFactory>(),
-                picker);
+                picker,
+                serviceProvider.GetRequiredService<IDialogService>(),
+                serviceProvider.GetRequiredService<IUiDispatcher>());
 
             Assert.Multiple(() =>
             {
@@ -109,7 +111,9 @@ internal sealed class ImportTextWorkspaceTests
                 new AppOptions(),
                 serviceProvider.GetRequiredService<IClipboardService>(),
                 serviceProvider.GetRequiredService<IDocumentViewModelFactory>(),
-                picker);
+                picker,
+                serviceProvider.GetRequiredService<IDialogService>(),
+                serviceProvider.GetRequiredService<IUiDispatcher>());
             var selection = ((IAsyncCommand)workspace.SelectFile).ExecuteAsync(null);
             await picker.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
@@ -151,7 +155,9 @@ internal sealed class ImportTextWorkspaceTests
                 new AppOptions(),
                 serviceProvider.GetRequiredService<IClipboardService>(),
                 serviceProvider.GetRequiredService<IDocumentViewModelFactory>(),
-                picker);
+                picker,
+                serviceProvider.GetRequiredService<IDialogService>(),
+                serviceProvider.GetRequiredService<IUiDispatcher>());
             Exception? reportedError = null;
             workspace.Error += (exception, _) => reportedError = exception;
 

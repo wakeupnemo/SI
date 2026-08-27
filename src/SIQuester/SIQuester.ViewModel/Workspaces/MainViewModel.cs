@@ -172,6 +172,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
     private readonly IServiceProvider _serviceProvider;
     private readonly IFilePickerService _filePickerService;
     private readonly IDialogService _dialogService;
+    private readonly IUiDispatcher _uiDispatcher;
     private readonly IApplicationLifetimeService _applicationLifetimeService;
     private readonly IDocumentRecoveryService _documentRecoveryService;
     private readonly IPlatformCapabilities _platformCapabilities;
@@ -189,6 +190,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         ILoggerFactory loggerFactory,
         IFilePickerService filePickerService,
         IDialogService dialogService,
+        IUiDispatcher uiDispatcher,
         IApplicationLifetimeService applicationLifetimeService,
         IDocumentRecoveryService documentRecoveryService,
         IPlatformCapabilities platformCapabilities,
@@ -200,6 +202,7 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
         _documentViewModelFactory = documentViewModelFactory;
         _filePickerService = filePickerService;
         _dialogService = dialogService;
+        _uiDispatcher = uiDispatcher;
         _applicationLifetimeService = applicationLifetimeService;
         _documentRecoveryService = documentRecoveryService;
         _platformCapabilities = platformCapabilities;
@@ -796,7 +799,9 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
                 _appOptions,
                 _clipboardService,
                 _documentViewModelFactory,
-                _filePickerService);
+                _filePickerService,
+                _dialogService,
+                _uiDispatcher);
             DocList.Add(model);
             model.Import(textSource);
             return true;
@@ -892,7 +897,9 @@ public sealed class MainViewModel : ModelViewBase, INotifyPropertyChanged
                 _appOptions,
                 _clipboardService,
                 _documentViewModelFactory,
-                _filePickerService);
+                _filePickerService,
+                _dialogService,
+                _uiDispatcher);
             DocList.Add(model);
 
             if (textSource != null)

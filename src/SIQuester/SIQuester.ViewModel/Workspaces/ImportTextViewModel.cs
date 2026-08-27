@@ -28,6 +28,7 @@ namespace SIQuester.ViewModel;
 public sealed class ImportTextViewModel : WorkspaceViewModel
 {
     private Task? _task;
+    private Task<SIPart[][]?>? _splitTask;
 
     private readonly string _header = Resources.TextImport;
 
@@ -88,6 +89,8 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     }
 
     public ICommand Run { get; private set; }
+
+    private readonly AsyncCommand _run;
 
     private string? _fileName;
 
@@ -282,7 +285,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     #region Commands
 
     private readonly SimpleCommand _sns;
-    private readonly SimpleCommand _auto;
+    private readonly AsyncCommand _auto;
     private readonly SimpleCommand _go;
     private readonly SimpleCommand _skip;
 
@@ -297,10 +300,12 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     #endregion
 
     private readonly CancellationTokenSource _tokenSource = new();
-    private readonly TaskScheduler _scheduler;
+    private readonly CancellationToken _cancellationToken;
 
     private readonly AppOptions _appOptions;
     private readonly IFilePickerService _filePickerService;
+    private readonly IDialogService _dialogService;
+    private readonly IUiDispatcher _uiDispatcher;
     private string _badTextCopy = "";
     private bool _cleaned;
 
@@ -419,16 +424,22 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     /// <param name="clipboardService">Clipboard access service.</param>
     /// <param name="documentViewModelFactory">Factory to create documents.</param>
     /// <param name="filePickerService">Platform-neutral text file selection.</param>
+    /// <param name="dialogService">Platform-neutral user dialogs.</param>
+    /// <param name="uiDispatcher">Dispatcher for publishing worker results.</param>
     public ImportTextViewModel(
         AppOptions appOptions,
         IClipboardService clipboardService,
         IDocumentViewModelFactory documentViewModelFactory,
-        IFilePickerService filePickerService)
+        IFilePickerService filePickerService,
+        IDialogService dialogService,
+        IUiDispatcher uiDispatcher)
     {
         _appOptions = appOptions;
         _documentViewModelFactory = documentViewModelFactory;
         _filePickerService = filePickerService ?? throw new ArgumentNullException(nameof(filePickerService));
-        _scheduler = TaskScheduler.FromCurrentSynchronizationContext();
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+        _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
+        _cancellationToken = _tokenSource.Token;
 
         var trashAlias = new EditAlias(Resources.Trash, "#FFD3D3D3");
 
@@ -483,16 +494,17 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         }
 
         _sns = new SimpleCommand(Sns_Executed) { CanBeExecuted = false };
-        _auto = new SimpleCommand(Auto_Executed) { CanBeExecuted = false };
+        _auto = new AsyncCommand(Auto_ExecutedAsync) { CanBeExecuted = false };
         _go = new SimpleCommand(Go_Executed);
         _skip = new SimpleCommand(Skip_Executed) { CanBeExecuted = false };
 
         _selectFile = new AsyncCommand(SelectFile_ExecutedAsync);
         SelectFile = _selectFile;
-        Run = new SimpleCommand(Run_Executed);
+        _run = new AsyncCommand(Run_ExecutedAsync);
+        Run = _run;
         CancelImport = new SimpleCommand(CancelImport_Executed);
         ApproveImport = new SimpleCommand(ApproveImport_Executed);
-        ApproveImportAndStart = new SimpleCommand(ApproveImportAndStart_Executed);
+        ApproveImportAndStart = new AsyncCommand(ApproveImportAndStart_ExecutedAsync);
 
         _automaticTextImport = AppSettings.Default.AutomaticTextImport;
 
@@ -522,7 +534,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
                     Resources.TextImport,
                     [new FileTypeFilter(Resources.TextFiles, ["txt"])],
                     AllowMultiple: false),
-                _tokenSource.Token);
+                _cancellationToken);
 
             if (files.Count == 0)
             {
@@ -548,15 +560,15 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
             }
             else
             {
-                await using var source = await file.OpenReadAsync(_tokenSource.Token);
+                await using var source = await file.OpenReadAsync(_cancellationToken);
                 using var buffer = new MemoryStream();
-                await source.CopyToAsync(buffer, _tokenSource.Token);
+                await source.CopyToAsync(buffer, _cancellationToken);
                 textSource = new BufferedTextSource(file.DisplayName, buffer.ToArray());
             }
 
             Import(textSource);
         }
-        catch (OperationCanceledException) when (_tokenSource.IsCancellationRequested)
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
         {
         }
         catch (Exception ex)
@@ -610,22 +622,67 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         _textSource = null;
     }
 
-    private void ApproveImportAndStart_Executed(object? arg)
+    private async Task ApproveImportAndStart_ExecutedAsync(object? arg)
     {
         CommitImport();
-        Run_Executed(arg);
+        await Run_ExecutedAsync(arg);
     }
 
-    private void Run_Executed(object? arg)
+    private async Task Run_ExecutedAsync(object? arg)
     {
+        if (_cleaned || _splitTask != null)
+        {
+            return;
+        }
+
+        var cancellationToken = _cancellationToken;
+        _run.CanBeExecuted = false;
         State = UIState.Split;
         _stage = Stage.Splitting;
-        Task.Factory.StartNew(Split, _tokenSource.Token);
+
+        try
+        {
+            _splitTask = Task.Run(
+                () => _converter.ExtractQuestions(_text, cancellationToken),
+                cancellationToken);
+            var parts = await _splitTask;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (parts == null || parts.Length == 1)
+            {
+                await _uiDispatcher.InvokeAsync(() => Progress = 0, cancellationToken);
+                await _dialogService.ShowMessageAsync(Resources.NoQuestionsFound, cancellationToken);
+                return;
+            }
+
+            await _uiDispatcher.InvokeAsync(() => ApplySplitResult(parts), cancellationToken);
+
+            if (_automaticTextImport)
+            {
+                await _auto.ExecuteAsync(null);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            await _uiDispatcher.InvokeAsync(() => OnError(exception));
+        }
+        finally
+        {
+            _splitTask = null;
+
+            if (!_cleaned)
+            {
+                await _uiDispatcher.InvokeAsync(() => _run.CanBeExecuted = !_cleaned);
+            }
+        }
     }
 
     private void Sns_Executed(object? arg) => SetTemplate(QConverter.GetSnsTemplates(_parts, _standartLogic));
 
-    private async void Auto_Executed(object? arg)
+    private async Task Auto_ExecutedAsync(object? arg)
     {
         if (_stage == Stage.Automation)
         {
@@ -642,17 +699,25 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
         try
         {
-            await Task.Run(Autogenerate, _tokenSource.Token);
+            var cancellationToken = _cancellationToken;
+            var template = await Task.Run(
+                () => _converter.GetGeneratedTemplates(_parts, _standartLogic, cancellationToken),
+                cancellationToken);
+
+            await _uiDispatcher.InvokeAsync(() => ApplyGeneratedTemplate(template), cancellationToken);
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception exc)
         {
-            OnError(exc);
+            await _uiDispatcher.InvokeAsync(() => OnError(exc));
         }
     }
 
-    private void Autogenerate()
+    private void ApplyGeneratedTemplate(SITemplate template)
     {
-        SetTemplate(_converter.GetGeneratedTemplates(_parts, _standartLogic));
+        SetTemplate(template);
         CanGo = true;
         Free = true;
         _stage = Stage.Begin;
@@ -660,27 +725,44 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
         Progress = 0;
     }
 
-    private void AnalyzeFinished(Task<Tuple<bool, int>> task)
+    private async Task AnalyzeAsync()
     {
-        if (task.IsFaulted)
+        try
         {
-            OnError(task.Exception.InnerException ?? task.Exception);
-        }
-        else
-        {
-            var themesNum = task.Result.Item2;
-            if (task.Result.Item1)
+            var cancellationToken = _cancellationToken;
+            var result = await Task.Run(Analyze, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (result.Item1 && _existing != null)
             {
-                if (!task.IsCanceled && _existing != null)
-                {
-                    PlatformManager.Instance.Inform($"{Resources.Success} {themesNum}.");
-                    OnNewItem(_documentViewModelFactory.CreateViewModelFor(_existing));
-                }
+                await _dialogService.ShowMessageAsync($"{Resources.Success} {result.Item2}.", cancellationToken);
+                await _uiDispatcher.InvokeAsync(
+                    () => OnNewItem(_documentViewModelFactory.CreateViewModelFor(_existing)),
+                    cancellationToken);
             }
         }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            await _uiDispatcher.InvokeAsync(() => OnError(exception));
+        }
+        finally
+        {
+            _task = null;
 
-        _task = null;
-        OnClosed();
+            if (!_cleaned)
+            {
+                await _uiDispatcher.InvokeAsync(() =>
+                {
+                    if (!_cleaned)
+                    {
+                        OnClosed();
+                    }
+                });
+            }
+        }
     }
 
     private Tuple<bool, int> Analyze()
@@ -698,7 +780,8 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
             string.IsNullOrEmpty(FileName) ? Resources.Untitled : Path.GetFileNameWithoutExtension(FileName),
             Resources.Empty,
             Resources.ThemesCollection,
-            out int themesNum);
+            out int themesNum,
+            _cancellationToken);
 
         return Tuple.Create(result, themesNum);
     }
@@ -729,8 +812,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
                 _stage = Stage.Reading;
                 Free = false;
 
-                _task = Task.Factory.StartNew(new Func<Tuple<bool, int>>(Analyze), _tokenSource.Token)
-                    .ContinueWith(AnalyzeFinished, _tokenSource.Token, TaskContinuationOptions.ExecuteSynchronously, _scheduler);
+                _task = AnalyzeAsync();
                 break;
 
             case Stage.Reading:
@@ -962,6 +1044,7 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
 
         _textSource?.Dispose();
         _textSource = null;
+        _tokenSource.Dispose();
     }
 
     private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e) => OnReadyChanged();
@@ -969,40 +1052,74 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
     private void QTxtConverter_ParseError(object? sender, SplitErrorEventArgs e)
     {
         _parseError = e;
-        PrepareUI();
+        try
+        {
+            _uiDispatcher.InvokeAsync(PrepareUI, _cancellationToken).AsTask().GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+            e.Cancel = true;
+            return;
+        }
 
         lock (_sync)
         {
-            Monitor.Wait(_sync);
+            if (!_cleaned && !e.Cancel)
+            {
+                Monitor.Wait(_sync);
+            }
         }
+
+        e.Cancel |= _cleaned || _cancellationToken.IsCancellationRequested;
     }
 
     private void QTxtConverter_ReadError(object? sender, ReadErrorEventArgs e)
     {
         _readError = e;
-        PrepareUIForRead();
+        try
+        {
+            _uiDispatcher.InvokeAsync(PrepareUIForRead, _cancellationToken).AsTask().GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+            e.Cancel = true;
+            return;
+        }
 
         lock (_sync)
         {
-            Monitor.Wait(_sync);
+            if (!_cleaned && !e.Cancel)
+            {
+                Monitor.Wait(_sync);
+            }
         }
+
+        e.Cancel |= _cleaned || _cancellationToken.IsCancellationRequested;
     }
 
     private void QTxtConverter_Progress(int progress)
     {
-        if (_stage == Stage.Reading || _stage == Stage.Splitting)
+        if (_cleaned)
         {
-            _position = progress;
+            return;
+        }
 
-            if (_text.Length > 0)
-            {
-                Progress = progress * 100 / _text.Length;
-            }
-        }
-        else
+        _uiDispatcher.InvokeAsync(() =>
         {
-            Progress = progress;
-        }
+            if (_stage == Stage.Reading || _stage == Stage.Splitting)
+            {
+                _position = progress;
+
+                if (_text.Length > 0)
+                {
+                    Progress = progress * 100 / _text.Length;
+                }
+            }
+            else
+            {
+                Progress = progress;
+            }
+        }, _cancellationToken).AsTask().GetAwaiter().GetResult();
     }
 
     private void OnHighlightText(int start, int length, string? color, bool scroll) => HighlightText?.Invoke(start, length, color, scroll);
@@ -1211,48 +1328,24 @@ public sealed class ImportTextViewModel : WorkspaceViewModel
             + Environment.NewLine + problem + Environment.NewLine + Resources.SourceFail;
     }
 
-    private void Split()
+    private void ApplySplitResult(SIPart[][] parts)
     {
-        try
-        {
-            var parts = _converter.ExtractQuestions(_text);
-            Progress = 0;
-            
-            if (parts == null || parts.Length == 1)
-            {
-                if (!_tokenSource.IsCancellationRequested)
-                {
-                    PlatformManager.Instance.ShowExclamationMessage(Resources.NoQuestionsFound);
-                }
+        Progress = 0;
+        _parts = parts;
+        Free = true;
 
-                return;
-            }
+        GoText = Resources.Start;
+        _skip.CanBeExecuted = false;
+        CanGo = true;
+        CanChangeStandart = true;
+        _stage = Stage.Begin;
+        Problem = "";
+        Info = Resources.Notice;
+        State = UIState.Parse;
+        Fragments = _parts.SelectMany(p => p).Select(p => p.Value).ToArray();
+        BadText = "";
 
-            _parts = parts;
-            Free = true;
-
-            GoText = Resources.Start;
-            _skip.CanBeExecuted = false;
-            CanGo = true;
-            CanChangeStandart = true;
-            _stage = Stage.Begin;
-            Problem = "";
-            Info = Resources.Notice;
-            State = UIState.Parse;
-            Fragments = _parts.SelectMany(p => p).Select(p => p.Value).ToArray();
-            BadText = "";
-
-            OnHighlightText(0, _text.Length, null, true);
-
-            if (_automaticTextImport)
-            {
-                _auto.Execute(null);
-            }
-        }
-        catch (Exception exc)
-        {
-            MainViewModel.ShowError(exc);
-        }
+        OnHighlightText(0, _text.Length, null, true);
     }
 
     private void SetTemplate(SITemplate template)
