@@ -30,14 +30,16 @@ Updated: 2026-08-28
   preview/close, and media-copy trace contains no synchronous document-lock or
   media-open stack on the UI thread; the largest sampled managed UI interval was
   236.6 ms. The user accepted this native review and requested no further GUI
-  automation while the desktop is in use. Final v0.2.1 package topology and
-  checksums remain to be recorded below.
+  automation while the desktop is in use. The final version-only rebuilt
+  packages pass checksum, metadata, launcher, payload, and tar/DEB identity
+  checks without an additional GUI launch.
 
 - Question-authoring implementation commit: `fcfbfb51`; stability
   implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
   implementation commit: `ff5b9e3a`; content-storyboard implementation commit:
   `37eb5931`; storyboard-selection fix commit: `82f05ef2` on
-  `feat/siquester-avalonia`; local UI-stall fix commit: `4b6682e1`.
+  `feat/siquester-avalonia`; first UI-stall fix commit: `4b6682e1`; v0.2.1
+  hardening implementation commit: `32a62910`.
 - All three suspected hardening defects were confirmed and fixed. Desktop close
   now serializes overlapping requests, persists settings before document close,
   catches and logs failures, keeps the window/data open on failure, and reports
@@ -233,7 +235,21 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 ## Release artifacts
 
-The release v0.2.0 artifacts were built by hosted package job `98826279515`
+The final local v0.2.1 artifacts were reproducibly built from implementation
+commit `32a62910af0e3ef492ffb7b4a0e1789f4084532b` using its commit timestamp as
+`SOURCE_DATE_EPOCH`:
+
+- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.1/SIQuester-0.2.1-linux-x64.tar.gz`, 59,018,645 bytes, SHA-256 `db306d1ee9433a8aeed8faf8757f624aa190e726f76796ac1bffea7feb3e4b6d`.
+- Debian amd64: `artifacts/siquester-cross-platform-v0.2.1/siquester_0.2.1_amd64.deb`, 41,839,500 bytes, SHA-256 `a206a354574c5d6195b149d9f2cadeaa8a105527a180697e1a7dcf1d89fc9eab`.
+- Adjacent checksum receipt passes both entries. The DEB declares package
+  `siquester`, version 0.2.1, architecture amd64, and installed size 135,728
+  KiB. Required launchers, apphost, WebView/Wayland assemblies, application
+  assets, desktop/MIME metadata, licenses, and notices are present. Launcher
+  shell syntax passes, the embedded assembly identifies
+  `0.2.1+32a62910af0e3ef492ffb7b4a0e1789f4084532b`, and tar/DEB apphosts are
+  byte-identical (SHA-256 `5ec8318c2b70972758e055ba15b6568e5d4b75bceeac8ad2f94f89fceca50a6d`).
+
+The prior release v0.2.0 artifacts were built by hosted package job `98826279515`
 from checkpoint `a6bf38a7`. They are published from
 `feat/siquester-avalonia`; `origin/master` remains at `8c2bee9c`.
 
@@ -255,15 +271,16 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 - Test: `CompatibilityArtifact_CreateEditSaveReload_ShouldPreserveSemanticDataAndMedia`.
 - Release output: `bin/AnyCPU.Release/SIQuester.ViewModel.Tests/net10.0/compatibility-artifacts/avalonia-core-roundtrip.siq`.
 - Receipt: adjacent `avalonia-core-roundtrip.receipt.json`.
-- Current Release artifact SHA-256: `8d12c63a0fcc0f86a3f4172555aa010703de76935f3c08da32869b3ae4909470`; receipt SHA-256: `69a9b3bc0388418561454b2f608e748c39625f17cf0b69864c6191a869e670d1`. ZIP metadata can change generated SIQ hashes; semantic and media receipts remain authoritative.
+- Current Release artifact SHA-256: `bfe19dcd0b5c5c1be4007f39e94ebb9db0157a2f201b0df4de038f19bf9cddc8`; receipt SHA-256: `c37bca4e1e8f37d603b43436aaa1478054ceb476364fdc1d49108f01dbb8f8ed`. ZIP metadata can change generated SIQ hashes; semantic and media receipts remain authoritative.
 - Verified through `SIDocument.Load`: one round, one theme, one question, and one referenced PNG with semantic and byte comparison.
-- Select-answer preview artifact: `avalonia-preview-options.siq`, current Release SHA-256 `a3a63490059da05060f4a167dd52ae435d30faf09d58de6f5e4a516698b83f17`; adjacent receipt SHA-256 `a65d6017a534309bb7543566098f591e74845451e9ceabda2c2ec8d74cad273b`. `QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia` verifies ordered labels `А`/`Б`, right option `Б`, `select` type, Unicode image reference, and exact image bytes through `SIDocument.Load`.
+- Select-answer preview artifact: `avalonia-preview-options.siq`, current Release SHA-256 `977d63480e371a1e0b8f4a94dbde5d74cd4c55be3419d1c5ca5d21939b067c07`; adjacent receipt SHA-256 `527ec083c19f4bf3a3c47866683731f75b6ea73aa86fc4971c53c2ade6ff465f`. `QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia` verifies ordered labels `А`/`Б`, right option `Б`, `select` type, Unicode image reference, and exact image bytes through `SIDocument.Load`.
 - Existing Windows SIQuester/SIGame runtime acceptance is not yet verified and must not be inferred from the loader receipt.
 
 ## Current blockers
 
-- No source blocker is known for the Linux v0.2.1 release. Fresh tar/DEB
-  artifacts and checksums are the remaining local release step.
+- No source or local artifact blocker is known for the Linux v0.2.1 release.
+  Publishing the feature branch and GitHub release is the remaining release
+  step; no merge to `master` is authorized.
 - Hosted run `33164408794` is not aggregate-green: the Xdnd smoke script failed
   to execute because its repository executable bit was absent, and 37 Windows
   view-model tests exposed a Windows-only safe-save verification gap. These are
@@ -273,9 +290,8 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Next independent tasks
 
-Build and structurally verify the v0.2.1 Linux x64 tar/DEB from the reviewed
-implementation commit, record hashes, then publish only the feature branch and
-GitHub release. Retain real Wayland-session launch, Xdnd runner permission
+Publish only `feat/siquester-avalonia` and the v0.2.1 GitHub release from the
+reviewed implementation commit. Retain real Wayland-session launch, Xdnd runner permission
 repair, and Windows safe-save verification as separate work; no broader parity
 work is implied.
 
@@ -297,10 +313,9 @@ work is implied.
 
 ## Review state
 
-- Latest reviewed implementation is the current working tree after `09b0dc2f`;
-  this file,
+- Latest reviewed implementation commit: `32a62910`; this file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
-  `RELEASE_NOTES_0.2.0.md` form the prior documentation checkpoint. All 370
+  `RELEASE_NOTES_0.2.1.md` form the v0.2.1 documentation checkpoint. All 370
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
   frontend cross-build passes with 0 errors. The hosted v0.2.0 tar/DEB checksums and
   launcher/Wayland metadata/topology pass through `a6bf38a7` but predate
@@ -316,5 +331,6 @@ work is implied.
   absence of synchronous media-open calls in the Avalonia/Desktop projects,
   focused lock-contention regressions, manual point-selection responsiveness,
   `git diff --check`, the cross-platform Release build, and the retained WPF
-  cross-build. Hosted v0.2.0 artifacts still identify `a6bf38a7`; fresh v0.2.1
-  artifacts are not claimed until their hashes are recorded.
+  cross-build. The local v0.2.1 tar/DEB identify `32a62910`, pass adjacent
+  checksums and structural acceptance, and retain the user-accepted current-code
+  native review without claiming a second packaged GUI run.
