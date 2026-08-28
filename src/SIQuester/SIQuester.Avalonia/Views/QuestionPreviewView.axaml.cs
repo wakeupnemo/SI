@@ -67,7 +67,7 @@ public partial class QuestionPreviewView : UserControl
 
         if (webView is null)
         {
-            webView = new NativeWebView { Source = source };
+            webView = new NativeWebView();
             webView.EnvironmentRequested += WebView_EnvironmentRequested;
             webView.NavigationStarted += WebView_NavigationStarted;
             webView.NavigationCompleted += WebView_NavigationCompleted;
@@ -76,6 +76,7 @@ public partial class QuestionPreviewView : UserControl
             webView.AdapterDestroyed += WebView_AdapterDestroyed;
             _webView = webView;
             PreviewContentHost.Content = webView;
+            webView.Navigate(source);
         }
         else
         {
@@ -130,6 +131,12 @@ public partial class QuestionPreviewView : UserControl
             {
                 _isBridgeReady = true;
                 viewModel.SetPreviewReady(true);
+                return;
+            }
+
+            if (QuestionPreviewWebBridge.IsAudioUnlockedMessage(message))
+            {
+                viewModel.ReportAudioUnlocked();
                 return;
             }
 

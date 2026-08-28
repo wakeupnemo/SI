@@ -186,6 +186,9 @@ public sealed class QuestionPlayViewModel : WorkspaceViewModel, IQuestionEngineP
         RefreshPlaybackCommandState();
     }
 
+    /// <summary>Records that the embedded player received the trusted gesture required for audio playback.</summary>
+    public void ReportAudioUnlocked() => _logger.LogInformation("Question preview audio unlocked");
+
     private void RefreshPlaybackCommandState()
     {
         var canPlay = IsPreviewAvailable && _isPreviewReady && !_hasPreviewFailure;

@@ -12,7 +12,7 @@ if [ -z "${DISPLAY:-}" ] || [ -z "${XDG_CONFIG_HOME:-}" ] || [ -z "${XDG_STATE_H
   exit 2
 fi
 
-for required_command in convert import sha256sum xdotool; do
+for required_command in convert import sha256sum xdotool xwininfo; do
   if ! command -v "$required_command" >/dev/null 2>&1; then
     echo "Required command is unavailable: $required_command" >&2
     exit 1
@@ -26,6 +26,7 @@ settings_path="$XDG_CONFIG_HOME/SIQuester/settings.json"
 log_path="$XDG_STATE_HOME/SIQuester/logs/siquester.log"
 screenshot_path="$receipt_directory/question-preview.png"
 mixed_screenshot_path="$receipt_directory/question-preview-mixed-content.png"
+audio_unlock_screenshot_path="$receipt_directory/question-preview-audio-unlock.png"
 receipt_path="$receipt_directory/question-preview.receipt.txt"
 
 if [[ "$desktop_application" == *.dll ]]; then
@@ -75,11 +76,13 @@ xdotool windowsize "$window_id" 1200 760
 sleep 3
 
 # The compatibility fixture has one expanded round, one theme, and one question.
-# These viewport-relative actions exercise selection and application commands;
-# semantic UI behavior remains covered independently by headless command tests.
-xdotool mousemove --window "$window_id" 75 324 click 1
+# Select the theme row, expand it with the keyboard, and move to its question.
+# Keyboard navigation is stable across the small GTK font-metric differences
+# between local and hosted Linux runners.
+xdotool mousemove --window "$window_id" 150 318 click 1
+xdotool key --window "$window_id" Right
 sleep 1
-xdotool mousemove --window "$window_id" 125 356 click 1
+xdotool key --window "$window_id" Down
 sleep 1
 xdotool mousemove --window "$window_id" 812 161 click 1
 sleep 4
@@ -87,7 +90,14 @@ sleep 4
 # Advance question, answer request, and right-answer fragments. The terminal
 # fragment must expose Replay immediately, without a fourth sentinel click.
 xdotool mousemove --window "$window_id" 812 660 click 1
-sleep 4
+sleep 2
+# WebKitGTK requires one trusted gesture inside the embedded page before audio
+# can run. The bridge presents a focused audio-start button.
+import -display "$DISPLAY" -window "$window_id" "$audio_unlock_screenshot_path"
+webview_window_id="$(xwininfo -id "$window_id" -tree | awk '/"dotnet"/ { print $1; exit }')"
+test -n "$webview_window_id"
+xdotool mousemove --window "$webview_window_id" 343 194 click 1
+sleep 2
 
 # The first fragment contains text and a referenced yellow image in one screen
 # moment. Capture it before advancing to the answer flow so a collapsed media
@@ -141,25 +151,30 @@ test -s "$settings_path"
 test -s "$log_path"
 grep -F "Question preview backend available: WebKitGtk" "$log_path"
 grep -F "Question preview package media served: Image" "$log_path"
+grep -F "Question preview package media served: Audio" "$log_path"
+grep -F "Question preview audio unlocked" "$log_path"
 ! grep -E "Question preview host failed|Unhandled exception|FATAL" "$log_path"
 
 created_sessions="$(grep -Fc "Question preview media session created" "$log_path")"
 disposed_sessions="$(grep -Fc "Question preview media session disposed" "$log_path")"
 replay_count="$(grep -Fc "Question preview replay started" "$log_path")"
 media_fetches="$(grep -Fc "Question preview package media served: Image" "$log_path")"
+audio_fetches="$(grep -Fc "Question preview package media served: Audio" "$log_path")"
 
 test "$created_sessions" -eq 2
 test "$disposed_sessions" -eq 2
 test "$replay_count" -eq 1
 test "$media_fetches" -ge 2
+test "$audio_fetches" -ge 1
 
 {
   echo "backend=WebKitGtk"
-  echo "package_media=Image"
+  echo "package_media=Image,Audio"
   echo "created_sessions=$created_sessions"
   echo "disposed_sessions=$disposed_sessions"
   echo "replay_count=$replay_count"
   echo "media_fetches=$media_fetches"
+  echo "audio_fetches=$audio_fetches"
   echo "mixed_yellow_fraction=$mixed_yellow_fraction"
   echo "bright_fraction=$bright_fraction"
   sha256sum "$mixed_screenshot_path"

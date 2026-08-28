@@ -210,14 +210,27 @@ internal sealed class QuestionPreviewProtocolTests
     public void SelectAnswerEngine_CompletesOnRightOptionAndReplayRestartsSameOwnedSession()
     {
         const string mediaName = "вариант ответа 例.png";
+        const string audioName = "preview-tone.wav";
         var expectedBytes = Convert.FromBase64String(
             "iVBORw0KGgoAAAANSUhEUgAAAIAAAACAAQMAAAD58POIAAAAA1BMVEX1xUI6Ko9WAAAAGUlEQVRIx2NgGAWjYBSMglEwCkbBKKAvAAAIgAABbisdVAAAAABJRU5ErkJggg==");
         using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
         using var temporaryMedia = new TemporaryMediaFile(mediaName, expectedBytes);
+        using var temporaryAudio = new TemporaryMediaFile(audioName, [1, 2, 3, 4]);
         using var package = TestHelper.CreateSelectAnswerPreviewPackage(mediaName);
+        var packageQuestion = package.Package.Rounds[0].Themes[0].Questions[0];
+        var packageContent = packageQuestion.Parameters[QuestionParameterNames.Question].ContentValue!;
+        packageContent[1].WaitForFinish = false;
+        packageContent.Add(new ContentItem
+        {
+            Type = ContentTypes.Audio,
+            Value = audioName,
+            IsRef = true,
+            Placement = ContentPlacements.Background,
+        });
         using var document = TestHelper.CreateDocumentViewModelFactory(serviceProvider)
             .CreateViewModelFor(package, "Select answer preview");
         document.Images.AddFile(temporaryMedia.Path, mediaName);
+        document.Audio.AddFile(temporaryAudio.Path, audioName);
         var service = new TrackingPreviewService(
             QuestionPreviewHostDescriptor.Available(new Uri("http://127.0.0.1:52731/index.html")),
             "http://127.0.0.1:52731/private/answer-option-token.png");
@@ -242,6 +255,10 @@ internal sealed class QuestionPreviewProtocolTests
             Assert.That(service.Sessions, Has.Count.EqualTo(1));
             Assert.That(questionMessages.Select(message => message.GetProperty("type").GetString()),
                 Does.Contain("answerOptionsLayout"));
+            Assert.That(questionMessages.Any(message =>
+                message.GetProperty("type").GetString() == "content"
+                && message.GetProperty("placement").GetString() == "background"
+                && message.GetProperty("content")[0].GetProperty("type").GetString() == "audio"), Is.True);
             var screenContent = questionMessages.Single(message =>
                 message.GetProperty("type").GetString() == "content"
                 && message.GetProperty("placement").GetString() == "screen")

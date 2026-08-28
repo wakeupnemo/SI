@@ -523,7 +523,15 @@ public sealed class PackageViewModel : ItemViewModel<Package>
 
     private void AddTags_Executed(object? arg)
     {
-        var newTags = PlatformManager.Instance.AskTags(Tags);
+        // The cross-platform editor exposes tags directly in the inspector and does not
+        // install the legacy WPF PlatformManager. Saving an untagged package must still work.
+        var platformManager = PlatformManager.Instance;
+        if (platformManager == null)
+        {
+            return;
+        }
+
+        var newTags = platformManager.AskTags(Tags);
 
         if (newTags == null)
         {

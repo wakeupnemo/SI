@@ -8,6 +8,7 @@ namespace SIQuester.Avalonia.Views;
 public static class QuestionPreviewWebBridge
 {
     public const string ReadyMessageType = "siquesterBridgeReady";
+    public const string AudioUnlockedMessageType = "siquesterAudioUnlocked";
     public const int MaxInboundMessageLength = 64 * 1024;
     public const int MaxOutboundMessageLength = 4 * 1024 * 1024;
 
@@ -64,6 +65,15 @@ public static class QuestionPreviewWebBridge
         return document.RootElement.TryGetProperty("type", out var type)
             && type.ValueKind == JsonValueKind.String
             && string.Equals(type.GetString(), ReadyMessageType, StringComparison.Ordinal);
+    }
+
+    /// <summary>Gets whether a trusted click unlocked embedded audio playback.</summary>
+    public static bool IsAudioUnlockedMessage(string messageJson)
+    {
+        using var document = JsonDocument.Parse(messageJson);
+        return document.RootElement.TryGetProperty("type", out var type)
+            && type.ValueKind == JsonValueKind.String
+            && string.Equals(type.GetString(), AudioUnlockedMessageType, StringComparison.Ordinal);
     }
 
     /// <summary>Allows only the randomized application origin and its own asset path.</summary>

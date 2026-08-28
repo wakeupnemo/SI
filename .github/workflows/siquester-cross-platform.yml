@@ -160,7 +160,7 @@ jobs:
       - name: Install WebKit and smoke dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes imagemagick libwebkit2gtk-4.1-0 xdotool xvfb
+          sudo apt-get install --yes imagemagick libwebkit2gtk-4.1-0 x11-utils xdotool xvfb
 
       - name: Restore and build preview test boundary
         run: |

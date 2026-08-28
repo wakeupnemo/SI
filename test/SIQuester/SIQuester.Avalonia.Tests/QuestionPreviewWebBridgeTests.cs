@@ -70,6 +70,9 @@ internal sealed class QuestionPreviewWebBridgeTests
             Assert.That(QuestionPreviewWebBridge.IsReadyMessage(
                 "{\"type\":\"siquesterBridgeReady\"}"), Is.True);
             Assert.That(QuestionPreviewWebBridge.IsReadyMessage(accepted), Is.False);
+            Assert.That(QuestionPreviewWebBridge.IsAudioUnlockedMessage(
+                "{\"type\":\"siquesterAudioUnlocked\"}"), Is.True);
+            Assert.That(QuestionPreviewWebBridge.IsAudioUnlockedMessage(accepted), Is.False);
             Assert.That(QuestionPreviewWebBridge.TryValidateInboundMessage("[]", out _), Is.False);
             Assert.That(QuestionPreviewWebBridge.TryValidateInboundMessage("not-json", out _), Is.False);
             Assert.That(QuestionPreviewWebBridge.TryValidateInboundMessage(
@@ -386,6 +389,8 @@ internal sealed class QuestionPreviewWebBridgeTests
             Assert.That(html, Does.Contain("siquester-bridge.js"));
             Assert.That(bridge, Does.Contain("window.siquesterReceiveHostMessage"));
             Assert.That(bridge, Does.Contain("window.siquesterBridgeReady = true"));
+            Assert.That(bridge, Does.Contain("siquester-audio-unlock"));
+            Assert.That(bridge, Does.Contain("new Audio(item.value)"));
             Assert.That(availableSession.Host, Is.SameAs(descriptor));
             Assert.That(mediaRegistered, Is.True);
             Assert.That(servedMedia, Is.EqualTo(mediaBytes));

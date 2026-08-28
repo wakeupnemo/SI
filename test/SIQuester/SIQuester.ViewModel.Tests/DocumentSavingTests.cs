@@ -2,7 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SIPackages;
 using SIPackages.Core;
+using SIQuester.Model;
 using SIQuester.ViewModel.Contracts;
+using SIQuester.ViewModel.PlatformSpecific;
 using SIQuester.ViewModel.Services;
 using SIQuester.ViewModel.Tests.Helpers;
 using System.Security.Cryptography;
@@ -166,6 +168,36 @@ internal sealed class DocumentSavingTests
         using var fileStream = File.OpenRead(filePath);
         var loadedDocument = SIDocument.Load(fileStream);
         Assert.That(loadedDocument.Audio, Does.Contain("test_audio.mp3"));
+    }
+
+    [Test]
+    [NonParallelizable]
+    public async Task SaveDocument_WithoutLegacyPlatformManagerAndTags_ShouldStillSave()
+    {
+        using var document = TestHelper.CreateSimpleTestPackage();
+        using var qDocument = _documentFactory.CreateViewModelFor(document, "Cross-platform save");
+        var filePath = Path.Combine(_testDirectory, "untagged-cross-platform.siq");
+        qDocument.Path = filePath;
+        var previousPlatformManager = PlatformManager.Instance;
+        var previousAskToSetTags = AppSettings.Default.AskToSetTagsOnSave;
+
+        try
+        {
+            PlatformManager.Instance = null!;
+            AppSettings.Default.AskToSetTagsOnSave = true;
+
+            await qDocument.Save.ExecuteAsync(null);
+
+            Assert.That(File.Exists(filePath), Is.True);
+            await using var stream = File.OpenRead(filePath);
+            using var reloaded = SIDocument.Load(stream);
+            Assert.That(reloaded.Package.Name, Is.EqualTo("Test Package"));
+        }
+        finally
+        {
+            AppSettings.Default.AskToSetTagsOnSave = previousAskToSetTags;
+            PlatformManager.Instance = previousPlatformManager;
+        }
     }
 
     [Test]
@@ -414,20 +446,35 @@ internal sealed class DocumentSavingTests
     public async Task QuestionPreviewOptionsArtifact_CreateSaveReload_ShouldPreserveOptionMedia()
     {
         const string imageName = "вариант ответа 例.png";
+        const string audioName = "preview-tone.wav";
         var artifactDirectory = Path.Combine(TestContext.CurrentContext.WorkDirectory, "compatibility-artifacts");
         Directory.CreateDirectory(artifactDirectory);
         var artifactPath = Path.Combine(artifactDirectory, "avalonia-preview-options.siq");
         var receiptPath = Path.Combine(artifactDirectory, "avalonia-preview-options.receipt.json");
         var mediaBytes = Convert.FromBase64String(PreviewPngBase64);
         var mediaSource = Path.Combine(_testDirectory, imageName);
+        var audioSource = Path.Combine(_testDirectory, audioName);
         await File.WriteAllBytesAsync(mediaSource, mediaBytes);
+        await File.WriteAllBytesAsync(audioSource, CreatePreviewWave());
 
         using var document = TestHelper.CreateSelectAnswerPreviewPackage(imageName);
+        var previewContent = document.Package.Rounds[0].Themes[0].Questions[0]
+            .Parameters[QuestionParameterNames.Question]
+            .ContentValue!;
+        previewContent[1].WaitForFinish = false;
+        previewContent.Add(new ContentItem
+            {
+                Type = ContentTypes.Audio,
+                Value = audioName,
+                IsRef = true,
+                Placement = ContentPlacements.Background,
+            });
         document.Package.ID = "avalonia-preview-options";
         document.Package.Language = "ru-RU";
         using var qDocument = _documentFactory.CreateViewModelFor(document, "Preview options artifact");
         qDocument.Path = artifactPath;
         qDocument.Images.AddFile(mediaSource);
+        qDocument.Audio.AddFile(audioSource);
         await qDocument.Save.ExecuteAsync(null);
 
         await using var artifactStream = File.OpenRead(artifactPath);
@@ -450,10 +497,12 @@ internal sealed class DocumentSavingTests
             Assert.That(options.Keys, Is.EqualTo(new[] { "А", "Б" }));
             Assert.That(question.Right, Is.EqualTo(new[] { "Б" }));
             Assert.That(questionContent.Select(item => item.Type),
-                Is.EqualTo(new[] { ContentTypes.Text, ContentTypes.Image }));
+                Is.EqualTo(new[] { ContentTypes.Text, ContentTypes.Image, ContentTypes.Audio }));
             Assert.That(questionContent[0].WaitForFinish, Is.False);
             Assert.That(questionContent[1].Value, Is.EqualTo(imageName));
             Assert.That(questionContent[1].IsRef, Is.True);
+            Assert.That(questionContent[2].Value, Is.EqualTo(audioName));
+            Assert.That(questionContent[2].Placement, Is.EqualTo(ContentPlacements.Background));
             Assert.That(imageOption.Type, Is.EqualTo(ContentTypes.Image));
             Assert.That(imageOption.Value, Is.EqualTo(imageName));
             Assert.That(imageOption.IsRef, Is.True);
@@ -474,6 +523,7 @@ internal sealed class DocumentSavingTests
             rightOption = question.Right.Single(),
             imageName,
             imageSha256 = Convert.ToHexString(SHA256.HashData(mediaBytes)).ToLowerInvariant(),
+            audioName,
             loader = "SIDocument.Load",
         };
 
@@ -483,6 +533,33 @@ internal sealed class DocumentSavingTests
 
         TestContext.Out.WriteLine($"Preview options artifact: {artifactPath}");
         TestContext.Out.WriteLine($"Preview options receipt: {receiptPath}");
+    }
+
+    private static byte[] CreatePreviewWave()
+    {
+        const int sampleRate = 8000;
+        const int sampleCount = sampleRate / 4;
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+        writer.Write("RIFF"u8);
+        writer.Write(36 + sampleCount * sizeof(short));
+        writer.Write("WAVEfmt "u8);
+        writer.Write(16);
+        writer.Write((short)1);
+        writer.Write((short)1);
+        writer.Write(sampleRate);
+        writer.Write(sampleRate * sizeof(short));
+        writer.Write((short)sizeof(short));
+        writer.Write((short)16);
+        writer.Write("data"u8);
+        writer.Write(sampleCount * sizeof(short));
+
+        for (var sample = 0; sample < sampleCount; sample++)
+        {
+            writer.Write((short)(Math.Sin(2 * Math.PI * 440 * sample / sampleRate) * short.MaxValue / 4));
+        }
+
+        return stream.ToArray();
     }
 
     #endregion

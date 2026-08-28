@@ -1,3 +1,4 @@
 # SIQuester Cross-Platform 0.3.1
 
-- Images now display correctly alongside text in question preview.
+- Images and audio now work correctly in question preview.
+- Packages without tags now save correctly.
