@@ -86,8 +86,10 @@ No parallel model or alternate serializer was introduced.
 
 ## Linux artifacts
 
-The hashes below identify the final local Linux build from release checkpoint
-`7a44a0ff`, including the storyboard selection fix.
+The hashes below identify the GitHub-hosted Linux package job output from
+checkpoint `a6bf38a7`, including the storyboard selection fix. The exact tarball
+also passed the packaged startup/open/clean-close smoke; the dedicated WebKitGTK
+question-preview job passed on the same commit.
 
 - `SIQuester-0.2.0-linux-x64.tar.gz`
 - `siquester_0.2.0_amd64.deb`
@@ -96,12 +98,18 @@ The hashes below identify the final local Linux build from release checkpoint
 Final SHA-256:
 
 ```text
-1f9464b405bd55f32339b59a15c95fd724122ce71022806a7be6cb2304bb9389  SIQuester-0.2.0-linux-x64.tar.gz
-2b913a7105f840427ab61e3a61359eef8c747317701783990482e5d7b2830097  siquester_0.2.0_amd64.deb
+958a08f6c163c707f3f088c40d6636a6bb1779d239b058960f6c54319060c8ca  SIQuester-0.2.0-linux-x64.tar.gz
+81a25958eba83557cb3c52acc56d677b5e9d985ff7f123b49dd99450ee41dc42  siquester_0.2.0_amd64.deb
 ```
 
 The Debian package includes the desktop entry, icon, `.siq` MIME registration,
 license notices, native dependency metadata, and WebKit/GStreamer recommendations.
+
+The broader hosted matrix also built Linux ARM64, macOS ARM64/x64, and Windows
+x64 artifacts, but they are not release assets because native acceptance for
+those platforms remains deferred. The aggregate run is not claimed green:
+Linux Xdnd receipt launch failed on a missing executable bit, and Windows
+cross-platform save tests exposed a separate Windows-only verification gap.
 
 ## Deferred boundaries
 

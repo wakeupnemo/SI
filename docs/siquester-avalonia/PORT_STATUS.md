@@ -52,9 +52,11 @@ Updated: 2026-08-28
 - The user confirmed that preview renders through the rebuilt launcher on the
   affected Debian/NVIDIA desktop. The compositor workaround is therefore
   visually accepted for that host.
-- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass and contain the
-  regular launcher, storyboard selection fix, and
-  `Avalonia.Wayland.dll`/`NWayland.dll`.
+- Hosted run `33164408794` built the v0.2.0 linux-x64 tar and amd64 DEB from
+  `a6bf38a7`; checksums and exact packaged startup/open/clean-close pass. The
+  artifacts contain the regular launcher, storyboard selection fix, and
+  `Avalonia.Wayland.dll`/`NWayland.dll`. Its dedicated WebKitGTK preview job
+  also passes.
 
 ## Verified baseline
 
@@ -185,12 +187,13 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 ## Release artifacts
 
-The local v0.2.0 artifacts were built from checkpoint `7a44a0ff` with
-`1787913158` as `SOURCE_DATE_EPOCH`. They are not installed or merged.
+The release v0.2.0 artifacts were built by hosted package job `98826279515`
+from checkpoint `a6bf38a7`. They are published from
+`feat/siquester-avalonia`; `origin/master` remains at `8c2bee9c`.
 
-- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 59,019,971 bytes, SHA-256 `1f9464b405bd55f32339b59a15c95fd724122ce71022806a7be6cb2304bb9389`.
-- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,846,816 bytes, SHA-256 `2b913a7105f840427ab61e3a61359eef8c747317701783990482e5d7b2830097`.
-- Checksum receipt: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.SHA256SUMS`; both entries pass.
+- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/ci/siquester-linux-x64/SIQuester-0.2.0-linux-x64.tar.gz`, 59,020,018 bytes, SHA-256 `958a08f6c163c707f3f088c40d6636a6bb1779d239b058960f6c54319060c8ca`.
+- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/ci/siquester-linux-x64/siquester_0.2.0_amd64.deb`, 45,235,464 bytes, SHA-256 `81a25958eba83557cb3c52acc56d677b5e9d985ff7f123b49dd99450ee41dc42`.
+- Adjacent checksum receipt passes both entries.
 - Native authoring receipt and exact saved SIQ: `artifacts/siquester-cross-platform-v0.2.0/native-smoke/`.
 - Final native and managed stability receipt: `artifacts/siquester-cross-platform-v0.2.0/stability/`.
 
@@ -198,8 +201,8 @@ The DEB declares version 0.2.0, architecture amd64, native dependencies,
 WebKit/GStreamer recommendations, immutable installation paths, desktop entry,
 icon, license/third-party notices, and `application/x-siq` MIME metadata. Its
 native executable, `SIQuester.Avalonia.dll`, and `SIQuester.ViewModel.dll` are
-byte-identical to the tar payload. The hosted five-RID matrix is the authority
-for the remaining release artifacts.
+byte-identical to the tar payload. The hosted matrix built all five RIDs, but
+only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Compatibility artifact
 
@@ -213,16 +216,21 @@ for the remaining release artifacts.
 
 ## Current blockers
 
-- No source blocker is known for the content-storyboard slice. Fresh Linux
-  v0.2.0 artifacts and checksums exist; hosted packaged startup is pending.
+- No source blocker is known for the Linux content-storyboard release slice.
+  Fresh Linux v0.2.0 artifacts, checksums, packaged startup, and WebKitGTK
+  preview receipts pass.
+- Hosted run `33164408794` is not aggregate-green: the Xdnd smoke script failed
+  to execute because its repository executable bit was absent, and 37 Windows
+  view-model tests exposed a Windows-only safe-save verification gap. These are
+  deferred from the Linux-only v0.2.0 assets and remain explicit CI work.
 - Native Windows WPF/Avalonia execution, hosted package publication, and macOS signing/runtime receipts require those operating-system runners.
 - The host has no system .NET SDK; the session-local SDK is not a repository requirement.
 
 ## Next independent tasks
 
-Push this checkpoint, run the hosted five-RID workflow, publish v0.2.0 if it is
-green, and retain real Wayland-session launch as a separate
-environment-specific verification; no broader parity work is implied.
+Retain real Wayland-session launch, Xdnd runner permission repair, and Windows
+safe-save verification as separate post-v0.2.0 work; no broader parity work is
+implied.
 
 ## Known limitations
 
