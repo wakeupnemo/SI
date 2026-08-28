@@ -181,6 +181,48 @@ internal sealed class FlatQuestionOperationsTests
     }
 
     [Test]
+    public void MoveQuestionIntoEmptyFinalTheme_UsesCanonicalZeroPriceAndIsUndoable()
+    {
+        var package = SIDocument.Create("Final question move", "Test author");
+        var sourceRound = new Round { Name = "Source", Type = RoundTypes.Standart };
+        var sourceTheme = new Theme { Name = "Source theme" };
+        sourceTheme.Questions.Add(CreateRichQuestion("Moved", 100));
+        sourceRound.Themes.Add(sourceTheme);
+        var finalRound = new Round { Name = "Final", Type = RoundTypes.Final };
+        finalRound.Themes.Add(new Theme { Name = "Final theme" });
+        package.Package.Rounds.Add(sourceRound);
+        package.Package.Rounds.Add(finalRound);
+        using var document = _documentFactory.CreateViewModelFor(package, "Final question move");
+        var source = document.Package.Rounds[0].Themes[0];
+        var target = document.Package.Rounds[1].Themes[0];
+
+        var result = document.FlatQuestions.Apply(
+            document.FlatQuestions.CreateDragData(source.Questions[0]),
+            new FlatQuestionLocation(1, 0, 0),
+            FlatQuestionDropMode.Move,
+            recalculatePrices: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(FlatQuestionDropResult.Applied));
+            Assert.That(source.Questions, Is.Empty);
+            Assert.That(Answers(target), Is.EqualTo(new[] { "Moved" }));
+            Assert.That(Prices(target), Is.EqualTo(new[] { 0 }));
+        });
+
+        document.OperationsManager.Undo.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(Answers(source), Is.EqualTo(new[] { "Moved" }));
+            Assert.That(Prices(source), Is.EqualTo(new[] { 100 }));
+            Assert.That(target.Questions, Is.Empty);
+        });
+
+        document.OperationsManager.Redo.Execute(null);
+        Assert.That(Prices(target), Is.EqualTo(new[] { 0 }));
+    }
+
+    [Test]
     public void CopyWithinTheme_DuplicatesQuestionAndLeavesSourceAttached()
     {
         using var document = CreateDocument(

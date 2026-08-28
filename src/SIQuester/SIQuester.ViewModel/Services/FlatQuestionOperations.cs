@@ -291,6 +291,16 @@ public sealed class FlatQuestionOperations
 
     private static void ResetPrices(ThemeViewModel theme, IReadOnlyList<int> prices)
     {
+        if (theme.OwnerRound?.Model.Type == RoundTypes.Final)
+        {
+            foreach (var question in theme.Questions)
+            {
+                question.Model.Price = 0;
+            }
+
+            return;
+        }
+
         var previousIndex = 0;
 
         for (var i = 0; i < theme.Questions.Count; i++)

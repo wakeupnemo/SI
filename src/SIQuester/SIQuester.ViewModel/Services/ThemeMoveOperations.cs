@@ -1,4 +1,5 @@
 using SIPackages;
+using SIPackages.Core;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
@@ -120,7 +121,7 @@ public sealed class ThemeMoveOperations
 
             if (recalculatePrices)
             {
-                ResetPrices(sourceTheme, target.RoundIndex);
+                ResetPrices(sourceTheme, targetRound);
             }
 
             RecordSelectionChange(sourceTheme);
@@ -136,7 +137,7 @@ public sealed class ThemeMoveOperations
 
             if (recalculatePrices)
             {
-                ResetPrices(insertedTheme, target.RoundIndex);
+                ResetPrices(insertedTheme, targetRound);
             }
 
             sourceRound.Themes.RemoveAt(sourceIndex);
@@ -178,9 +179,12 @@ public sealed class ThemeMoveOperations
         return true;
     }
 
-    private void ResetPrices(ThemeViewModel theme, int roundIndex)
+    private void ResetPrices(ThemeViewModel theme, RoundViewModel targetRound)
     {
-        var basePrice = (roundIndex + 1) * _document.Settings.QuestionBase;
+        var roundIndex = _document.Package.Rounds.IndexOf(targetRound);
+        var basePrice = targetRound.Model.Type == RoundTypes.Final
+            ? 0
+            : (roundIndex + 1) * _document.Settings.QuestionBase;
 
         for (var i = 0; i < theme.Questions.Count; i++)
         {

@@ -1054,51 +1054,115 @@ public sealed class QDocument : WorkspaceViewModel
 
     private void CreatePropertyListeners()
     {
-        Package.Model.PropertyChanged += Object_PropertyValueChanged;
-        Package.Rounds.CollectionChanged += Object_CollectionChanged;
         Package.Tags.CollectionChanged += Object_CollectionChanged;
-
-        Listen(Package);
-
-        foreach (var round in Package.Rounds)
-        {
-            round.Model.PropertyChanged += Object_PropertyValueChanged;
-            round.Themes.CollectionChanged += Object_CollectionChanged;
-
-            Listen(round);
-
-            foreach (var theme in round.Themes)
-            {
-                theme.Model.PropertyChanged += Object_PropertyValueChanged;
-                theme.Questions.CollectionChanged += Object_CollectionChanged;
-
-                Listen(theme);
-
-                foreach (var question in theme.Questions)
-                {
-                    question.Model.PropertyChanged += Object_PropertyValueChanged;
-
-                    if (question.Parameters != null)
-                    {
-                        AttachParametersListener(question.Parameters);
-                    }
-
-                    AttachScriptListeners(question);
-
-                    question.Right.CollectionChanged += Object_CollectionChanged;
-                    question.Wrong.CollectionChanged += Object_CollectionChanged;
-
-                    question.TypeNameChanged += Question_TypeNameChanged;
-
-                    Listen(question);
-                }
-            }
-        }
+        AttachItemListeners(Package);
 
         Images.HasChanged += Media_Commited;
         Audio.HasChanged += Media_Commited;
         Video.HasChanged += Media_Commited;
         Html.HasChanged += Media_Commited;
+    }
+
+    private void AttachItemListeners(IItemViewModel item)
+    {
+        Listen(item);
+        item.GetModel().PropertyChanged += Object_PropertyValueChanged;
+
+        switch (item)
+        {
+            case PackageViewModel package:
+                package.Rounds.CollectionChanged += Object_CollectionChanged;
+
+                foreach (var round in package.Rounds)
+                {
+                    AttachItemListeners(round);
+                }
+
+                break;
+
+            case RoundViewModel round:
+                round.Themes.CollectionChanged += Object_CollectionChanged;
+
+                foreach (var theme in round.Themes)
+                {
+                    AttachItemListeners(theme);
+                }
+
+                break;
+
+            case ThemeViewModel theme:
+                theme.Questions.CollectionChanged += Object_CollectionChanged;
+
+                foreach (var question in theme.Questions)
+                {
+                    AttachItemListeners(question);
+                }
+
+                break;
+
+            case QuestionViewModel question:
+                if (question.Parameters != null)
+                {
+                    AttachParametersListener(question.Parameters);
+                }
+
+                AttachScriptListeners(question);
+                question.Right.CollectionChanged += Object_CollectionChanged;
+                question.Wrong.CollectionChanged += Object_CollectionChanged;
+                question.TypeNameChanged += Question_TypeNameChanged;
+                break;
+        }
+    }
+
+    private void DetachItemListeners(IItemViewModel item)
+    {
+        StopListen(item);
+        item.GetModel().PropertyChanged -= Object_PropertyValueChanged;
+
+        switch (item)
+        {
+            case PackageViewModel package:
+                package.Rounds.CollectionChanged -= Object_CollectionChanged;
+
+                foreach (var round in package.Rounds)
+                {
+                    DetachItemListeners(round);
+                }
+
+                break;
+
+            case RoundViewModel round:
+                round.Themes.CollectionChanged -= Object_CollectionChanged;
+
+                foreach (var theme in round.Themes)
+                {
+                    DetachItemListeners(theme);
+                }
+
+                break;
+
+            case ThemeViewModel theme:
+                theme.Questions.CollectionChanged -= Object_CollectionChanged;
+
+                foreach (var question in theme.Questions)
+                {
+                    DetachItemListeners(question);
+                }
+
+                break;
+
+            case QuestionViewModel question:
+                if (question.Parameters != null)
+                {
+                    DetachParametersLsteners(question.Parameters);
+                }
+
+                DetachScriptListeners(question);
+                question.Right.CollectionChanged -= Object_CollectionChanged;
+                question.Wrong.CollectionChanged -= Object_CollectionChanged;
+                question.TypeNameChanged -= Question_TypeNameChanged;
+                break;
+        }
     }
 
     private void AttachParametersListener(StepParametersViewModel parameters)
@@ -1402,50 +1466,8 @@ public sealed class QDocument : WorkspaceViewModel
                 {
                     if (item is IItemViewModel itemViewModel)
                     {
-                        Listen(itemViewModel);
-                        itemViewModel.GetModel().PropertyChanged += Object_PropertyValueChanged;
-
-                        if (itemViewModel is PackageViewModel package)
-                        {
-                            package.Rounds.CollectionChanged += Object_CollectionChanged;
-                        }
-                        else
-                        {
-                            if (itemViewModel is RoundViewModel round)
-                            {
-                                round.Themes.CollectionChanged += Object_CollectionChanged;
-                                // Update question count when a round is added
-                                QuestionCount += CountQuestionsInRound(round);
-                            }
-                            else
-                            {
-                                if (itemViewModel is ThemeViewModel theme)
-                                {
-                                    theme.Questions.CollectionChanged += Object_CollectionChanged;
-                                    // Update question count when a theme is added
-                                    QuestionCount += theme.Questions.Count;
-                                }
-                                else
-                                {
-                                    var questionViewModel = (QuestionViewModel)itemViewModel;
-
-                                    if (questionViewModel.Parameters != null)
-                                    {
-                                        AttachParametersListener(questionViewModel.Parameters);
-                                    }
-
-                                    AttachScriptListeners(questionViewModel);
-
-                                    questionViewModel.Right.CollectionChanged += Object_CollectionChanged;
-                                    questionViewModel.Wrong.CollectionChanged += Object_CollectionChanged;
-
-                                    questionViewModel.TypeNameChanged += Question_TypeNameChanged;
-
-                                    // Update question count when a question is added
-                                    QuestionCount++;
-                                }
-                            }
-                        }
+                        AttachItemListeners(itemViewModel);
+                        QuestionCount += CountQuestionsInItem(itemViewModel);
                     }
                     else if (item is StepParameterRecord parameter)
                     {
@@ -1472,50 +1494,8 @@ public sealed class QDocument : WorkspaceViewModel
                 {
                     if (item is IItemViewModel itemViewModel)
                     {
-                        StopListen(itemViewModel);
-                        itemViewModel.GetModel().PropertyChanged -= Object_PropertyValueChanged;
-
-                        if (itemViewModel is PackageViewModel package)
-                        {
-                            package.Rounds.CollectionChanged -= Object_CollectionChanged;
-                        }
-                        else
-                        {
-                            if (itemViewModel is RoundViewModel round)
-                            {
-                                round.Themes.CollectionChanged -= Object_CollectionChanged;
-                                // Update question count when a round is removed
-                                QuestionCount -= CountQuestionsInRound(round);
-                            }
-                            else
-                            {
-                                if (itemViewModel is ThemeViewModel theme)
-                                {
-                                    theme.Questions.CollectionChanged -= Object_CollectionChanged;
-                                    // Update question count when a theme is removed
-                                    QuestionCount -= theme.Questions.Count;
-                                }
-                                else
-                                {
-                                    var questionViewModel = (QuestionViewModel)itemViewModel;
-
-                                    if (questionViewModel.Parameters != null)
-                                    {
-                                        DetachParametersLsteners(questionViewModel.Parameters);
-                                    }
-
-                                    DetachScriptListeners(questionViewModel);
-
-                                    questionViewModel.Right.CollectionChanged -= Object_CollectionChanged;
-                                    questionViewModel.Wrong.CollectionChanged -= Object_CollectionChanged;
-
-                                    questionViewModel.TypeNameChanged -= Question_TypeNameChanged;
-
-                                    // Update question count when a question is removed
-                                    QuestionCount--;
-                                }
-                            }
-                        }
+                        DetachItemListeners(itemViewModel);
+                        QuestionCount -= CountQuestionsInItem(itemViewModel);
                     }
                     else if (item is StepParameterRecord parameter)
                     {
@@ -1555,6 +1535,16 @@ public sealed class QDocument : WorkspaceViewModel
                     {
                         return;
                     }
+                }
+
+                foreach (var oldItem in e.OldItems.OfType<IItemViewModel>())
+                {
+                    DetachItemListeners(oldItem);
+                }
+
+                foreach (var newItem in e.NewItems.OfType<IItemViewModel>())
+                {
+                    AttachItemListeners(newItem);
                 }
 
                 // For replace, adjust question count by computing delta
@@ -1705,6 +1695,14 @@ public sealed class QDocument : WorkspaceViewModel
     /// </summary>
     private static int CountQuestionsInRound(RoundViewModel round) =>
         round.Themes.Sum(theme => theme.Questions.Count);
+
+    private static int CountQuestionsInItem(IItemViewModel item) => item switch
+    {
+        RoundViewModel round => CountQuestionsInRound(round),
+        ThemeViewModel theme => theme.Questions.Count,
+        QuestionViewModel => 1,
+        _ => 0,
+    };
 
     /// <summary>
     /// Counts the questions that have both content and a right answer filled in.

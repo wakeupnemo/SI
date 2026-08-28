@@ -198,6 +198,126 @@ internal sealed class ThemeMoveOperationsTests
     }
 
     [Test]
+    public async Task MoveAcrossRounds_TracksClonedQuestionEditsAndDetachesRemovedSourceTree()
+    {
+        using var document = CreateTwoRoundDocument([125, 250]);
+        var sourceTheme = document.Package.Rounds[0].Themes[0];
+        var result = document.ThemeMoves.Apply(
+            document.ThemeMoves.CreateDragData(sourceTheme),
+            new ThemeLocation(1, 0),
+            recalculatePrices: true);
+        var movedQuestion = document.Package.Rounds[1].Themes[0].Questions[0];
+        var movedPrice = movedQuestion.Model.Price;
+        var outputPath = Path.Combine(
+            TestContext.CurrentContext.WorkDirectory,
+            $"tracked moved theme {Guid.NewGuid():N}.siq");
+
+        try
+        {
+            await document.SaveAsInternalAsync(outputPath);
+            Assert.That(result, Is.EqualTo(ThemeMoveResult.Applied));
+            Assert.That(document.Changed, Is.False);
+
+            sourceTheme.Questions[0].Model.Price = 999;
+            sourceTheme.Questions[0].Info.Comments.Text = "Detached edit";
+            Assert.That(document.Changed, Is.False, "Removed source descendants must not retain document listeners");
+
+            movedQuestion.Model.Price = 777;
+            Assert.Multiple(() =>
+            {
+                Assert.That(document.Changed, Is.True, "The inserted clone must participate in dirty tracking");
+                Assert.That(document.OperationsManager.Undo.CanExecute(null), Is.True);
+            });
+
+            document.OperationsManager.Undo.Execute(null);
+            Assert.That(movedQuestion.Model.Price, Is.EqualTo(movedPrice));
+
+            await document.SaveInternalAsync();
+            movedQuestion.Info.Comments.Text = "Tracked nested edit";
+            Assert.That(document.Changed, Is.True, "Nested metadata on the inserted clone must remain tracked");
+
+            document.OperationsManager.Undo.Execute(null);
+            Assert.That(movedQuestion.Info.Comments.Text, Is.Empty);
+
+            document.OperationsManager.Undo.Execute(null);
+            await document.SaveInternalAsync();
+            movedQuestion.Model.Price = movedPrice + 1;
+            Assert.That(document.Changed, Is.False, "Undo must detach the removed clone subtree");
+            movedQuestion.Model.Price = movedPrice;
+
+            document.OperationsManager.Redo.Execute(null);
+            await document.SaveInternalAsync();
+            movedQuestion.Right.Add("Tracked after redo");
+            Assert.That(document.Changed, Is.True, "Redo must reattach the clone subtree exactly once");
+
+            document.OperationsManager.Undo.Execute(null);
+            Assert.That(movedQuestion.Right, Does.Not.Contain("Tracked after redo"));
+        }
+        finally
+        {
+            File.Delete(outputPath);
+        }
+    }
+
+    [Test]
+    public void MoveIntoFinalRound_SetsEveryMovedQuestionPriceToZeroAndIsUndoable()
+    {
+        using var document = CreateTwoRoundDocument(
+            [125, Question.InvalidPrice, 725],
+            RoundTypes.Final);
+        var sourceTheme = document.Package.Rounds[0].Themes[0];
+        var originalPrices = Prices(sourceTheme);
+
+        var result = document.ThemeMoves.Apply(
+            document.ThemeMoves.CreateDragData(sourceTheme),
+            new ThemeLocation(1, 0),
+            recalculatePrices: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(ThemeMoveResult.Applied));
+            Assert.That(Prices(document.Package.Rounds[1].Themes[0]), Is.EqualTo(new[] { 0, 0, 0 }));
+        });
+
+        document.OperationsManager.Undo.Execute(null);
+        Assert.That(Prices(document.Package.Rounds[0].Themes[0]), Is.EqualTo(originalPrices));
+
+        document.OperationsManager.Redo.Execute(null);
+        Assert.That(Prices(document.Package.Rounds[1].Themes[0]), Is.EqualTo(new[] { 0, 0, 0 }));
+    }
+
+    [Test]
+    public void MoveWithinFinalRound_ReordersThemeAndKeepsCanonicalZeroPrices()
+    {
+        using var document = CreateDocumentWithRoundType(
+            RoundTypes.Final,
+            ("First", [0]),
+            ("Moved", [17, Question.InvalidPrice, 49]),
+            ("Last", [0]));
+        var round = document.Package.Rounds[0];
+        var movedTheme = round.Themes[1];
+
+        var result = document.ThemeMoves.Apply(
+            document.ThemeMoves.CreateDragData(movedTheme),
+            new ThemeLocation(0, 3),
+            recalculatePrices: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(ThemeMoveResult.Applied));
+            Assert.That(round.Themes.Select(item => item.Model.Name), Is.EqualTo(new[] { "First", "Last", "Moved" }));
+            Assert.That(Prices(movedTheme), Is.EqualTo(new[] { 0, 0, 0 }));
+        });
+
+        document.OperationsManager.Undo.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(round.Themes.Select(item => item.Model.Name), Is.EqualTo(new[] { "First", "Moved", "Last" }));
+            Assert.That(Prices(round.Themes[1]), Is.EqualTo(new[] { 17, Question.InvalidPrice, 49 }));
+        });
+    }
+
+    [Test]
     public void InvalidStaleAndCancelledMoves_DoNotMutateDocumentOrCreateUndoEntry()
     {
         using var document = CreateTwoRoundDocument([100, 200]);
@@ -268,9 +388,14 @@ internal sealed class ThemeMoveOperationsTests
     }
 
     private QDocument CreateDocument(params (string Name, int[] Prices)[] themes)
+        => CreateDocumentWithRoundType(RoundTypes.Standart, themes);
+
+    private QDocument CreateDocumentWithRoundType(
+        string roundType,
+        params (string Name, int[] Prices)[] themes)
     {
         var package = SIDocument.Create("Theme operations", "Test author");
-        var round = new Round { Name = "Round" };
+        var round = new Round { Name = "Round", Type = roundType };
 
         foreach (var (name, prices) in themes)
         {
@@ -288,7 +413,7 @@ internal sealed class ThemeMoveOperationsTests
         return _documentFactory.CreateViewModelFor(package, "Theme operations");
     }
 
-    private QDocument CreateTwoRoundDocument(int[] prices)
+    private QDocument CreateTwoRoundDocument(int[] prices, string targetRoundType = RoundTypes.Standart)
     {
         var package = SIDocument.Create("Theme operations", "Test author");
         var sourceRound = new Round { Name = "Source" };
@@ -301,7 +426,7 @@ internal sealed class ThemeMoveOperationsTests
 
         sourceRound.Themes.Add(theme);
         package.Package.Rounds.Add(sourceRound);
-        package.Package.Rounds.Add(new Round { Name = "Target" });
+        package.Package.Rounds.Add(new Round { Name = "Target", Type = targetRoundType });
         return _documentFactory.CreateViewModelFor(package, "Theme operations");
     }
 
