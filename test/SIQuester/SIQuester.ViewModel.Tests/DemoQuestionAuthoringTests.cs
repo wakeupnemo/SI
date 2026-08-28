@@ -270,6 +270,7 @@ internal sealed class DemoQuestionAuthoringTests
         finally
         {
             AppSettings.Default.CreateQuestionsWithTheme = previousCreateQuestions;
+            document.Dispose();
             File.Delete(filePath);
         }
     }

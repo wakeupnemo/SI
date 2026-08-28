@@ -95,6 +95,7 @@ internal sealed class AnswerCollectionEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }

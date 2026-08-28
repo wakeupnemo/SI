@@ -187,6 +187,7 @@ internal sealed class ScriptCrudEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }
@@ -294,6 +295,7 @@ internal sealed class ScriptCrudEditingTests
         }
         finally
         {
+            document.Dispose();
             File.Delete(filePath);
         }
     }

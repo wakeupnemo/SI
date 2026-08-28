@@ -102,6 +102,7 @@ internal sealed class ExternalFileImportTests
         }
         finally
         {
+            document.Dispose();
             File.Delete(filePath);
         }
     }

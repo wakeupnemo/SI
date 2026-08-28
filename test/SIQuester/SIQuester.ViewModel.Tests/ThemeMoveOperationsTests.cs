@@ -136,6 +136,7 @@ internal sealed class ThemeMoveOperationsTests
         }
         finally
         {
+            document.Dispose();
             File.Delete(outputPath);
             File.Delete(mediaSourcePath);
         }
@@ -255,6 +256,7 @@ internal sealed class ThemeMoveOperationsTests
         }
         finally
         {
+            document.Dispose();
             File.Delete(outputPath);
         }
     }

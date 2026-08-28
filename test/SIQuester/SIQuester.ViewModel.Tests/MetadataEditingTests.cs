@@ -127,6 +127,7 @@ internal sealed class MetadataEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }
@@ -182,6 +183,7 @@ internal sealed class MetadataEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }

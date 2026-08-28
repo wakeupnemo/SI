@@ -86,6 +86,8 @@ internal sealed class PackageLogoEditingTests
         }
         finally
         {
+            qDocument.Dispose();
+
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);

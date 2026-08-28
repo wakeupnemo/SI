@@ -220,6 +220,7 @@ internal sealed class StructuralItemOperationsTests
         finally
         {
             document.Settings.ChangePriceOnMove = previousChangePriceOnMove;
+            document.Dispose();
 
             if (File.Exists(filePath))
             {
@@ -297,6 +298,8 @@ internal sealed class StructuralItemOperationsTests
         }
         finally
         {
+            document.Dispose();
+
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);

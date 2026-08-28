@@ -69,6 +69,8 @@ internal sealed class QualityControlEditingTests
         }
         finally
         {
+            qDocument.Dispose();
+
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);

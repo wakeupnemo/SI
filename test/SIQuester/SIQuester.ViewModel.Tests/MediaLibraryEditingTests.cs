@@ -123,6 +123,8 @@ internal sealed class MediaLibraryEditingTests
         }
         finally
         {
+            document.Dispose();
+
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);

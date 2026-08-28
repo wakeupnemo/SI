@@ -100,6 +100,7 @@ internal sealed class ContentMediaPickerEditingTests
         }
         finally
         {
+            document.Dispose();
             File.Delete(filePath);
         }
     }

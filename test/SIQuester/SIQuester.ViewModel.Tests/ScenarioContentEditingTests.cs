@@ -199,6 +199,7 @@ internal sealed class ScenarioContentEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }
@@ -287,6 +288,7 @@ internal sealed class ScenarioContentEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }

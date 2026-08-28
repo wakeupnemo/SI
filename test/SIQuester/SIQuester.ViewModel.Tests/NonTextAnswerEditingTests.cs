@@ -245,6 +245,7 @@ internal sealed class NonTextAnswerEditingTests
         }
         finally
         {
+            qDocument.Dispose();
             File.Delete(filePath);
         }
     }

@@ -324,6 +324,7 @@ internal sealed class ClipboardTests
         finally
         {
             source.Dispose();
+            target.Dispose();
             File.Delete(outputPath);
         }
     }
