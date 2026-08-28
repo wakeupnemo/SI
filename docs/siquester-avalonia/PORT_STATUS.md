@@ -7,7 +7,8 @@ Updated: 2026-08-28
 - Question-authoring implementation commit: `fcfbfb51`; stability
   implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
   implementation commit: `ff5b9e3a`; content-storyboard implementation commit:
-  `37eb5931` on `feat/siquester-avalonia`.
+  `37eb5931`; storyboard-selection fix commit: `82f05ef2` on
+  `feat/siquester-avalonia`.
 - All three suspected hardening defects were confirmed and fixed. Desktop close
   now serializes overlapping requests, persists settings before document close,
   catches and logs failures, keeps the window/data open on failure, and reports
@@ -84,7 +85,9 @@ Updated: 2026-08-28
   lanes, and supports select, join, split, item movement, and whole-moment
   movement with undo. Both question and post-answer content reuse it; explicit
   script steps remain separate editors, and unknown types/placements are not
-  normalized. `ContentMoments_GroupCanonicalItemsByWaitBoundaryAndPlacement`,
+  normalized. Initial selection now owns the visible state and command
+  subscriptions, while moment-move undo/redo resynchronizes selected object and
+  index before later index-based commands. `ContentMoments_GroupCanonicalItemsByWaitBoundaryAndPlacement`,
   `StoryboardCommands_QuestionAndPostAnswerContent_SaveCanonicalRoundTrip`,
   and `ContentStoryboard_JoinsAndSplitsCanonicalMomentsInCompactLayout` cover
   boundary semantics, malformed trailing groups, move/undo, Unicode, compact
@@ -243,13 +246,15 @@ environment-specific verification; no broader parity work is implied.
 
 ## Review state
 
-- Latest reviewed implementation commit: `37eb5931`; this file,
+- Latest reviewed implementation commit: `82f05ef2`; this file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
   `RELEASE_NOTES_0.2.0.md` form the current documentation checkpoint. All 362
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
   frontend cross-build passes 0/0. The earlier tar/DEB checksums and
-  launcher/Wayland metadata/topology pass but predate `37eb5931`; the earlier
+  launcher/Wayland metadata/topology pass but predate `82f05ef2`; the earlier
   native 50-cycle result remains lifecycle evidence only. Safe-save, loader
   cleanup, failure retention, settings failure, and close serialization checks
-  pass. The latest review was scoped to canonical content grouping, undo,
-  round-trip safety, compact accessibility, and frontend compatibility.
+  pass. The latest review additionally verifies initial storyboard selection,
+  moment-move undo/redo selection identity/index synchronization, the next
+  index-based command, compact Avalonia selected-card state, round-trip safety,
+  and frontend compatibility.
