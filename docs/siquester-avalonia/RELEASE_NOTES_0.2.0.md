@@ -49,11 +49,18 @@ No parallel model or alternate serializer was introduced.
 - Moved the Debian 13 WebKitGTK compositing default into the packaged Linux
   launcher so it is present before native apphost initialization. Explicit user
   values remain authoritative; portable tar users should run `./siquester`.
+- Local post-checkpoint hardening commit `4b6682e1` removes two measured
+  UI-lock waits from image/package-logo/point-image loading and moves raw
+  recovery ZIP copy/finalization/validation off the UI thread. Model
+  serialization, media bytes, locking, and safe replacement semantics are
+  unchanged. The user confirmed the formerly hanging `Select a point` workflow
+  stays responsive. This commit is not yet pushed and is not present in the
+  hosted artifacts listed below.
 
 ## Verification
 
-- Release test suite: 362 passed, 0 failed, 0 skipped
-  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 205,
+- Current local Release test suite: 364 passed, 0 failed, 0 skipped
+  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 207,
   `SIQuester.Avalonia.Tests` 61). An explicit 20-warm-up/50-measured-cycle
   managed soak also passed.
 - `DemoBehaviors_CreatedFromNewPackageCommands_SaveAndReloadCanonicalSemantics`

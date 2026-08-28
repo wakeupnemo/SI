@@ -8,7 +8,7 @@ Updated: 2026-08-28
   implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
   implementation commit: `ff5b9e3a`; content-storyboard implementation commit:
   `37eb5931`; storyboard-selection fix commit: `82f05ef2` on
-  `feat/siquester-avalonia`.
+  `feat/siquester-avalonia`; local UI-stall fix commit: `4b6682e1`.
 - All three suspected hardening defects were confirmed and fixed. Desktop close
   now serializes overlapping requests, persists settings before document close,
   catches and logs failures, keeps the window/data open on failure, and reports
@@ -16,6 +16,20 @@ Updated: 2026-08-28
   `finally` and restore workspace selection. Persistent XDG logs now record
   version/session/runtime/OS/architecture, original exceptions, Avalonia
   Error/Fatal events, and last-resort failures without transient binding noise.
+- Interactive profiling of a 108,168,147-byte package found two real UI-lock
+  defects and one synchronous persistence hot path. Before the fix, image
+  preview and point selection could synchronously wait for the document lock
+  while recovery required a UI continuation; one captured hang retained that
+  stack for 167.747 seconds. The same trace measured about 15.03 seconds of
+  recovery work on the UI thread: 9.694 seconds in package `SaveAs` (9.620
+  seconds copying the source ZIP) and 5.265 seconds finalizing the temporary
+  ZIP. `4b6682e1` adds cancellable asynchronous archive copying and media stream
+  acquisition, finalizes and validates recovery snapshots off the UI thread,
+  and preserves the existing locked model serialization and safe-save flow.
+  Focused lock-contention tests pass, and the user confirmed that the rebuilt
+  application remains responsive when `Select a point` is invoked during the
+  previously failing workflow. No general performance gain or leak claim is
+  made from this focused trace.
 - Every semantically distinct behavior in `SIGameTestNew.siq` is now authorable
   through the normal typed inspector from a new package: round default, simple,
   stake, stake-all, all Secret/public/no-question price and recipient shapes,
@@ -23,8 +37,8 @@ Updated: 2026-08-28
 - The inspector also authors answer duration and canonical post-answer
   text/image/audio/video content. Unknown/future type names and parameters are
   preserved during open/display/save and change only after explicit selection.
-- Release suite: 362 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
-  `SIQuester.ViewModel.Tests` 205, `SIQuester.Avalonia.Tests` 61). The explicit
+- Release suite: 364 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
+  `SIQuester.ViewModel.Tests` 207, `SIQuester.Avalonia.Tests` 61). The explicit
   stability test separately passed 20 warm-up plus 50 measured cycles.
 - Native Debian 13/X11 tar smoke opened a Unicode/space-path SIQ, authored a
   Secret question with theme `NativeSecretTheme` and fixed price 700, added
@@ -154,13 +168,17 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Cross-platform Release build: passed with 0 errors. A source rebuild reported 130 pre-existing nullable/obsolete warnings across retained projects; the final full incremental validation reported 0 warnings. Analyzers and warnings remain enabled, and every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 96 passed, 0 skipped, 0 failed. `Clone_PreservesQualityControlSemanticState` and `GetContent_IncludesQuestionAndScriptParameters` cover marker clone/equality/hash semantics and complete modern/legacy content discovery; script save/reload, deep-clone, reader-state, and empty-parameter coverage remains green.
-- `SIQuester.ViewModel.Tests`: 205 passed, 0 failed. Four
+- `SIQuester.ViewModel.Tests`: 207 passed, 0 failed. Four
   `MainLifecycleStabilityTests` cover default-token corrupt-loader cleanup,
   overlapping closes, one-message workspace failure, and host-owned close.
   `SaveDocument_UnwritableDirectory_ShouldLeaveExistingPackageUntouched` is a
   real Linux permission failure. The three demo-authoring tests and all prior
   import, SPARD, hierarchy, parameter, media, validation, recovery, clipboard,
   and safe-save coverage remain green.
+  `OpenStreamAsync_WaitsForDocumentPersistenceWithoutBlockingAndSupportsCancellation`
+  and `PointImageOpenAsync_DoesNotBlockWhileRecoveryOwnsDocumentLock` reproduce
+  the profiled lock contention without blocking the caller and verify exact
+  original PNG bytes after the lock is released.
 - `SIQuester.Avalonia.Tests`: 61 passed, 0 failed. Main-window settings failure
   keeps the window open and reports once; startup version/environment, focused
   Error/Fatal logging, exact benign IBus shutdown filtering, continuous answer
@@ -217,8 +235,10 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 ## Current blockers
 
 - No source blocker is known for the Linux content-storyboard release slice.
-  Fresh Linux v0.2.0 artifacts, checksums, packaged startup, and WebKitGTK
-  preview receipts pass.
+  Existing Linux v0.2.0 artifacts, checksums, packaged startup, and WebKitGTK
+  preview receipts pass, but they predate local UI-stall fix `4b6682e1`.
+  Rebuilding or publishing replacement artifacts is explicitly deferred; this
+  session ends at a local commit with no push or GitHub release mutation.
 - Hosted run `33164408794` is not aggregate-green: the Xdnd smoke script failed
   to execute because its repository executable bit was absent, and 37 Windows
   view-model tests exposed a Windows-only safe-save verification gap. These are
@@ -228,9 +248,10 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Next independent tasks
 
-Retain real Wayland-session launch, Xdnd runner permission repair, and Windows
-safe-save verification as separate post-v0.2.0 work; no broader parity work is
-implied.
+When explicitly requested, rebuild and repeat packaged Linux acceptance from
+`4b6682e1` before replacing any hosted v0.2.0 asset. Retain real Wayland-session
+launch, Xdnd runner permission repair, and Windows safe-save verification as
+separate work; no broader parity work is implied.
 
 ## Known limitations
 
@@ -250,15 +271,23 @@ implied.
 
 ## Review state
 
-- Latest reviewed implementation commit: `82f05ef2`; this file,
+- Latest reviewed implementation commit: `4b6682e1`; this file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
-  `RELEASE_NOTES_0.2.0.md` form the current documentation checkpoint. All 362
+  `RELEASE_NOTES_0.2.0.md` form the current documentation checkpoint. All 364
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
-  frontend cross-build passes with 0 errors and 130 existing warnings. The earlier tar/DEB checksums and
-  launcher/Wayland metadata/topology pass but predate `82f05ef2`; the earlier
+  frontend cross-build passes with 0 errors and 130 existing warnings. The hosted tar/DEB checksums and
+  launcher/Wayland metadata/topology pass through `a6bf38a7` but predate
+  `4b6682e1`; the earlier
   native 50-cycle result remains lifecycle evidence only. Safe-save, loader
   cleanup, failure retention, settings failure, and close serialization checks
   pass. The latest review additionally verifies initial storyboard selection,
   moment-move undo/redo selection identity/index synchronization, the next
   index-based command, compact Avalonia selected-card state, round-trip safety,
   and frontend compatibility.
+  The latest review additionally checks asynchronous archive ownership,
+  cancellation, temporary-package finalization, original-byte media access,
+  absence of synchronous media-open calls in the Avalonia/Desktop projects,
+  focused lock-contention regressions, manual point-selection responsiveness,
+  `git diff --check`, the cross-platform Release build, and the retained WPF
+  cross-build. Hosted artifacts still identify `a6bf38a7` and are not claimed
+  to contain `4b6682e1`.
