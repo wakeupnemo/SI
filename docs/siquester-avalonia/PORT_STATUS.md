@@ -2,7 +2,36 @@
 
 Updated: 2026-08-28
 
-## Current v0.2.0 release checkpoint
+## Current v0.2.1 release candidate
+
+- v0.2.1 is a focused responsiveness and persistence hardening update over the
+  existing v0.2.0 authoring feature set. It adds no SIQ semantics or advanced
+  parity features and leaves the legacy WPF version at 6.9.1.
+- A complete ordinary-Avalonia call-path review found four additional UI lock
+  inversions: validation file-size checks, quality-control checks, media-aware
+  copy, and media collision checks during paste. These paths now use cancellable
+  asynchronous document-lock acquisition and package-stream access. The current
+  Avalonia clipboard embeds canonical media bytes without invoking WPF-only
+  `PlatformManager.PrepareMedia`; temporary legacy-compatible paths have tested
+  publish, replacement-failure, and close ownership.
+- Durable flush, ZIP finalization, and canonical pre/post-commit validation run
+  away from the UI thread. Canonical save no longer parses the same temporary
+  SIQ twice; recovery snapshots retain their independent validation. Existing
+  same-directory staging, validation-before-replace, rollback, backup, and
+  late-cancellation semantics are unchanged.
+- Release suite: 370 passed, 0 failed (`SIPackages.Tests` 96,
+  `SIQuester.ViewModel.Tests` 213, `SIQuester.Avalonia.Tests` 61). The explicit
+  20-warm-up/50-measured-cycle managed soak passed with p50 8.9 ms, p95 21.8 ms,
+  max 23.7 ms, zero retained package descriptors, and bounded final thread/FD
+  counts (21 to 24 threads, 197 to 201 FDs).
+- Native Debian 13/X11 review used the current code on a 104 MiB real package.
+  The dedicated WebKitGTK 2.52.6 receipt rendered controlled package media,
+  replayed, and disposed both sessions (2/2). A 60-second selection,
+  preview/close, and media-copy trace contains no synchronous document-lock or
+  media-open stack on the UI thread; the largest sampled managed UI interval was
+  236.6 ms. The user accepted this native review and requested no further GUI
+  automation while the desktop is in use. Final v0.2.1 package topology and
+  checksums remain to be recorded below.
 
 - Question-authoring implementation commit: `fcfbfb51`; stability
   implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
@@ -37,9 +66,8 @@ Updated: 2026-08-28
 - The inspector also authors answer duration and canonical post-answer
   text/image/audio/video content. Unknown/future type names and parameters are
   preserved during open/display/save and change only after explicit selection.
-- Release suite: 364 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
-  `SIQuester.ViewModel.Tests` 207, `SIQuester.Avalonia.Tests` 61). The explicit
-  stability test separately passed 20 warm-up plus 50 measured cycles.
+- The superseded v0.2.0 release suite had 364 passing tests; current v0.2.1
+  evidence is recorded above.
 - Native Debian 13/X11 tar smoke opened a Unicode/space-path SIQ, authored a
   Secret question with theme `NativeSecretTheme` and fixed price 700, added
   `PostAnswerSmoke`, safely saved, closed, reopened, and closed cleanly. The
@@ -152,7 +180,7 @@ Updated: 2026-08-28
 - Completed media-library audio/video preview behind the neutral `IMediaPreviewService`. A separate application-owned HTML5 page uses the existing randomized loopback origin, opaque extension-preserving URLs, byte ranges, MIME/size/session bounds, exact navigation and popup denial, and lazy backend probing. One native control is retained across selections while each selection owns an isolated route; view/document/app teardown stops the control and removes its route. Original media bytes and package persistence remain untouched. Focused VM, server, and headless tests cover stream ownership, unsupported backend presentation, range serving, and deterministic disposal. A native WebKitGTK 2.52.6 receipt decoded the repository MP3 through 0:03 and rendered changing MP4 frames; Audio was disposed before Video and Video on close.
 - Verified native external-file Xdnd against the packaged Linux application. The target resolves routed X11 drop sources by ancestor and realized-card coordinates; a Unicode-named PNG import visibly marks the document dirty, enables Undo, saves safely, reopens cleanly, and preserves exact media bytes. Same-window synthetic internal Xdnd remains deferred because XTEST does not reliably deliver it.
 - Completed the v0.1.0 accessibility pass without redesigning the workspace. The minimum window now fits a 1920x1080 display at 200% scaling, long command bars scroll instead of clipping, and the bilingual Light/Dark minimum-viewport test verifies navigator, inspector, focus, accessible search naming, and long English/Russian content at 900x480 logical pixels.
-- Separated `SIQuesterCrossPlatformVersion` (currently 0.2.0) and the `SIQuester Cross-Platform` product identity from legacy WPF `SIQuesterVersion` 6.9.1. Linux/macOS/Windows Avalonia packaging overrides only the cross-platform property, so referenced domain libraries and the WPF product are not re-versioned.
+- Separated `SIQuesterCrossPlatformVersion` (currently 0.2.1) and the `SIQuester Cross-Platform` product identity from legacy WPF `SIQuesterVersion` 6.9.1. Linux/macOS/Windows Avalonia packaging overrides only the cross-platform property, so referenced domain libraries and the WPF product are not re-versioned.
 
 ## Current verified commands and results
 
@@ -234,11 +262,8 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Current blockers
 
-- No source blocker is known for the Linux content-storyboard release slice.
-  Existing Linux v0.2.0 artifacts, checksums, packaged startup, and WebKitGTK
-  preview receipts pass, but they predate local UI-stall fix `4b6682e1`.
-  Rebuilding or publishing replacement artifacts is explicitly deferred; this
-  session ends at a local commit with no push or GitHub release mutation.
+- No source blocker is known for the Linux v0.2.1 release. Fresh tar/DEB
+  artifacts and checksums are the remaining local release step.
 - Hosted run `33164408794` is not aggregate-green: the Xdnd smoke script failed
   to execute because its repository executable bit was absent, and 37 Windows
   view-model tests exposed a Windows-only safe-save verification gap. These are
@@ -248,14 +273,15 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Next independent tasks
 
-When explicitly requested, rebuild and repeat packaged Linux acceptance from
-`4b6682e1` before replacing any hosted v0.2.0 asset. Retain real Wayland-session
-launch, Xdnd runner permission repair, and Windows safe-save verification as
-separate work; no broader parity work is implied.
+Build and structurally verify the v0.2.1 Linux x64 tar/DEB from the reviewed
+implementation commit, record hashes, then publish only the feature branch and
+GitHub release. Retain real Wayland-session launch, Xdnd runner permission
+repair, and Windows safe-save verification as separate work; no broader parity
+work is implied.
 
 ## Known limitations
 
-- v0.2.0 is a usable ordinary-authoring Linux release with demo-question behavior parity, not full legacy parity. `custom` is intentionally a preserved manual type because the demo defines no canonical library behavior for it. Native same-window internal question Xdnd, macOS/Windows runtime acceptance, complete shortcut/runtime localization receipts, and advanced import/export/transform/optional integrations remain deferred. Explicit known-behavior or parameter conversion replaces incompatible structure only after a deliberate undoable user action; load, display, and save do not normalize unknown values.
+- v0.2.1 is a usable ordinary-authoring Linux release with demo-question behavior parity, not full legacy parity. `custom` is intentionally a preserved manual type because the demo defines no canonical library behavior for it. Native same-window internal question Xdnd, macOS/Windows runtime acceptance, complete shortcut/runtime localization receipts, and advanced import/export/transform/optional integrations remain deferred. Explicit known-behavior or parameter conversion replaces incompatible structure only after a deliberate undoable user action; load, display, and save do not normalize unknown values.
 - Recovery retention is deliberately conservative: only the latest validated generation is kept per document; superseded generations are removed after pointer commit, and a successful canonical save, approved close, or explicit discard removes the recovery identity. Valid stale snapshots and malformed entries are not age-pruned silently because doing so could destroy the only recoverable user data.
 - Language changes intentionally apply after restart and communicate that boundary. System/light/dark selection is live and persisted, but visual theme snapshots and a macOS runtime Command-key receipt remain pending.
 - The retained question player now has verified native Linux text, embedded select-answer image, completion/replay, two-session close/reopen, and a 50-cycle resource receipt plus automated available/unavailable backend gates. The media library additionally has verified native Linux MP3/MP4 decoding through controlled per-selection routes. Native macOS/Windows codec acceptance remains pending. Package HTML is deliberately rendered as an inert localized warning until a separate restrictive HTML policy is implemented.
@@ -271,11 +297,12 @@ separate work; no broader parity work is implied.
 
 ## Review state
 
-- Latest reviewed implementation commit: `4b6682e1`; this file,
+- Latest reviewed implementation is the current working tree after `09b0dc2f`;
+  this file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
-  `RELEASE_NOTES_0.2.0.md` form the current documentation checkpoint. All 364
+  `RELEASE_NOTES_0.2.0.md` form the prior documentation checkpoint. All 370
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
-  frontend cross-build passes with 0 errors and 130 existing warnings. The hosted tar/DEB checksums and
+  frontend cross-build passes with 0 errors. The hosted v0.2.0 tar/DEB checksums and
   launcher/Wayland metadata/topology pass through `a6bf38a7` but predate
   `4b6682e1`; the earlier
   native 50-cycle result remains lifecycle evidence only. Safe-save, loader
@@ -289,5 +316,5 @@ separate work; no broader parity work is implied.
   absence of synchronous media-open calls in the Avalonia/Desktop projects,
   focused lock-contention regressions, manual point-selection responsiveness,
   `git diff --check`, the cross-platform Release build, and the retained WPF
-  cross-build. Hosted artifacts still identify `a6bf38a7` and are not claimed
-  to contain `4b6682e1`.
+  cross-build. Hosted v0.2.0 artifacts still identify `a6bf38a7`; fresh v0.2.1
+  artifacts are not claimed until their hashes are recorded.

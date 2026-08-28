@@ -329,6 +329,98 @@ internal sealed class ClipboardTests
     }
 
     [Test]
+    public async Task CopyWithMedia_RetainsOnlyPublishedLegacyStagingAndReleasesItOnClose()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var clipboard = (ClipboardServiceMock)serviceProvider.GetRequiredService<IClipboardService>();
+        var appPaths = serviceProvider.GetRequiredService<IAppPaths>();
+        using var sourceDocument = TestHelper.CreateSimpleTestPackage();
+        const string mediaName = "clipboard lifetime 例.png";
+        await sourceDocument.Images.AddFileAsync(mediaName, new MemoryStream(new byte[] { 1, 2, 3 }));
+        sourceDocument.Package.Rounds[0].Themes[0].Questions[0].Script!.Steps[0]
+            .Parameters[StepParameterNames.Content].ContentValue!.Add(new ContentItem
+            {
+                Type = ContentTypes.Image,
+                Value = mediaName,
+                IsRef = true,
+            });
+        var source = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(sourceDocument, "clipboard lifetime.siq");
+        source.ActiveNode = source.Package.Rounds[0].Themes[0].Questions[0];
+
+        try
+        {
+            await ((IAsyncCommand)source.Copy).ExecuteAsync(null);
+            var legacyPayload = await clipboard.ReadCustomDataAsync(SIQuesterClipboardSerializer.LegacyItemFormat);
+            Assert.That(SIQuesterClipboardSerializer.TryDeserializeLegacyItem(legacyPayload!, out var copied), Is.True);
+            var publishedPath = copied!.Images[mediaName];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.Exists(publishedPath), Is.True,
+                    "the published WPF-compatible clipboard payload must remain readable while its source is open");
+                Assert.That(
+                    Directory.EnumerateFiles(appPaths.TemporaryMediaDirectory, "clipboard-source-*").ToArray(),
+                    Is.EqualTo(new[] { publishedPath }));
+            });
+
+            clipboard.WriteException = new InvalidOperationException("Clipboard unavailable");
+            await ((IAsyncCommand)source.Copy).ExecuteAsync(null);
+
+            Assert.That(
+                Directory.EnumerateFiles(appPaths.TemporaryMediaDirectory, "clipboard-source-*").ToArray(),
+                Is.EqualTo(new[] { publishedPath }),
+                "a failed replacement must clean its staging without invalidating the last published payload");
+
+            source.Dispose();
+            Assert.That(File.Exists(publishedPath), Is.False);
+        }
+        finally
+        {
+            source.Dispose();
+        }
+    }
+
+    [Test]
+    public async Task ClosingAfterMediaClipboardWrite_ReleasesUnpublishedStaging()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var clipboard = (ClipboardServiceMock)serviceProvider.GetRequiredService<IClipboardService>();
+        var appPaths = serviceProvider.GetRequiredService<IAppPaths>();
+        using var sourceDocument = TestHelper.CreateSimpleTestPackage();
+        const string mediaName = "closing clipboard 例.png";
+        await sourceDocument.Images.AddFileAsync(mediaName, new MemoryStream(new byte[] { 1, 2, 3 }));
+        sourceDocument.Package.Rounds[0].Themes[0].Questions[0].Script!.Steps[0]
+            .Parameters[StepParameterNames.Content].ContentValue!.Add(new ContentItem
+            {
+                Type = ContentTypes.Image,
+                Value = mediaName,
+                IsRef = true,
+            });
+        var source = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(sourceDocument, "closing clipboard.siq");
+        source.ActiveNode = source.Package.Rounds[0].Themes[0].Questions[0];
+        clipboard.WriteStored = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        clipboard.WriteReturnRelease = releaseWrite.Task;
+
+        var copyTask = ((IAsyncCommand)source.Copy).ExecuteAsync(null);
+        await clipboard.WriteStored.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(
+            Directory.EnumerateFiles(appPaths.TemporaryMediaDirectory, "clipboard-source-*").Any(),
+            Is.True,
+            "the test must reach the accepted-but-unpublished staging phase before closing");
+
+        source.Dispose();
+        releaseWrite.TrySetResult();
+        await copyTask.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.That(
+            Directory.EnumerateFiles(appPaths.TemporaryMediaDirectory, "clipboard-source-*").ToArray(),
+            Is.Empty);
+    }
+
+    [Test]
     public async Task CutQuestion_RemovesSourceOnlyAfterClipboardWriteAndCanPasteToTarget()
     {
         using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();

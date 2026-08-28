@@ -51,8 +51,15 @@ internal sealed class SafeDocumentPersistenceService : IDocumentPersistenceServi
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await DocumentSnapshotWriter.WriteNewAsync(document, temporaryPath, cancellationToken);
-            _validateDocument(temporaryPath);
+            // This service performs its own injectable pre-commit validation below. Recovery
+            // snapshots use the writer's built-in validation, but a canonical save must not
+            // parse the same temporary package twice.
+            await DocumentSnapshotWriter.WriteNewAsync(
+                document,
+                temporaryPath,
+                cancellationToken,
+                validateSnapshot: false);
+            await Task.Run(() => _validateDocument(temporaryPath), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -64,7 +71,9 @@ internal sealed class SafeDocumentPersistenceService : IDocumentPersistenceServi
             try
             {
                 commitResult = CommitTemporaryFile(temporaryPath, fullDestinationPath);
-                _validateDocument(fullDestinationPath);
+                // Once the destination has been replaced, validation and any required rollback
+                // must run to completion even if a late cancellation is requested.
+                await Task.Run(() => _validateDocument(fullDestinationPath));
 
                 var newStream = File.OpenRead(fullDestinationPath);
 

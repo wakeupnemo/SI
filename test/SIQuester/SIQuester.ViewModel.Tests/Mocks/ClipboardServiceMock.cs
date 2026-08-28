@@ -14,7 +14,11 @@ internal sealed class ClipboardServiceMock : IClipboardService
 
     public Exception? WriteException { get; set; }
 
-    public ValueTask WriteAsync(ClipboardWriteRequest request, CancellationToken cancellationToken = default)
+    public TaskCompletionSource? WriteStored { get; set; }
+
+    public Task? WriteReturnRelease { get; set; }
+
+    public async ValueTask WriteAsync(ClipboardWriteRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -33,7 +37,15 @@ internal sealed class ClipboardServiceMock : IClipboardService
             _customData[item.Format] = item.Data.ToArray();
         }
 
-        return ValueTask.CompletedTask;
+        WriteStored?.TrySetResult();
+
+        if (WriteReturnRelease != null)
+        {
+            // Deliberately allow a test to close the source after the clipboard has accepted
+            // the payload but before the caller resumes from WriteAsync.
+            await WriteReturnRelease;
+        }
+
     }
 
     public ValueTask<string?> ReadTextAsync(CancellationToken cancellationToken = default)

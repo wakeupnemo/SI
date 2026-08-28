@@ -1067,6 +1067,38 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             });
 
     /// <summary>
+    /// Gets the media length without synchronously waiting for document persistence.
+    /// </summary>
+    internal ValueTask<long> GetLengthAsync(
+        string link,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var item in _renamed)
+        {
+            if (item.Item2 == link)
+            {
+                link = item.Item1;
+                break;
+            }
+        }
+
+        var pendingStream = _streams.FirstOrDefault(item => item.Key.Model.Name == link);
+
+        if (pendingStream.Key is not null)
+        {
+            return ValueTask.FromResult(new FileInfo(pendingStream.Value.Path).Length);
+        }
+
+        return _document.Lock.WithLockAsync(
+            () =>
+            {
+                var collection = _document.GetInternalCollection(_name);
+                return collection.GetFileLength(link);
+            },
+            cancellationToken);
+    }
+
+    /// <summary>
     /// Captures a framework-neutral stream factory for controlled question preview without materializing a platform path.
     /// </summary>
     internal QuestionPreviewMediaSource CreateQuestionPreviewSource(

@@ -1713,6 +1713,9 @@ public sealed class QDocument : WorkspaceViewModel
 
 
     private readonly IClipboardService _clipboardService;
+    private readonly object _clipboardStagingSync = new();
+    private List<string> _clipboardStagingFiles = [];
+    private int _clipboardWritePending;
     internal IClipboardService ClipboardService => _clipboardService;
 
     internal IFilePickerService FilePickerService => _filePickerService;
@@ -2087,12 +2090,17 @@ public sealed class QDocument : WorkspaceViewModel
         }
     }
 
-    private ICollection<string> FillFiles(MediaStorageViewModel mediaStorage, int maxFileSize, List<WarningViewModel> warnings)
+    private async ValueTask<ICollection<string>> FillFilesAsync(
+        MediaStorageViewModel mediaStorage,
+        int maxFileSize,
+        List<WarningViewModel> warnings,
+        CancellationToken cancellationToken)
     {
         var files = new List<string>();
 
         foreach (var item in mediaStorage.Files)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var name = item.Model.Name;
 
             if (files.Contains(name))
@@ -2100,7 +2108,8 @@ public sealed class QDocument : WorkspaceViewModel
                 warnings.Add(new WarningViewModel(string.Format(Resources.FileIsDuplicated, name), () => NavigateToStorageItem(mediaStorage, item)));
             }
 
-            if (AppSettings.Default.CheckFileSize && mediaStorage.GetLength(item.Model.Name) > maxFileSize * 1024 * 1024)
+            if (AppSettings.Default.CheckFileSize
+                && await mediaStorage.GetLengthAsync(item.Model.Name, cancellationToken) > maxFileSize * 1024 * 1024)
             {
                 warnings.Add(new WarningViewModel(string.Format(Resources.InvalidFileSize, name, maxFileSize), () => NavigateToStorageItem(mediaStorage, item)));
             }
@@ -2128,10 +2137,26 @@ public sealed class QDocument : WorkspaceViewModel
         var errors = new List<string>();
         var recommendedSize = Quality.FileSizeMb;
 
-        var images = FillFiles(Images, recommendedSize[CollectionNames.ImagesStorageName], warnings);
-        var audio = FillFiles(Audio, recommendedSize[CollectionNames.AudioStorageName], warnings);
-        var video = FillFiles(Video, recommendedSize[CollectionNames.VideoStorageName], warnings);
-        var html = FillFiles(Html, recommendedSize[CollectionNames.HtmlStorageName], warnings);
+        var images = await FillFilesAsync(
+            Images,
+            recommendedSize[CollectionNames.ImagesStorageName],
+            warnings,
+            cancellationToken);
+        var audio = await FillFilesAsync(
+            Audio,
+            recommendedSize[CollectionNames.AudioStorageName],
+            warnings,
+            cancellationToken);
+        var video = await FillFilesAsync(
+            Video,
+            recommendedSize[CollectionNames.VideoStorageName],
+            warnings,
+            cancellationToken);
+        var html = await FillFilesAsync(
+            Html,
+            recommendedSize[CollectionNames.HtmlStorageName],
+            warnings,
+            cancellationToken);
 
         CheckCommonFiles(images, audio, video, html, errors);
 
@@ -2335,10 +2360,19 @@ public sealed class QDocument : WorkspaceViewModel
 
     private async Task<bool> TryCopyNodeAsync(IItemViewModel activeNode)
     {
+        if (Interlocked.CompareExchange(ref _clipboardWritePending, 1, 0) != 0)
+        {
+            return false;
+        }
+
+        var stagedFiles = new List<string>();
+
         try
         {
-            var itemData = new InfoOwnerData(this, activeNode);
-            await itemData.EmbedMediaAsync(this);
+            var cancellationToken = _lifetimeCancellation.Token;
+            var itemData = InfoOwnerData.CreateForAsyncClipboard(this, activeNode);
+            await itemData.EmbedMediaAsync(this, cancellationToken);
+            stagedFiles = await StageLegacyClipboardMediaAsync(itemData, cancellationToken);
             await _clipboardService.WriteAsync(new ClipboardWriteRequest
             {
                 CustomData =
@@ -2350,13 +2384,75 @@ public sealed class QDocument : WorkspaceViewModel
                         SIQuesterClipboardSerializer.LegacyItemFormat,
                         SIQuesterClipboardSerializer.SerializeLegacyItem(itemData)),
                 ],
-            });
+            }, cancellationToken);
+
+            List<string> previousStagingFiles;
+
+            lock (_clipboardStagingSync)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                previousStagingFiles = _clipboardStagingFiles;
+                _clipboardStagingFiles = stagedFiles;
+                stagedFiles = [];
+            }
+
+            await Task.Run(() => DeleteClipboardStagingFiles(previousStagingFiles));
             return true;
+        }
+        catch (OperationCanceledException) when (_lifetimeCancellation.IsCancellationRequested)
+        {
+            return false;
         }
         catch (Exception exc)
         {
             OnError(exc);
             return false;
+        }
+        finally
+        {
+            DeleteClipboardStagingFiles(stagedFiles);
+            stagedFiles.Clear();
+            Interlocked.Exchange(ref _clipboardWritePending, 0);
+        }
+    }
+
+    private async Task<List<string>> StageLegacyClipboardMediaAsync(
+        InfoOwnerData data,
+        CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(_appPaths.TemporaryMediaDirectory);
+        var stagedFiles = new List<string>();
+
+        try
+        {
+            foreach (var (references, embedded) in new[]
+            {
+                (data.Images, data.EmbeddedImages),
+                (data.Audio, data.EmbeddedAudio),
+                (data.Video, data.EmbeddedVideo),
+                (data.Html, data.EmbeddedHtml),
+            })
+            {
+                foreach (var (name, bytes) in embedded)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ValidateClipboardMediaName(name);
+                    var path = System.IO.Path.Combine(
+                        _appPaths.TemporaryMediaDirectory,
+                        $"clipboard-source-{Guid.NewGuid():N}{GetSafeClipboardExtension(name)}");
+                    await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+                    stagedFiles.Add(path);
+                    references[name] = path;
+                }
+            }
+
+            return stagedFiles;
+        }
+        catch
+        {
+            DeleteClipboardStagingFiles(stagedFiles);
+            stagedFiles.Clear();
+            throw;
         }
     }
 
@@ -2592,7 +2688,7 @@ public sealed class QDocument : WorkspaceViewModel
                     ? new MemoryStream(bytes, writable: false)
                     : OpenLegacyClipboardMedia(legacyPaths, name);
 
-                var existingStreamInfo = collection.TryGetStreamInfo(name);
+                var existingStreamInfo = await collection.TryGetStreamInfoAsync(name, cancellationToken);
 
                 if (existingStreamInfo != null)
                 {
@@ -2743,6 +2839,14 @@ public sealed class QDocument : WorkspaceViewModel
         catch (Exception exception)
         {
             _logger.LogWarning(exception, "Could not delete clipboard staging file {path}", path);
+        }
+    }
+
+    private void DeleteClipboardStagingFiles(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            TryDeleteClipboardTemporaryFile(path);
         }
     }
 
@@ -4035,7 +4139,7 @@ public sealed class QDocument : WorkspaceViewModel
 
     internal async Task<bool> CheckPackageQualityAsync(CancellationToken cancellationToken = default)
     {
-        var errors = GetPackageQualityErrors();
+        var errors = await GetPackageQualityErrorsAsync(cancellationToken);
 
         if (errors.Count == 0)
         {
@@ -4051,6 +4155,70 @@ public sealed class QDocument : WorkspaceViewModel
         IsSideOpened = true;
         SideIndex = 6;
         return false;
+    }
+
+    private async ValueTask<List<string>> GetPackageQualityErrorsAsync(CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+
+        foreach (var round in Package.Rounds)
+        {
+            foreach (var theme in round.Themes)
+            {
+                foreach (var question in theme.Questions)
+                {
+                    foreach (var contentItem in question.Model.GetContent())
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        if (contentItem.Type == ContentTypes.Text)
+                        {
+                            continue;
+                        }
+
+                        if (!contentItem.IsRef)
+                        {
+                            errors.Add($"{round.Model.Name}:{theme.Model.Name}:{question.Model.Price}:{contentItem.Value}: {Resources.ExternalLinksAreForbidden}");
+                            continue;
+                        }
+
+                        var collectionName = CollectionNames.TryGetCollectionName(contentItem.Type);
+                        var collection = TryGetCollectionByMediaType(contentItem.Type);
+
+                        if (collectionName == null || collection == null)
+                        {
+                            continue;
+                        }
+
+                        var maxFileSize = Quality.FileSizeMb[collectionName];
+
+                        if (await collection.GetLengthAsync(contentItem.Value, cancellationToken) > maxFileSize * 1024 * 1024)
+                        {
+                            var errorMessage = string.Format(
+                                Resources.InvalidFileSize,
+                                contentItem.Value,
+                                maxFileSize).LeaveFirst(2000);
+                            errors.Add($"{round.Model.Name}:{theme.Model.Name}:{question.Model.Price}: {errorMessage}");
+                        }
+
+                        var extensions = Quality.FileExtensions[collectionName];
+                        var extension = System.IO.Path.GetExtension(contentItem.Value)?.ToLowerInvariant();
+
+                        if (!extensions.Contains(extension))
+                        {
+                            var errorMessage = string.Format(
+                                Resources.InvalidFileExtension,
+                                contentItem.Value,
+                                extension,
+                                string.Join(", ", extensions));
+                            errors.Add($"{round.Model.Name}:{theme.Model.Name}:{question.Model.Price}: {errorMessage}");
+                        }
+                    }
+                }
+            }
+        }
+
+        return errors;
     }
 
     private List<string> GetPackageQualityErrors()
@@ -4364,6 +4532,15 @@ public sealed class QDocument : WorkspaceViewModel
         }
 
         _statistics?.Dispose();
+        List<string> clipboardStagingFiles;
+
+        lock (_clipboardStagingSync)
+        {
+            clipboardStagingFiles = _clipboardStagingFiles;
+            _clipboardStagingFiles = [];
+        }
+
+        DeleteClipboardStagingFiles(clipboardStagingFiles);
 
         _mediaMaterializationService.ReleaseMaterializedMedia(Document.Images);
         _mediaMaterializationService.ReleaseMaterializedMedia(Document.Audio);
@@ -4587,10 +4764,26 @@ public sealed class QDocument : WorkspaceViewModel
         var errors = new List<string>();
         var recommendedSize = Quality.FileSizeMb;
 
-        var images = FillFiles(Images, recommendedSize[CollectionNames.ImagesStorageName], warnings);
-        var audio = FillFiles(Audio, recommendedSize[CollectionNames.AudioStorageName], warnings);
-        var video = FillFiles(Video, recommendedSize[CollectionNames.VideoStorageName], warnings);
-        var html = FillFiles(Html, recommendedSize[CollectionNames.HtmlStorageName], warnings);
+        var images = await FillFilesAsync(
+            Images,
+            recommendedSize[CollectionNames.ImagesStorageName],
+            warnings,
+            cancellationToken);
+        var audio = await FillFilesAsync(
+            Audio,
+            recommendedSize[CollectionNames.AudioStorageName],
+            warnings,
+            cancellationToken);
+        var video = await FillFilesAsync(
+            Video,
+            recommendedSize[CollectionNames.VideoStorageName],
+            warnings,
+            cancellationToken);
+        var html = await FillFilesAsync(
+            Html,
+            recommendedSize[CollectionNames.HtmlStorageName],
+            warnings,
+            cancellationToken);
 
         CheckCommonFiles(images, audio, video, html, errors);
 

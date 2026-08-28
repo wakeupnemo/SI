@@ -44,6 +44,14 @@ public sealed class InfoOwnerData
     public Dictionary<string, byte[]> EmbeddedHtml { get; set; } = new();
 
     public InfoOwnerData(QDocument document, IItemViewModel item)
+        : this(document, item, includeLegacyMediaPaths: true)
+    {
+    }
+
+    internal static InfoOwnerData CreateForAsyncClipboard(QDocument document, IItemViewModel item) =>
+        new(document, item, includeLegacyMediaPaths: false);
+
+    private InfoOwnerData(QDocument document, IItemViewModel item, bool includeLegacyMediaPaths)
     {
         var model = item.GetModel();
 
@@ -61,7 +69,7 @@ public sealed class InfoOwnerData
             model is Round ? Level.Round :
             model is Theme ? Level.Theme : Level.Question;
 
-        GetFullData(document, item);
+        GetFullData(document, item, includeLegacyMediaPaths);
     }
 
     internal async Task EmbedMediaAsync(QDocument document, CancellationToken cancellationToken = default)
@@ -103,7 +111,7 @@ public sealed class InfoOwnerData
         foreach (var name in names)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var streamInfo = collection.TryGetStreamInfo(name)
+            var streamInfo = await collection.TryGetStreamInfoAsync(name, cancellationToken)
                 ?? throw new InvalidDataException($"Referenced media is unavailable: {name}");
 
             if (streamInfo.Length < 0
@@ -167,7 +175,10 @@ public sealed class InfoOwnerData
     /// </summary>
     /// <param name="documentViewModel">Document which contains the object.</param>
     /// <param name="item">Object having necessary data.</param>
-    private void GetFullData(QDocument documentViewModel, IItemViewModel item)
+    private void GetFullData(
+        QDocument documentViewModel,
+        IItemViewModel item,
+        bool includeLegacyMediaPaths)
     {
         var model = item.GetModel();
         var document = documentViewModel.Document;
@@ -204,44 +215,44 @@ public sealed class InfoOwnerData
 
         Sources = sources.ToArray();
 
-        GetMedia(documentViewModel, model);
+        GetMedia(documentViewModel, model, includeLegacyMediaPaths);
     }
 
-    private void GetMedia(QDocument documentViewModel, InfoOwner model)
+    private void GetMedia(QDocument documentViewModel, InfoOwner model, bool includeLegacyMediaPaths)
     {
         if (model is Question question)
         {
-            GetQuestion(documentViewModel, question);
+            GetQuestion(documentViewModel, question, includeLegacyMediaPaths);
         }
 
         if (model is Theme theme)
         {
-            GetTheme(documentViewModel, theme);
+            GetTheme(documentViewModel, theme, includeLegacyMediaPaths);
         }
 
         if (model is Round round)
         {
-            GetRound(documentViewModel, round);
+            GetRound(documentViewModel, round, includeLegacyMediaPaths);
         }
     }
 
-    private void GetRound(QDocument documentViewModel, Round round)
+    private void GetRound(QDocument documentViewModel, Round round, bool includeLegacyMediaPaths)
     {
         foreach (var theme in round.Themes)
         {
-            GetTheme(documentViewModel, theme);
+            GetTheme(documentViewModel, theme, includeLegacyMediaPaths);
         }
     }
 
-    private void GetTheme(QDocument documentViewModel, Theme theme)
+    private void GetTheme(QDocument documentViewModel, Theme theme, bool includeLegacyMediaPaths)
     {
         foreach (var question in theme.Questions)
         {
-            GetQuestion(documentViewModel, question);
+            GetQuestion(documentViewModel, question, includeLegacyMediaPaths);
         }
     }
 
-    private void GetQuestion(QDocument documentViewModel, Question question)
+    private void GetQuestion(QDocument documentViewModel, Question question, bool includeLegacyMediaPaths)
     {
         foreach (var contentItem in question.GetContent())
         {
@@ -275,8 +286,9 @@ public sealed class InfoOwnerData
 
             if (!targetCollection.ContainsKey(link))
             {
-                var preparedMedia = collection.Wrap(link);
-                targetCollection.Add(link, preparedMedia.Uri);
+                targetCollection.Add(
+                    link,
+                    includeLegacyMediaPaths ? collection.Wrap(link).Uri : "");
             }
         }
     }

@@ -29,6 +29,8 @@ internal sealed class PlatformManagerMock :
 
     public List<string> LegacyExclamationMessages { get; } = [];
 
+    public int PrepareMediaCallCount { get; private set; }
+
     public override string[] FontFamilies => Array.Empty<string>();
 
     public override Tuple<int, int, int>? GetCurrentItemSelectionArea() => null;
@@ -62,7 +64,11 @@ internal sealed class PlatformManagerMock :
 
     public override string? SelectSearchFolder() => null;
 
-    public override IMedia PrepareMedia(IMedia media, string type) => media;
+    public override IMedia PrepareMedia(IMedia media, string type)
+    {
+        PrepareMediaCallCount++;
+        return media;
+    }
 
     public override void ClearMedia(IEnumerable<string> media) { }
 
