@@ -165,7 +165,7 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
   Error/Fatal logging, exact benign IBus shutdown filtering, continuous answer
   entry, preview, accessibility, SPARD, text import, hierarchy, parameter,
   media, keyboard, and lifecycle receipts remain green.
-- Existing WPF frontend cross-compiled on Linux with `dotnet build src/SIQuester/SIQuester/SIQuester.csproj --no-restore -p:EnableWindowsTargeting=true -m:1`: passed with 0 errors and 0 warnings. A broader `SIQuester.sln --no-restore` attempt failed only because the unrelated `Notions.Tests` assets file was absent in this no-restore environment; no product project failed. Native WPF execution remains a Windows-only verification.
+- Existing WPF frontend cross-compiled on Linux with `dotnet build src/SIQuester/SIQuester/SIQuester.csproj --no-restore -p:EnableWindowsTargeting=true -m:1`: passed with 0 errors; a fresh source rebuild reports 130 existing warnings. A broader `SIQuester.sln --no-restore` attempt failed only because the unrelated `Notions.Tests` assets file was absent in this no-restore environment; no product project failed. Native WPF execution remains a Windows-only verification.
 - Native Linux v0.1.0 smoke: the final tar and DEB contain the identical executable (SHA-256 `5ec8318c2b70972758e055ba15b6568e5d4b75bceeac8ad2f94f89fceca50a6d`). It exposed `SIQuester Cross-Platform` at 1200x760, opened `SIGameTestNew.siq`, exited through Ctrl+Q, committed settings, and logged no fatal/unhandled exception. The packaged Xdnd receipt imported `/tmp/v0.1.0 release изображение.png`, saved, closed, reopened, and matched exact source/package media SHA-256 `2f9a7766a7c9eec27946f95cb41b9acd11b1012e3338866fe4269ea00d184b50`; receipt directory: `/tmp/siquester-v0.1.0-smoke/dragdrop-receipt`.
 - Native Linux v0.2.0 authoring smoke: the extracted final tar opened `/tmp/siquester-v0.2.0-native-smoke/receipt/native authoring 例.siq` on Debian 13/X11. Through the actual compiled controls it selected Secret, entered theme `NativeSecretTheme`, fixed price 700, and post-answer text `PostAnswerSmoke`; Ctrl+S cleared dirty state after each edit. Ctrl+Q closed cleanly, the packaged application reopened the saved SIQ, and a second Ctrl+Q exited 0. `content.xml` contains canonical `type="secret"`, `selectionMode=exceptCurrent`, `numberSet(700,700,0)`, theme, and answer content. The log records two validated commits, recovery cleanup, two successful opens, and two complete close flows with no error/fatal/unhandled entry. Durable receipt: `artifacts/siquester-cross-platform-v0.2.0/native-smoke/RECEIPT.txt` (SHA-256 `b33b22e6852f91214fb47c5147465a8c54c3bb3223ae00c3ff9f21ae313fe426`).
 - Final native stability receipt: the tar built from `ebf5e604` opened
@@ -250,7 +250,7 @@ environment-specific verification; no broader parity work is implied.
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
   `RELEASE_NOTES_0.2.0.md` form the current documentation checkpoint. All 362
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
-  frontend cross-build passes 0/0. The earlier tar/DEB checksums and
+  frontend cross-build passes with 0 errors and 130 existing warnings. The earlier tar/DEB checksums and
   launcher/Wayland metadata/topology pass but predate `82f05ef2`; the earlier
   native 50-cycle result remains lifecycle evidence only. Safe-save, loader
   cleanup, failure retention, settings failure, and close serialization checks
