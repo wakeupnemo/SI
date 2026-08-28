@@ -6,7 +6,8 @@ Updated: 2026-08-28
 
 - Question-authoring implementation commit: `fcfbfb51`; stability
   implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
-  implementation commit: `ff5b9e3a` on `feat/siquester-avalonia`.
+  implementation commit: `ff5b9e3a`; content-storyboard implementation commit:
+  `37eb5931` on `feat/siquester-avalonia`.
 - All three suspected hardening defects were confirmed and fixed. Desktop close
   now serializes overlapping requests, persists settings before document close,
   catches and logs failures, keeps the window/data open on failure, and reports
@@ -21,8 +22,8 @@ Updated: 2026-08-28
 - The inspector also authors answer duration and canonical post-answer
   text/image/audio/video content. Unknown/future type names and parameters are
   preserved during open/display/save and change only after explicit selection.
-- Release suite: 359 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
-  `SIQuester.ViewModel.Tests` 203, `SIQuester.Avalonia.Tests` 60). The explicit
+- Release suite: 362 passed, 0 failed, 0 skipped (`SIPackages.Tests` 96,
+  `SIQuester.ViewModel.Tests` 205, `SIQuester.Avalonia.Tests` 61). The explicit
   stability test separately passed 20 warm-up plus 50 measured cycles.
 - Native Debian 13/X11 tar smoke opened a Unicode/space-path SIQ, authored a
   Secret question with theme `NativeSecretTheme` and fixed price 700, added
@@ -47,10 +48,13 @@ Updated: 2026-08-28
   fallback. The Release build and package topology pass; a native Wayland
   receipt is pending because this host is an X11 session without a test
   compositor.
-- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass and contain the regular
-  launcher plus `Avalonia.Wayland.dll`/`NWayland.dll`. Release readiness is
-  withheld only pending a visual preview check through the rebuilt launcher on
-  the reported host.
+- The user confirmed that preview renders through the rebuilt launcher on the
+  affected Debian/NVIDIA desktop. The compositor workaround is therefore
+  visually accepted for that host.
+- The existing v0.2.0 linux-x64 tar and amd64 DEB checksums pass and contain the
+  regular launcher plus `Avalonia.Wayland.dll`/`NWayland.dll`, but those files
+  predate content-storyboard commit `37eb5931` and must be rebuilt before this
+  newer working tree is published.
 
 ## Verified baseline
 
@@ -74,6 +78,17 @@ Updated: 2026-08-28
 - Completed the focused v0.2.0 demo-question authoring slice. A localized high-level selector maps ordinary author intent to the existing canonical question type and parameters; contextual controls cover every Secret price/recipient shape, answer duration, and post-answer content. Secret-family switches preserve compatible settings, endpoint step derivation is included in one undoable edit, and opened unknown/future values remain unmodified. Three shared-model acceptance tests and one compiled headless UI test create representative questions from a new package, safely save, reload through `SIDocument.Load`, and verify every distinct type/parameter/answer/content/media shape in `SIGameTestNew.siq`. The native packaged receipt additionally authors and reloads a Secret question and post-answer content.
 - Added an image-backed point-answer picker over the existing neutral selection request. A framework-neutral controller owns uniform-image coordinate/aspect calculations, invariant `x,y,aspect` serialization, deviation bounds, pointer clamping, and keyboard nudging; the Avalonia dialog performs cancellable bounded image loading, visible failure fallback, compiled localized controls, and deterministic stream/bitmap/event cleanup. Semantic SIQ reload and real PNG headless decode receipts pass.
 - Added compiled typed scenario inspectors over the canonical models. Legacy question content stays legacy; explicit scripts expose each real step and recursively edit simple/reference, content, group, and number-set parameters. Content items support value, placement, duration, wait/reference flags, text/replic add, move, and guarded delete, with script-owned changes entering the existing dirty/undo path.
+- Replaced the raw content list in the Avalonia inspector with a localized
+  presentation storyboard. It derives moments directly from canonical
+  `WaitForFinish` boundaries, shows screen/showman/background/unknown placement
+  lanes, and supports select, join, split, item movement, and whole-moment
+  movement with undo. Both question and post-answer content reuse it; explicit
+  script steps remain separate editors, and unknown types/placements are not
+  normalized. `ContentMoments_GroupCanonicalItemsByWaitBoundaryAndPlacement`,
+  `StoryboardCommands_QuestionAndPostAnswerContent_SaveCanonicalRoundTrip`,
+  and `ContentStoryboard_JoinsAndSplitsCanonicalMomentsInCompactLayout` cover
+  boundary semantics, malformed trailing groups, move/undo, Unicode, compact
+  layout, accessibility, and `SIDocument.Load` round-trip.
 - Added script-step add/delete/reorder and generic parameter create/delete controls for simple, content, group, number-set, and reference values. The ordered adapter mirrors canonical script identity by index, dynamically attaches document listeners, supports undo/redo in both move directions, preserves opaque future parameter types as editable values, and saves/reloads empty and Unicode parameter values. The package reader now retains self-closing empty parameters instead of dropping them.
 - Completed typed parameter rename and explicit type conversion. Rename preserves the exact underlying value, rejects empty and duplicate keys, and is one undoable change. Conversion offers only canonical simple/content/group/number-set/reference targets, reapplies established parameter ordering, preserves simple/reference text, initializes valid structured containers, and restores the exact previous model on Undo. Unknown future kinds remain visible and byte-semantically untouched unless the user explicitly selects a known target; Unicode rename/conversion survives `SIDocument.Load` save/reload.
 - Fixed two persistence defects exposed by the scenario receipt: `Question.Clone()` now deep-clones scripts instead of silently dropping them during `SIDocument.SaveXml`, and isolated XML subtree readers now preserve every step/parameter in multi-step scripts. The five formerly ignored script-deserialization fixtures are enabled and green.
@@ -135,14 +150,14 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Cross-platform Release build: passed with 0 errors. A source rebuild reported 130 pre-existing nullable/obsolete warnings across retained projects; the final full incremental validation reported 0 warnings. Analyzers and warnings remain enabled, and every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 96 passed, 0 skipped, 0 failed. `Clone_PreservesQualityControlSemanticState` and `GetContent_IncludesQuestionAndScriptParameters` cover marker clone/equality/hash semantics and complete modern/legacy content discovery; script save/reload, deep-clone, reader-state, and empty-parameter coverage remains green.
-- `SIQuester.ViewModel.Tests`: 203 passed, 0 failed. Four
+- `SIQuester.ViewModel.Tests`: 205 passed, 0 failed. Four
   `MainLifecycleStabilityTests` cover default-token corrupt-loader cleanup,
   overlapping closes, one-message workspace failure, and host-owned close.
   `SaveDocument_UnwritableDirectory_ShouldLeaveExistingPackageUntouched` is a
   real Linux permission failure. The three demo-authoring tests and all prior
   import, SPARD, hierarchy, parameter, media, validation, recovery, clipboard,
   and safe-save coverage remain green.
-- `SIQuester.Avalonia.Tests`: 60 passed, 0 failed. Main-window settings failure
+- `SIQuester.Avalonia.Tests`: 61 passed, 0 failed. Main-window settings failure
   keeps the window open and reports once; startup version/environment, focused
   Error/Fatal logging, exact benign IBus shutdown filtering, continuous answer
   entry, preview, accessibility, SPARD, text import, hierarchy, parameter,
@@ -159,7 +174,7 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
   `artifacts/siquester-cross-platform-v0.2.0/stability/`.
 - Packaged preview fallback receipt: on this clean release host WebKitGTK is unavailable, so preview produced the localized actionable dependency state, stayed responsive, closed cleanly, committed settings, and logged no fatal/unhandled exception. Earlier WebKitGTK 2.52.6 native question and MP3/MP4 receipts remain valid implementation evidence; full playback was not re-run for v0.1.0.
 - Native Linux question-preview receipt: staged WebKitGTK 2.52.6 under Xvfb opened `avalonia-preview-options.siq`, rendered the Russian select-answer question plus embedded yellow image, reached terminal Replay in three fragments, replayed, closed, reopened, fetched the image again, and exited 0. The receipt records `created_sessions=2`, `disposed_sessions=2`, `replay_count=1`, `media_fetches=2`, and bright-pixel fraction `0.0968566`; the visually inspected 92,678-byte screenshot SHA-256 is `2b19d35abb5f955ec961b1ad44b9e5e4e7bfd3459b46b8ae905b7c5fbf3007e7`. The 2,420-byte log SHA-256 is `9d68bc04c0fd2715670524f3b601dfeb6d92e389ef3076c3102b062608fc9890` and contains no preview-host failure, fatal, or unhandled exception. Receipt directory: `/tmp/siquester-preview-options-smoke-20260827-3/receipt`.
-- Debian 13 compositing-fix acceptance: the user reproduced a blank native question surface under normal startup and a correctly rendered question with `WEBKIT_DISABLE_COMPOSITING_MODE=1`. The new startup tests pass 2/2 and prove default/preserve behavior before `AppBuilder` creation. A fresh packaged normal-start attempt opened the real preview fixture and closed cleanly, but its coordinate-driven XTest actions did not select the question and ended with `BadWindow`; it is retained only as startup evidence, not claimed as a new rendering receipt.
+- Debian 13 compositing-fix acceptance: the user reproduced a blank native question surface under normal startup and a correctly rendered question with `WEBKIT_DISABLE_COMPOSITING_MODE=1`. The startup tests pass 2/2 and prove default/preserve behavior before `AppBuilder` creation; the user subsequently confirmed that preview renders through the rebuilt launcher on the affected Debian/NVIDIA desktop.
 - Native Linux media-preview receipt: staged WebKitGTK 2.52.6 under Xvfb opened repository fixture `SIGameTestNew.siq`; the 52,079-byte MP3 fetched through the controlled route and its visible transport reached 0:03, while the 1,046,987-byte MP4 fetched through a new route on the retained native control and rendered changing decoded frames. Switching tabs logged Audio-session disposal before Video creation; `Ctrl+Q` logged Video-session disposal, document close, settings commit, and exited cleanly with no fatal/unhandled entry. The final MP3 screenshot SHA-256 is `6fcf23a8e6e3dc9adfc060b070bf777856bdc0094588fa3174e79861b19184b9`, the playing-MP4 screenshot SHA-256 is `d2a6450e6ac47a204909d7606ae19a1e0eedf943070c33128caaab540b31fbee`, and the log SHA-256 is `b5aab1fe919869482004547f9dd236d7a7cd048a2a5033d672aa81c0bfe550db`. Receipt directory: `/tmp/siquester-media-preview-smoke-20260827-pooled`.
 - Linux codec-metadata package receipt: a fresh self-contained x64 tar and Debian package include `media-preview.html`/`.js`; both checksum entries pass. The DEB `Recommends` field contains WebKitGTK/WPE plus GStreamer base/good/bad/ugly/libav. Tar SHA-256: `2ad9a9570c49fd63f45868f15d8e32702e329183c7185c3d173f827b5001eac5`; DEB SHA-256: `0725a71a6e36a92a5125c418d5b6a855d0ef954b00a5261e15cae46c0b1d2238`; directory: `/tmp/siquester-media-preview-package`.
 - Recovery-center Linux receipt: the framework-dependent Release host opened a validated 2,973,900-byte recovery snapshot with Unicode display/original paths, rendered its per-entry actions, and asynchronously previewed the real package as 2 rounds, 7 themes, 35 questions, and 12 media files. The 1200x760 visual inspection found no overlap or clipping; `Ctrl+Q` exited with code 0, empty stderr, and no fatal/unhandled log entry. Receipt directory: `/tmp/siquester-recovery-smoke.w7Cnsd`.
@@ -197,18 +212,18 @@ intentionally not rebuilt for this focused release.
 
 ## Current blockers
 
-- The rebuilt pre-apphost launcher has structural and environment-probe
-  evidence but not yet the user's visual preview receipt on the affected
-  Debian 13/NVIDIA desktop. Do not call v0.2.0 READY until that check passes.
+- No source blocker is known for the content-storyboard slice. The listed Linux
+  v0.2.0 artifacts predate `37eb5931`; rebuilding and a short packaged
+  storyboard authoring smoke are required before publishing this exact state.
 - Native Windows WPF/Avalonia execution, hosted package publication, and macOS signing/runtime receipts require those operating-system runners.
 - The host has no system .NET SDK; the session-local SDK is not a repository requirement.
 
 ## Next independent tasks
 
-Run the extracted tar through `./siquester` on the affected desktop and confirm
-that question preview renders without GBM/KMS errors. If it passes, install the
-fresh DEB and repeat through `/usr/bin/siquester`. A real Wayland-session launch
-is the next environment-specific verification; no feature work is implied.
+Rebuild the v0.2.0 Linux tar/DEB from `37eb5931` plus this documentation
+checkpoint, then smoke question and post-answer storyboard join/split/save/reopen
+through the packaged binary. A real Wayland-session launch remains a separate
+environment-specific verification; no broader parity work is implied.
 
 ## Known limitations
 
@@ -218,9 +233,9 @@ is the next environment-specific verification; no feature work is implied.
 - The retained question player now has verified native Linux text, embedded select-answer image, completion/replay, two-session close/reopen, and a 50-cycle resource receipt plus automated available/unavailable backend gates. The media library additionally has verified native Linux MP3/MP4 decoding through controlled per-selection routes. Native macOS/Windows codec acceptance remains pending. Package HTML is deliberately rendered as an inert localized warning until a separate restrictive HTML policy is implemented.
 - Native external Xdnd target acceptance now passes with visible dirty/Undo state, exact media persistence, safe save, and reopen. XTEST still does not reliably deliver same-window internal question Xdnd `DragOver`/`Drop`, so that narrower acceptance is deferred rather than inferred from source activation.
 - The first deterministic flat-list baseline is 1,045-1,062 ms to create and lay out a generated 2,000-question document at 1100x700 on this Debian host, with 15 question cards realized at either scroll endpoint. It is a headless realization receipt rather than a native rendering profile; no performance improvement is claimed yet.
-- Linux packages are structurally accepted and the prior X11 build has native
-  authoring evidence, but the rebuilt launcher's visual preview and the new
-  Wayland backend still need native receipts. Actual desktop/MIME cache
+- Linux packages are structurally accepted, the prior X11 build has native
+  authoring evidence, and the rebuilt launcher's visual preview is user-confirmed;
+  the new Wayland backend still needs a native receipt. Actual desktop/MIME cache
   registration after system install and native ARM64 launch remain pending.
   macOS bundles are cross-built only; ICNS/codesign and native launch are
   hosted-runner boundaries.
@@ -228,12 +243,13 @@ is the next environment-specific verification; no feature work is implied.
 
 ## Review state
 
-- Latest reviewed implementation commit: `ff5b9e3a`; this file,
+- Latest reviewed implementation commit: `37eb5931`; this file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
-  `RELEASE_NOTES_0.2.0.md` form the final documentation checkpoint. All 359
+  `RELEASE_NOTES_0.2.0.md` form the current documentation checkpoint. All 362
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
-  frontend cross-build passes 0/0. Fresh tar/DEB checksums and
-  launcher/Wayland metadata/topology pass; the earlier native 50-cycle result
-  remains lifecycle evidence only. Safe-save, loader cleanup, failure
-  retention, settings failure, and close serialization checks pass. Review
-  remained strictly scoped to v0.2.0 release hardening and Linux startup.
+  frontend cross-build passes 0/0. The earlier tar/DEB checksums and
+  launcher/Wayland metadata/topology pass but predate `37eb5931`; the earlier
+  native 50-cycle result remains lifecycle evidence only. Safe-save, loader
+  cleanup, failure retention, settings failure, and close serialization checks
+  pass. The latest review was scoped to canonical content grouping, undo,
+  round-trip safety, compact accessibility, and frontend compatibility.

@@ -15,6 +15,10 @@ SIQuester product version.
 - Added ordinary post-answer content authoring using the existing canonical
   content/media editor. Text, image, audio, and video keep the existing media,
   undo, dirty-tracking, and safe-save paths.
+- Replaced the technical content-item list with a localized presentation
+  storyboard. Consecutive moments play left to right; screen, showman, and
+  background lanes make simultaneous content explicit. Authors can join or
+  split moments and move complete moments without editing `WaitForFinish`.
 - Added optional answer-time-limit authoring.
 - Preserved unknown question types and parameters during ordinary open/save.
   Choosing a known behavior is an explicit converting edit and remains
@@ -46,9 +50,9 @@ No parallel model or alternate serializer was introduced.
 
 ## Verification
 
-- Release test suite: 359 passed, 0 failed, 0 skipped
-  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 203,
-  `SIQuester.Avalonia.Tests` 60). An explicit 20-warm-up/50-measured-cycle
+- Release test suite: 362 passed, 0 failed, 0 skipped
+  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 205,
+  `SIQuester.Avalonia.Tests` 61). An explicit 20-warm-up/50-measured-cycle
   managed soak also passed.
 - `DemoBehaviors_CreatedFromNewPackageCommands_SaveAndReloadCanonicalSemantics`
   creates representative demo-equivalent questions from a new package through
@@ -75,10 +79,14 @@ No parallel model or alternate serializer was introduced.
 - Those lifecycle cycles did not verify rendered pixels. A later affected-host
   run exposed a blank WebKitGTK surface with NVIDIA GBM/KMS errors, which is why
   the rebuilt artifacts apply the compatibility value in the pre-apphost
-  launcher. Visual confirmation of this rebuilt launcher remains required
-  before declaring the release READY.
+  launcher. The user subsequently confirmed that preview renders through that
+  launcher on the affected Debian/NVIDIA desktop.
 
 ## Linux artifacts
+
+The hashes below identify the accepted launcher/Wayland checkpoint. They
+predate content-storyboard commit `37eb5931` and must be regenerated before the
+newer working tree is published.
 
 - `SIQuester-0.2.0-linux-x64.tar.gz`
 - `siquester_0.2.0_amd64.deb`
