@@ -52,10 +52,9 @@ Updated: 2026-08-28
 - The user confirmed that preview renders through the rebuilt launcher on the
   affected Debian/NVIDIA desktop. The compositor workaround is therefore
   visually accepted for that host.
-- The existing v0.2.0 linux-x64 tar and amd64 DEB checksums pass and contain the
-  regular launcher plus `Avalonia.Wayland.dll`/`NWayland.dll`, but those files
-  predate content-storyboard commit `37eb5931` and must be rebuilt before this
-  newer working tree is published.
+- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass and contain the
+  regular launcher, storyboard selection fix, and
+  `Avalonia.Wayland.dll`/`NWayland.dll`.
 
 ## Verified baseline
 
@@ -186,12 +185,11 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 ## Release artifacts
 
-The requested local v0.2.0 artifacts were built from Linux launcher/Wayland
-commit `ff5b9e3a` with its timestamp (`1787874382`) as `SOURCE_DATE_EPOCH`. They are
-not pushed, tagged, published, installed, or merged.
+The local v0.2.0 artifacts were built from checkpoint `7a44a0ff` with
+`1787913158` as `SOURCE_DATE_EPOCH`. They are not installed or merged.
 
-- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 59,008,208 bytes, SHA-256 `797c15b43dce784853c9242ffee8e74d19b6b926ed78895efd7ec9970b16ba70`.
-- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,844,048 bytes, SHA-256 `794d6942b13a70d1c8b4b18dbfb1205849e7c195ca313b351c71598734eb524d`.
+- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 59,019,971 bytes, SHA-256 `1f9464b405bd55f32339b59a15c95fd724122ce71022806a7be6cb2304bb9389`.
+- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,846,816 bytes, SHA-256 `2b913a7105f840427ab61e3a61359eef8c747317701783990482e5d7b2830097`.
 - Checksum receipt: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.SHA256SUMS`; both entries pass.
 - Native authoring receipt and exact saved SIQ: `artifacts/siquester-cross-platform-v0.2.0/native-smoke/`.
 - Final native and managed stability receipt: `artifacts/siquester-cross-platform-v0.2.0/stability/`.
@@ -200,8 +198,8 @@ The DEB declares version 0.2.0, architecture amd64, native dependencies,
 WebKit/GStreamer recommendations, immutable installation paths, desktop entry,
 icon, license/third-party notices, and `application/x-siq` MIME metadata. Its
 native executable, `SIQuester.Avalonia.dll`, and `SIQuester.ViewModel.dll` are
-byte-identical to the smoke-tested tar payload. Other architectures were
-intentionally not rebuilt for this focused release.
+byte-identical to the tar payload. The hosted five-RID matrix is the authority
+for the remaining release artifacts.
 
 ## Compatibility artifact
 
@@ -215,17 +213,15 @@ intentionally not rebuilt for this focused release.
 
 ## Current blockers
 
-- No source blocker is known for the content-storyboard slice. The listed Linux
-  v0.2.0 artifacts predate `37eb5931`; rebuilding and a short packaged
-  storyboard authoring smoke are required before publishing this exact state.
+- No source blocker is known for the content-storyboard slice. Fresh Linux
+  v0.2.0 artifacts and checksums exist; hosted packaged startup is pending.
 - Native Windows WPF/Avalonia execution, hosted package publication, and macOS signing/runtime receipts require those operating-system runners.
 - The host has no system .NET SDK; the session-local SDK is not a repository requirement.
 
 ## Next independent tasks
 
-Rebuild the v0.2.0 Linux tar/DEB from `37eb5931` plus this documentation
-checkpoint, then smoke question and post-answer storyboard join/split/save/reopen
-through the packaged binary. A real Wayland-session launch remains a separate
+Push this checkpoint, run the hosted five-RID workflow, publish v0.2.0 if it is
+green, and retain real Wayland-session launch as a separate
 environment-specific verification; no broader parity work is implied.
 
 ## Known limitations

@@ -19,6 +19,8 @@ SIQuester product version.
   storyboard. Consecutive moments play left to right; screen, showman, and
   background lanes make simultaneous content explicit. Authors can join or
   split moments and move complete moments without editing `WaitForFinish`.
+- Kept storyboard selection, command targeting, and visible highlighting in
+  sync across initial load and moment-move undo/redo.
 - Added optional answer-time-limit authoring.
 - Preserved unknown question types and parameters during ordinary open/save.
   Choosing a known behavior is an explicit converting edit and remains
@@ -63,8 +65,8 @@ No parallel model or alternate serializer was introduced.
   Secret-family switching, compiled UI command routing, contextual controls,
   Russian resources, and accessible names.
 - The retained WPF SIQuester project cross-builds on Linux with Windows
-  targeting enabled: 0 errors, 0 warnings. Native Windows execution remains a
-  Windows-runner boundary.
+  targeting enabled: 0 errors and 130 existing warnings. Native Windows
+  execution remains a Windows-runner boundary.
 - Native Debian 13/X11 tar smoke opened a Unicode/space SIQ path, authored a
   Secret question with fixed price 700, added post-answer text, saved twice,
   closed, reopened, and closed cleanly. Both saves were validated and committed;
@@ -84,9 +86,8 @@ No parallel model or alternate serializer was introduced.
 
 ## Linux artifacts
 
-The hashes below identify the accepted launcher/Wayland checkpoint. They
-predate content-storyboard commit `37eb5931` and must be regenerated before the
-newer working tree is published.
+The hashes below identify the final local Linux build from release checkpoint
+`7a44a0ff`, including the storyboard selection fix.
 
 - `SIQuester-0.2.0-linux-x64.tar.gz`
 - `siquester_0.2.0_amd64.deb`
@@ -95,8 +96,8 @@ newer working tree is published.
 Final SHA-256:
 
 ```text
-797c15b43dce784853c9242ffee8e74d19b6b926ed78895efd7ec9970b16ba70  SIQuester-0.2.0-linux-x64.tar.gz
-794d6942b13a70d1c8b4b18dbfb1205849e7c195ca313b351c71598734eb524d  siquester_0.2.0_amd64.deb
+1f9464b405bd55f32339b59a15c95fd724122ce71022806a7be6cb2304bb9389  SIQuester-0.2.0-linux-x64.tar.gz
+2b913a7105f840427ab61e3a61359eef8c747317701783990482e5d7b2830097  siquester_0.2.0_amd64.deb
 ```
 
 The Debian package includes the desktop entry, icon, `.siq` MIME registration,
