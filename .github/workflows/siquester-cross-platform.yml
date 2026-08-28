@@ -82,7 +82,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gir1.2-gtk-4.0 imagemagick python3-gi xvfb xdotool
+          sudo apt-get install --yes gir1.2-gtk-4.0 imagemagick python3-gi ripgrep xvfb xdotool
 
       - name: Native Linux startup smoke
         if: runner.os == 'Linux'
