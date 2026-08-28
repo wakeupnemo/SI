@@ -1773,6 +1773,89 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void DocumentEditor_HierarchyProvidesAccessibleDragHandlesAndTypedDropTargets()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var package = SIDocument.Create("Hierarchy drag", "Test author");
+        var firstQuestion = new Question { Price = 100, Right = { "First" } };
+        var secondQuestion = new Question { Price = 200, Right = { "Second" } };
+        package.Package.Rounds.Add(new Round
+        {
+            Name = "First round",
+            Themes = { new Theme { Name = "First theme", Questions = { firstQuestion } } },
+        });
+        package.Package.Rounds.Add(new Round
+        {
+            Name = "Second round",
+            Themes = { new Theme { Name = "Second theme", Questions = { secondQuestion } } },
+        });
+        var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Hierarchy drag");
+        var previousView = AppSettings.Default.View;
+        AppSettings.Default.View = ViewMode.TreeFull;
+        document.Package.Rounds[0].Themes[0].IsExpanded = true;
+        document.Package.Rounds[1].Themes[0].IsExpanded = true;
+        var view = new DocumentEditorView { DataContext = document };
+        var window = new Window { Width = 1100, Height = 700, Content = view };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+            var visibleBorders = view.GetVisualDescendants()
+                .OfType<Border>()
+                .Where(border => border.IsEffectivelyVisible)
+                .ToArray();
+            var themeHandles = visibleBorders
+                .Where(border => Equals(
+                    border.GetValue(AutomationProperties.NameProperty),
+                    UiStrings.DragTheme))
+                .ToArray();
+            var questionHandles = visibleBorders
+                .Where(border => Equals(
+                    border.GetValue(AutomationProperties.NameProperty),
+                    UiStrings.DragQuestion))
+                .ToArray();
+            var dropTargets = visibleBorders
+                .Where(border => border.Classes.Contains("hierarchy-drop-target"))
+                .ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(themeHandles, Has.Length.EqualTo(2));
+                Assert.That(questionHandles, Has.Length.EqualTo(2));
+                Assert.That(dropTargets, Has.Length.EqualTo(6));
+                Assert.That(dropTargets.All(target => target.GetValue(DragDrop.AllowDropProperty)), Is.True);
+                Assert.That(themeHandles.All(handle => Equals(
+                    handle.GetValue(ToolTip.TipProperty),
+                    UiStrings.HierarchyThemeDragHint)), Is.True);
+                Assert.That(questionHandles.All(handle => Equals(
+                    handle.GetValue(ToolTip.TipProperty),
+                    UiStrings.HierarchyQuestionDragHint)), Is.True);
+            });
+
+            var secondTheme = document.Package.Rounds[1].Themes[0];
+            var secondThemeHandle = themeHandles.Single(handle => ReferenceEquals(handle.DataContext, secondTheme));
+            var handleCenter = secondThemeHandle.TranslatePoint(
+                new Point(secondThemeHandle.Bounds.Width / 2, secondThemeHandle.Bounds.Height / 2),
+                window);
+            Assert.That(handleCenter, Is.Not.Null);
+            window.MouseDown(handleCenter!.Value, MouseButton.Left, RawInputModifiers.None);
+            window.MouseUp(handleCenter.Value, MouseButton.Left, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.That(document.ActiveNode, Is.SameAs(secondTheme),
+                "The explicit hierarchy grip must select its canonical item before the drag threshold is crossed.");
+        }
+        finally
+        {
+            AppSettings.Default.View = previousView;
+            window.Close();
+            document.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public void DocumentEditor_FlatWorkspacePersistsLayoutAndScaleAndRoutesKeyboardOperations()
     {
         using var serviceProvider = CreateServiceProvider();
@@ -2549,7 +2632,13 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.ClearSearch, Is.EqualTo("Очистить поиск"));
             Assert.That(UiStrings.RightAnswers, Is.EqualTo("Правильные ответы"));
             Assert.That(UiStrings.DuplicateItem, Is.EqualTo("Дублировать"));
+            Assert.That(UiStrings.DragTheme, Is.EqualTo("Перетащить тему"));
             Assert.That(UiStrings.DragQuestion, Is.EqualTo("Перетащить вопрос"));
+            Assert.That(UiStrings.HierarchyThemeDragHint,
+                Is.EqualTo("Перетащите в другой раунд или на другую тему, чтобы переместить."));
+            Assert.That(UiStrings.HierarchyQuestionDragHint,
+                Does.StartWith("Перетащите в другую тему или на другой вопрос"));
+            Assert.That(UiStrings.DragHierarchyItemFailed, Is.EqualTo("Не удалось переместить элемент"));
             Assert.That(UiStrings.DragQuestionFailed, Is.EqualTo("Не удалось перетащить вопрос"));
             Assert.That(UiStrings.RenameParameter, Is.EqualTo("Переименовать параметр"));
             Assert.That(UiStrings.ConvertParameter, Is.EqualTo("Преобразовать параметр"));

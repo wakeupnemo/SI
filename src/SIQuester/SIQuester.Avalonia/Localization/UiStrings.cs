@@ -243,7 +243,11 @@ public static class UiStrings
     public static string GoToIssue => Get(nameof(GoToIssue));
     public static string ValidationDetails => Get(nameof(ValidationDetails));
     public static string DuplicateItem => Get(nameof(DuplicateItem));
+    public static string DragTheme => Get(nameof(DragTheme));
     public static string DragQuestion => Get(nameof(DragQuestion));
+    public static string HierarchyThemeDragHint => Get(nameof(HierarchyThemeDragHint));
+    public static string HierarchyQuestionDragHint => Get(nameof(HierarchyQuestionDragHint));
+    public static string DragHierarchyItemFailed => Get(nameof(DragHierarchyItemFailed));
     public static string DragQuestionFailed => Get(nameof(DragQuestionFailed));
     public static string RenameParameter => Get(nameof(RenameParameter));
     public static string ConvertParameter => Get(nameof(ConvertParameter));

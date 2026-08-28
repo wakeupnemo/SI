@@ -5,6 +5,8 @@ using SIQuester.ViewModel.Contracts;
 using SIQuester.ViewModel.Serializers;
 using SIQuester.ViewModel.Services;
 using SIQuester.ViewModel.Tests.Helpers;
+using System.Text;
+using System.Xml;
 
 namespace SIQuester.ViewModel.Tests;
 
@@ -107,6 +109,74 @@ internal sealed class FlatQuestionOperationsTests
             Assert.That(Prices(source), Is.EqualTo(new[] { 100, 200, 300 }));
             Assert.That(Prices(target), Is.EqualTo(new[] { 400, 800 }));
             Assert.That(document.QuestionCount, Is.EqualTo(5));
+        });
+    }
+
+    [Test]
+    public void MoveAcrossRounds_PreservesQuestionSemanticsAndUsesBothThemesPriceSequences()
+    {
+        var package = SIDocument.Create("Cross-round question", "Test author");
+        var sourceRound = new Round { Name = "Source round" };
+        var sourceTheme = new Theme { Name = "Source" };
+        sourceTheme.Questions.Add(CreateRichQuestion("Moved", 100));
+        sourceTheme.Questions.Add(CreateRichQuestion("Remaining", 200));
+        sourceRound.Themes.Add(sourceTheme);
+        var targetRound = new Round { Name = "Target round" };
+        var targetTheme = new Theme { Name = "Target" };
+        targetTheme.Questions.Add(CreateRichQuestion("Target A", 400));
+        targetTheme.Questions.Add(CreateRichQuestion("Target B", 800));
+        targetRound.Themes.Add(targetTheme);
+        package.Package.Rounds.Add(sourceRound);
+        package.Package.Rounds.Add(targetRound);
+        using var document = _documentFactory.CreateViewModelFor(package, "Cross-round question");
+        var source = document.Package.Rounds[0].Themes[0];
+        var target = document.Package.Rounds[1].Themes[0];
+        var originalQuestion = source.Questions[0];
+        document.Package.IsSelected = false;
+        originalQuestion.IsSelected = true;
+        document.ActiveNode = originalQuestion;
+        var expectedQuestion = originalQuestion.Model.Clone();
+        expectedQuestion.Price = 800;
+        var dragData = document.FlatQuestions.CreateDragData(originalQuestion);
+
+        var result = document.FlatQuestions.Apply(
+            dragData,
+            new FlatQuestionLocation(1, 0, 1),
+            FlatQuestionDropMode.Move,
+            recalculatePrices: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.EqualTo(FlatQuestionDropResult.Applied));
+            Assert.That(Answers(source), Is.EqualTo(new[] { "Remaining" }));
+            Assert.That(Prices(source), Is.EqualTo(new[] { 100 }));
+            Assert.That(Answers(target), Is.EqualTo(new[] { "Target A", "Moved", "Target B" }));
+            Assert.That(Prices(target), Is.EqualTo(new[] { 400, 800, 1200 }));
+            Assert.That(Serialize(target.Questions[1].Model), Is.EqualTo(Serialize(expectedQuestion)));
+            Assert.That(target.Questions[1].Model, Is.Not.SameAs(originalQuestion.Model));
+            Assert.That(target.Model.Questions[1], Is.SameAs(target.Questions[1].Model));
+        });
+
+        document.OperationsManager.Undo.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(Answers(source), Is.EqualTo(new[] { "Moved", "Remaining" }));
+            Assert.That(Prices(source), Is.EqualTo(new[] { 100, 200 }));
+            Assert.That(Answers(target), Is.EqualTo(new[] { "Target A", "Target B" }));
+            Assert.That(Prices(target), Is.EqualTo(new[] { 400, 800 }));
+            Assert.That(document.ActiveNode, Is.SameAs(originalQuestion));
+            Assert.That(originalQuestion.IsSelected, Is.True);
+            Assert.That(document.ActiveChain[^1], Is.SameAs(originalQuestion));
+            Assert.That(document.ActiveChain, Has.Length.EqualTo(4));
+        });
+
+        document.OperationsManager.Redo.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.ActiveNode, Is.SameAs(target.Questions[1]));
+            Assert.That(target.Questions[1].IsSelected, Is.True);
+            Assert.That(document.ActiveChain[^1], Is.SameAs(target.Questions[1]));
+            Assert.That(document.ActiveChain, Has.Length.EqualTo(4));
         });
     }
 
@@ -417,4 +487,44 @@ internal sealed class FlatQuestionOperationsTests
 
     private static int[] Prices(ThemeViewModel theme) =>
         theme.Questions.Select(question => question.Model.Price).ToArray();
+
+    private static Question CreateRichQuestion(string answer, int price)
+    {
+        var question = new Question
+        {
+            Price = price,
+            TypeName = QuestionTypes.Stake,
+            Script = new Script(),
+        };
+        question.Right.Add(answer);
+        question.Wrong.Add($"Wrong {answer}");
+        question.Info.Comments.Text = $"Comment {answer}";
+        question.Parameters["futureParameter"] = new StepParameter
+        {
+            Type = StepParameterTypes.Simple,
+            SimpleValue = "future-value",
+        };
+        question.Script.Steps.Add(new Step
+        {
+            Type = StepTypes.ShowContent,
+            Parameters =
+            {
+                [StepParameterNames.Content] = new StepParameter
+                {
+                    Type = StepParameterTypes.Content,
+                    ContentValue = [new ContentItem { Type = ContentTypes.Text, Value = $"Text {answer}" }],
+                },
+            },
+        });
+        return question;
+    }
+
+    private static string Serialize(Question question)
+    {
+        var content = new StringBuilder();
+        using var writer = XmlWriter.Create(content, new XmlWriterSettings { OmitXmlDeclaration = true });
+        question.WriteXml(writer);
+        writer.Flush();
+        return content.ToString();
+    }
 }

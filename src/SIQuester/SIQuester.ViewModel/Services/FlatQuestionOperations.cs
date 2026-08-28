@@ -149,8 +149,8 @@ public sealed class FlatQuestionOperations
                 ResetPrices(sourceTheme, prices);
             }
 
+            RecordSelectionChange(sourceQuestion);
             change.Commit();
-            Select(sourceQuestion);
             return FlatQuestionDropResult.Applied;
         }
 
@@ -179,10 +179,10 @@ public sealed class FlatQuestionOperations
                 }
             }
 
+            RecordSelectionChange(insertedQuestion);
             change.Commit();
         }
 
-        Select(insertedQuestion);
         return FlatQuestionDropResult.Applied;
     }
 
@@ -256,15 +256,11 @@ public sealed class FlatQuestionOperations
         return true;
     }
 
-    private void Select(QuestionViewModel question)
+    private void RecordSelectionChange(QuestionViewModel question)
     {
-        if (_document.ActiveNode != null)
-        {
-            _document.ActiveNode.IsSelected = false;
-        }
-
-        question.IsSelected = true;
-        _document.ActiveNode = question;
+        var selectionChange = new ActiveNodeSelectionChange(_document, _document.ActiveNode, question);
+        _document.OperationsManager.AddChange(selectionChange);
+        selectionChange.Apply();
     }
 
     private bool TryResolveTheme(FlatQuestionLocation location, out ThemeViewModel theme)

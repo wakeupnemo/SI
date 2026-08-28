@@ -117,19 +117,75 @@
             <Style Selector="TreeViewItem" x:DataType="vm:IItemViewModel">
               <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
             </Style>
+            <Style Selector="Border.hierarchy-drop-target">
+              <Setter Property="BorderBrush" Value="Transparent" />
+              <Setter Property="BorderThickness" Value="2" />
+              <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+              <Setter Property="Padding" Value="{StaticResource Space4Thickness}" />
+            </Style>
+            <Style Selector="Border.hierarchy-drop-target.drag-over">
+              <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+            </Style>
           </TreeView.Styles>
           <TreeView.DataTemplates>
             <TreeDataTemplate DataType="{x:Type vm:PackageViewModel}" ItemsSource="{Binding Rounds}">
               <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
             </TreeDataTemplate>
             <TreeDataTemplate DataType="{x:Type vm:RoundViewModel}" ItemsSource="{Binding Themes}">
-              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+              <Border
+                  Classes="hierarchy-drop-target"
+                  DragDrop.AllowDrop="True"
+                  DragDrop.DragOver="HierarchyDropTarget_DragOver"
+                  DragDrop.DragLeave="HierarchyDropTarget_DragLeave"
+                  DragDrop.Drop="HierarchyDropTarget_Drop">
+                <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+              </Border>
             </TreeDataTemplate>
             <TreeDataTemplate DataType="{x:Type vm:ThemeViewModel}" ItemsSource="{Binding Questions}">
-              <TextBlock Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" />
+              <Border
+                  Classes="hierarchy-drop-target"
+                  DragDrop.AllowDrop="True"
+                  DragDrop.DragOver="HierarchyDropTarget_DragOver"
+                  DragDrop.DragLeave="HierarchyDropTarget_DragLeave"
+                  DragDrop.Drop="HierarchyDropTarget_Drop">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Space4}">
+                  <Border
+                      Classes="flat-drag-handle"
+                      PointerPressed="HierarchyDragHandle_PointerPressed"
+                      PointerMoved="HierarchyDragHandle_PointerMoved"
+                      PointerReleased="HierarchyDragHandle_PointerReleased"
+                      PointerCaptureLost="HierarchyDragHandle_PointerCaptureLost"
+                      Cursor="SizeAll"
+                      AutomationProperties.Name="{x:Static loc:UiStrings.DragTheme}"
+                      ToolTip.Tip="{x:Static loc:UiStrings.HierarchyThemeDragHint}">
+                    <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Model.Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                </Grid>
+              </Border>
             </TreeDataTemplate>
             <TreeDataTemplate DataType="{x:Type vm:QuestionViewModel}">
-              <TextBlock Text="{Binding Model.Price}" />
+              <Border
+                  Classes="hierarchy-drop-target"
+                  DragDrop.AllowDrop="True"
+                  DragDrop.DragOver="HierarchyDropTarget_DragOver"
+                  DragDrop.DragLeave="HierarchyDropTarget_DragLeave"
+                  DragDrop.Drop="HierarchyDropTarget_Drop">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Space4}">
+                  <Border
+                      Classes="flat-drag-handle"
+                      PointerPressed="HierarchyDragHandle_PointerPressed"
+                      PointerMoved="HierarchyDragHandle_PointerMoved"
+                      PointerReleased="HierarchyDragHandle_PointerReleased"
+                      PointerCaptureLost="HierarchyDragHandle_PointerCaptureLost"
+                      Cursor="SizeAll"
+                      AutomationProperties.Name="{x:Static loc:UiStrings.DragQuestion}"
+                      ToolTip.Tip="{x:Static loc:UiStrings.HierarchyQuestionDragHint}">
+                    <TextBlock Text="⠿" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Model.Price}" VerticalAlignment="Center" />
+                </Grid>
+              </Border>
             </TreeDataTemplate>
           </TreeView.DataTemplates>
         </TreeView>

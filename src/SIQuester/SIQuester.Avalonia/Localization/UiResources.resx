@@ -203,7 +203,11 @@
   <data name="GoToIssue" xml:space="preserve"><value>Go to</value></data>
   <data name="ValidationDetails" xml:space="preserve"><value>Detailed report</value></data>
   <data name="DuplicateItem" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="DragTheme" xml:space="preserve"><value>Drag theme</value></data>
   <data name="DragQuestion" xml:space="preserve"><value>Drag question</value></data>
+  <data name="HierarchyThemeDragHint" xml:space="preserve"><value>Drag to another round or theme to move it.</value></data>
+  <data name="HierarchyQuestionDragHint" xml:space="preserve"><value>Drag to another theme or question to move it. Hold Ctrl or Command to copy.</value></data>
+  <data name="DragHierarchyItemFailed" xml:space="preserve"><value>Unable to move the item</value></data>
   <data name="DragQuestionFailed" xml:space="preserve"><value>Unable to drag the question</value></data>
   <data name="RenameParameter" xml:space="preserve"><value>Rename parameter</value></data>
   <data name="ConvertParameter" xml:space="preserve"><value>Convert parameter</value></data>

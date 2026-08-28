@@ -18,9 +18,6 @@ public partial class FlatDocumentView : UserControl
 {
     private const double DragThreshold = 4.0;
 
-    private static readonly DataFormat<string> QuestionDragFormat =
-        DataFormat.CreateStringApplicationFormat("SIQuester.FlatQuestion.v1");
-
     private PointerPressedEventArgs? _pendingPointerPress;
     private QuestionViewModel? _pendingQuestion;
     private Point _dragStart;
@@ -265,7 +262,7 @@ public partial class FlatDocumentView : UserControl
 
         var transfer = new DataTransfer();
         transfer.Add(DataTransferItem.Create(
-            QuestionDragFormat,
+            InternalDragFormats.Question,
             FlatQuestionDragDataSerializer.Serialize(dragData)));
 
         try
@@ -474,7 +471,7 @@ public partial class FlatDocumentView : UserControl
 
     private static bool TryGetDragData(DragEventArgs e, out FlatQuestionDragData dragData)
     {
-        var serialized = e.DataTransfer.TryGetValue(QuestionDragFormat);
+        var serialized = e.DataTransfer.TryGetValue(InternalDragFormats.Question);
         dragData = FlatQuestionDragDataSerializer.TryDeserialize(serialized)!;
         return dragData != null;
     }

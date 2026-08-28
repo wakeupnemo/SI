@@ -97,6 +97,11 @@ public sealed class QDocument : WorkspaceViewModel
     /// </summary>
     public FlatQuestionOperations FlatQuestions { get; }
 
+    /// <summary>
+    /// Data-level theme move operations shared by hierarchical document views.
+    /// </summary>
+    public ThemeMoveOperations ThemeMoves { get; }
+
     internal event Func<PickedFile, ExternalDropFileKind, CancellationToken, Task<bool>>? ExternalFileImportRequested;
 
     /// <summary>
@@ -2004,6 +2009,7 @@ public sealed class QDocument : WorkspaceViewModel
         Document = document;
         Package = new PackageViewModel(Document.Package, this);
         FlatQuestions = new FlatQuestionOperations(this);
+        ThemeMoves = new ThemeMoveOperations(this);
         RebuildFlatDetailRows();
         Package.Info.Authors.UpdateCommands();
 
@@ -2053,6 +2059,9 @@ public sealed class QDocument : WorkspaceViewModel
 
     private void OperationsManager_Changed()
     {
+        // Undo/redo can reattach the selected item to another parent after the selection
+        // change itself has run. Rebuild the owner chain once the complete operation settles.
+        SetActiveChain();
         Changed = true; // TODO: delegate all change logic to OperationsManager
         ScheduleFilledQuestionCountUpdate();
     }
