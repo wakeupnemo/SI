@@ -24,6 +24,12 @@ internal sealed class FolderSIPackageContainer : ISIPackageContainer
 
     public ISIPackageContainer CopyTo(Stream stream, bool close, out bool isNew) => throw new NotImplementedException();
 
+    public ValueTask<(ISIPackageContainer Container, bool IsNew)> CopyToAsync(
+        Stream stream,
+        bool close,
+        CancellationToken cancellationToken = default) =>
+        throw new NotImplementedException();
+
     internal static ISIPackageContainer Open(string folder, IReadOnlyDictionary<string, ExtractedFileInfo> fileNameMap) =>
         new FolderSIPackageContainer(folder, fileNameMap);
 

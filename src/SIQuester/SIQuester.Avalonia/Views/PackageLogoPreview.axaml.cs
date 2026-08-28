@@ -100,8 +100,9 @@ public partial class PackageLogoPreview : UserControl
     {
         try
         {
+            var streamInfo = await package.OpenLogoStreamAsync(cancellation.Token);
             var bitmap = await BoundedBitmapLoader.LoadAsync(
-                package.OpenLogoStream(),
+                streamInfo,
                 cancellation.Token);
 
             if (!ReferenceEquals(_loadCancellation, cancellation) || cancellation.IsCancellationRequested)

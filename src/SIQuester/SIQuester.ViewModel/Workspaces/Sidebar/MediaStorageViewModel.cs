@@ -294,6 +294,7 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
             _name,
             () => Wrap(model.Name),
             () => TryGetStreamInfo(model.Name),
+            cancellationToken => TryGetStreamInfoAsync(model.Name, cancellationToken),
             _mediaPreviewService);
         AttachItem(named);
         return named;
@@ -1171,6 +1172,37 @@ public sealed class MediaStorageViewModel : WorkspaceViewModel
                 var collection = _document.GetInternalCollection(_name);
                 return collection.GetFile(link);
             });
+    }
+
+    internal ValueTask<StreamInfo?> TryGetStreamInfoAsync(
+        string link,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var item in _renamed)
+        {
+            if (item.Item2 == link)
+            {
+                link = item.Item1;
+                break;
+            }
+        }
+
+        var pendingStream = _streams.FirstOrDefault(n => n.Key.Model.Name == link);
+
+        if (pendingStream.Key != null)
+        {
+            var fileInfo = new FileInfo(pendingStream.Value.Path);
+            return ValueTask.FromResult<StreamInfo?>(
+                new StreamInfo(File.OpenRead(fileInfo.FullName), fileInfo.Length));
+        }
+
+        return _document.Lock.WithLockAsync(
+            () =>
+            {
+                var collection = _document.GetInternalCollection(_name);
+                return collection.GetFile(link);
+            },
+            cancellationToken);
     }
 
     /// <summary>

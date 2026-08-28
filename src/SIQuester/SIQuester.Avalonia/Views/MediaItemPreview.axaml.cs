@@ -177,7 +177,8 @@ public partial class MediaItemPreview : UserControl
     {
         try
         {
-            var bitmap = await BoundedBitmapLoader.LoadAsync(item.OpenStream(), cancellation.Token);
+            var streamInfo = await item.OpenStreamAsync(cancellation.Token);
+            var bitmap = await BoundedBitmapLoader.LoadAsync(streamInfo, cancellation.Token);
 
             if (!ReferenceEquals(_loadCancellation, cancellation) || cancellation.IsCancellationRequested)
             {

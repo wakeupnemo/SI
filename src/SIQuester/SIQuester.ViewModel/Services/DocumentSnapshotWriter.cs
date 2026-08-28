@@ -20,8 +20,20 @@ internal static class DocumentSnapshotWriter
             81920,
             FileOptions.Asynchronous | FileOptions.WriteThrough))
         {
-            using var temporaryDocument = document.Document.SaveAs(stream, false);
-            await document.ApplyPendingMediaChangesAsync(temporaryDocument, cancellationToken);
+            SIDocument? temporaryDocument = null;
+
+            try
+            {
+                temporaryDocument = await document.Document.SaveAsAsync(stream, false, cancellationToken);
+                await document.ApplyPendingMediaChangesAsync(temporaryDocument, cancellationToken);
+            }
+            finally
+            {
+                if (temporaryDocument != null)
+                {
+                    await Task.Run(temporaryDocument.Dispose);
+                }
+            }
         }
 
         // Disposing the package finalizes the ZIP. Reopen and issue an explicit durable flush.
@@ -34,7 +46,10 @@ internal static class DocumentSnapshotWriter
             FileOptions.WriteThrough);
         flushStream.Flush(flushToDisk: true);
 
-        using var validationStream = File.OpenRead(destinationPath);
-        using var validationDocument = SIDocument.Load(validationStream);
+        await Task.Run(() =>
+        {
+            using var validationStream = File.OpenRead(destinationPath);
+            using var validationDocument = SIDocument.Load(validationStream);
+        }, cancellationToken);
     }
 }

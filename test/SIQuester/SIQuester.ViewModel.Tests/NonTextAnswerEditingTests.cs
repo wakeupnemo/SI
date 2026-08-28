@@ -9,6 +9,9 @@ namespace SIQuester.ViewModel.Tests;
 [TestFixture]
 internal sealed class NonTextAnswerEditingTests
 {
+    private static readonly byte[] ImageBytes = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZqxQAAAAASUVORK5CYII=");
+
     [Test]
     public void NumericAndPointEditors_UpdateCanonicalAnswerData()
     {
@@ -92,6 +95,42 @@ internal sealed class NonTextAnswerEditingTests
             Assert.That(question.Right, Is.EqualTo(new[] { expectedRightKey }));
             Assert.That(question.Wrong, Is.Empty);
         });
+    }
+
+    [Test]
+    public async Task PointImageOpenAsync_DoesNotBlockWhileRecoveryOwnsDocumentLock()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        using var document = CreatePackageWithQuestions(1);
+        await document.Images.AddFileAsync(
+            "point image.png",
+            new MemoryStream(ImageBytes, writable: false));
+        using var qDocument = factory.CreateViewModelFor(document, "Point image lock");
+        var question = qDocument.Package.Rounds[0].Themes[0].Questions[0];
+        question.SetAnswerType.Execute(StepParameterValues.SetAnswerTypeType_Point);
+        var pointAnswer = question.PointAnswer!;
+        var lockEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseLock = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lockHolder = Task.Run(async () => await qDocument.Lock.WithLockAsync(async () =>
+        {
+            lockEntered.SetResult();
+            await releaseLock.Task;
+        }));
+
+        await lockEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var openTask = pointAnswer.GetImageStreamAsync("@point image.png").AsTask();
+        Assert.That(openTask.IsCompleted, Is.False,
+            "the point selector must yield instead of waiting for recovery on the UI caller");
+        releaseLock.SetResult();
+
+        var streamInfo = await openTask.WaitAsync(TimeSpan.FromSeconds(2))
+            ?? throw new AssertionException("The point image stream was unavailable.");
+        await lockHolder.WaitAsync(TimeSpan.FromSeconds(2));
+        await using var stream = streamInfo.Stream;
+        using var copy = new MemoryStream();
+        await stream.CopyToAsync(copy);
+        Assert.That(copy.ToArray(), Is.EqualTo(ImageBytes));
     }
 
     [Test]

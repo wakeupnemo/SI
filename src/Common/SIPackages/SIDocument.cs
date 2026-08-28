@@ -457,6 +457,35 @@ public sealed class SIDocument : IDisposable
         Ensure.That(_html).IsNotNull();
 
         var newContainer = _packageContainer.CopyTo(stream, switchTo, out bool isNew);
+        return CompleteSaveAs(newContainer, isNew, switchTo);
+    }
+
+    /// <summary>
+    /// Saves the document to a stream without synchronously copying the source package.
+    /// </summary>
+    /// <param name="stream">Target stream.</param>
+    /// <param name="switchTo">Should the document be retargeted to this stream.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Document based on the new stream.</returns>
+    public async ValueTask<SIDocument> SaveAsAsync(
+        Stream stream,
+        bool switchTo,
+        CancellationToken cancellationToken = default)
+    {
+        Ensure.That(stream).IsNotNull();
+        Ensure.That(_packageContainer).IsNotNull();
+        Ensure.That(_images).IsNotNull();
+        Ensure.That(_audio).IsNotNull();
+        Ensure.That(_video).IsNotNull();
+        Ensure.That(_html).IsNotNull();
+
+        var (newContainer, isNew) = await _packageContainer
+            .CopyToAsync(stream, switchTo, cancellationToken);
+        return CompleteSaveAs(newContainer, isNew, switchTo);
+    }
+
+    private SIDocument CompleteSaveAs(ISIPackageContainer newContainer, bool isNew, bool switchTo)
+    {
 
         Ensure.That(newContainer).IsNotNull();
 

@@ -7,6 +7,7 @@ namespace SIQuester.Avalonia.Views;
 public partial class PointAnswerEditorView : UserControl
 {
     private PointAnswerViewModel? _subscribedViewModel;
+    private CancellationTokenSource? _requestCancellation;
     private bool _isAttached;
 
     public PointAnswerEditorView()
@@ -45,6 +46,10 @@ public partial class PointAnswerEditorView : UserControl
 
     private void Unsubscribe()
     {
+        _requestCancellation?.Cancel();
+        _requestCancellation?.Dispose();
+        _requestCancellation = null;
+
         if (_subscribedViewModel != null)
         {
             _subscribedViewModel.SelectPointRequest -= OnSelectPointRequest;
@@ -62,12 +67,44 @@ public partial class PointAnswerEditorView : UserControl
             return;
         }
 
-        var streamInfo = viewModel.GetImageStream(contentItem.Value);
-        var dialog = new PointSelectionWindow(viewModel.Answer, viewModel.Deviation, streamInfo);
+        _requestCancellation?.Cancel();
+        _requestCancellation?.Dispose();
+        var cancellation = new CancellationTokenSource();
+        _requestCancellation = cancellation;
+        SIPackages.Core.StreamInfo? streamInfo = null;
 
-        if (await dialog.ShowDialog<bool>(owner))
+        try
         {
-            dialog.Controller.ApplyTo(viewModel);
+            streamInfo = await viewModel.GetImageStreamAsync(contentItem.Value, cancellation.Token);
+
+            if (cancellation.IsCancellationRequested
+                || !ReferenceEquals(_requestCancellation, cancellation)
+                || !ReferenceEquals(_subscribedViewModel, viewModel))
+            {
+                return;
+            }
+
+            var dialog = new PointSelectionWindow(viewModel.Answer, viewModel.Deviation, streamInfo);
+            streamInfo = null; // The dialog now owns the stream.
+
+            if (await dialog.ShowDialog<bool>(owner))
+            {
+                dialog.Controller.ApplyTo(viewModel);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            streamInfo?.Stream.Dispose();
+
+            if (ReferenceEquals(_requestCancellation, cancellation))
+            {
+                _requestCancellation = null;
+            }
+
+            cancellation.Dispose();
         }
     }
 }

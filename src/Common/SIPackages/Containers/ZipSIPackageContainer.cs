@@ -191,6 +191,30 @@ internal sealed class ZipSIPackageContainer : ISIPackageContainer
         return Open(stream, false);
     }
 
+    public async ValueTask<(ISIPackageContainer Container, bool IsNew)> CopyToAsync(
+        Stream stream,
+        bool closeCurrent,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_stream.Length == 0)
+        {
+            return (Create(stream), true);
+        }
+
+        _stream.Position = 0;
+        await _stream.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
+        stream.Position = 0;
+
+        if (closeCurrent)
+        {
+            _stream.Dispose();
+        }
+
+        return (Open(stream, false), false);
+    }
+
     public void Dispose() => _zipArchive.Dispose();
 
     public void Flush() => _stream.Flush();

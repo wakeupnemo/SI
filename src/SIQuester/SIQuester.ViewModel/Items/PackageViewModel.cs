@@ -97,6 +97,17 @@ public sealed class PackageViewModel : ItemViewModel<Package>
         return logoItem is { IsRef: true } ? Document.Images.TryGetStreamInfo(logoItem.Value) : null;
     }
 
+    /// <summary>
+    /// Opens the embedded package logo stream without synchronously waiting for document persistence.
+    /// </summary>
+    public ValueTask<StreamInfo?> OpenLogoStreamAsync(CancellationToken cancellationToken = default)
+    {
+        var logoItem = Model.LogoItem;
+        return logoItem is { IsRef: true }
+            ? Document.Images.TryGetStreamInfoAsync(logoItem.Value, cancellationToken)
+            : ValueTask.FromResult<StreamInfo?>(null);
+    }
+
     public ICommand CopyInfo { get; private set; }
 
     public ICommand PasteInfo { get; private set; }

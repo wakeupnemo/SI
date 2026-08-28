@@ -172,13 +172,26 @@ public sealed class PointAnswerViewModel : ModelViewBase
         var document = _question.OwnerTheme?.OwnerRound?.OwnerPackage?.Document;
         if (document == null) return null;
 
+        return document.Images.TryGetStreamInfo(GetImageName(uri));
+    }
+
+    public ValueTask<StreamInfo?> GetImageStreamAsync(
+        string uri,
+        CancellationToken cancellationToken = default)
+    {
+        var document = _question.OwnerTheme?.OwnerRound?.OwnerPackage?.Document;
+        return document == null
+            ? ValueTask.FromResult<StreamInfo?>(null)
+            : document.Images.TryGetStreamInfoAsync(GetImageName(uri), cancellationToken);
+    }
+
+    private static string GetImageName(string uri)
+    {
         var name = uri;
         if (name.StartsWith("@")) name = name[1..];
-        
-        var items = name.Split(new[] { '/', '\\' }, 2);
-        if (items.Length > 1) name = items[1];
 
-        return document.Images.TryGetStreamInfo(name);
+        var items = name.Split(new[] { '/', '\\' }, 2);
+        return items.Length > 1 ? items[1] : name;
     }
 
     protected override void Dispose(bool disposing)

@@ -10,6 +10,7 @@ namespace SIQuester.ViewModel;
 public sealed class MediaItemViewModel : MediaOwnerViewModel
 {
     private readonly Func<StreamInfo?> _streamGetter;
+    private readonly Func<CancellationToken, ValueTask<StreamInfo?>> _streamGetterAsync;
     private readonly IMediaPreviewService _mediaPreviewService;
 
     /// <summary>
@@ -39,12 +40,14 @@ public sealed class MediaItemViewModel : MediaOwnerViewModel
         string type,
         Func<IMedia> mediaGetter,
         Func<StreamInfo?> streamGetter,
+        Func<CancellationToken, ValueTask<StreamInfo?>> streamGetterAsync,
         IMediaPreviewService mediaPreviewService)
     {
         Model = named;
         Type = type;
         _mediaGetter = mediaGetter;
         _streamGetter = streamGetter;
+        _streamGetterAsync = streamGetterAsync;
         _mediaPreviewService = mediaPreviewService;
     }
 
@@ -52,6 +55,12 @@ public sealed class MediaItemViewModel : MediaOwnerViewModel
     /// Opens the original package bytes without invoking a platform media backend.
     /// </summary>
     public StreamInfo? OpenStream() => _streamGetter();
+
+    /// <summary>
+    /// Opens the original package bytes without synchronously waiting for document persistence.
+    /// </summary>
+    public ValueTask<StreamInfo?> OpenStreamAsync(CancellationToken cancellationToken = default) =>
+        _streamGetterAsync(cancellationToken);
 
     /// <summary>Creates an owned controlled playback session for this item.</summary>
     public IMediaPreviewSession CreatePreviewSession()

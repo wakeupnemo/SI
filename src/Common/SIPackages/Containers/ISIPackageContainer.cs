@@ -95,6 +95,18 @@ public interface ISIPackageContainer : IDisposable
     ISIPackageContainer CopyTo(Stream stream, bool close, out bool isNew);
 
     /// <summary>
+    /// Asynchronously copies the whole source to the target stream.
+    /// </summary>
+    /// <param name="stream">Target stream.</param>
+    /// <param name="close">Should this object be closed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The copied container and whether the source was empty.</returns>
+    ValueTask<(ISIPackageContainer Container, bool IsNew)> CopyToAsync(
+        Stream stream,
+        bool close,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Flushes container changes.
     /// </summary>
     void Flush();

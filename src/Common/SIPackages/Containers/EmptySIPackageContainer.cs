@@ -21,6 +21,16 @@ public sealed class EmptySIPackageContainer : ISIPackageContainer
     }
 
     /// <inheritdoc />
+    public ValueTask<(ISIPackageContainer Container, bool IsNew)> CopyToAsync(
+        Stream stream,
+        bool close,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult<(ISIPackageContainer, bool)>((ZipSIPackageContainer.Create(stream), true));
+    }
+
+    /// <inheritdoc />
     public void CreateStream(string name) => throw new NotImplementedException();
 
     /// <inheritdoc />

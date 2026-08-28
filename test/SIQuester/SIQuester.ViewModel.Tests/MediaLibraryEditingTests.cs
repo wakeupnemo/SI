@@ -131,6 +131,47 @@ internal sealed class MediaLibraryEditingTests
     }
 
     [Test]
+    public async Task OpenStreamAsync_WaitsForDocumentPersistenceWithoutBlockingAndSupportsCancellation()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        using var package = TestHelper.CreateSimpleTestPackage();
+        await package.Images.AddFileAsync(
+            "preview.png",
+            new MemoryStream(ImageBytes, writable: false));
+        using var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Asynchronous media stream");
+        var media = document.Images.Files.Single();
+        var lockEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseLock = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lockHolder = Task.Run(async () => await document.Lock.WithLockAsync(async () =>
+        {
+            lockEntered.SetResult();
+            await releaseLock.Task;
+        }));
+
+        await lockEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        using var cancellation = new CancellationTokenSource();
+        var cancelledOpen = media.OpenStreamAsync(cancellation.Token).AsTask();
+        Assert.That(cancelledOpen.IsCompleted, Is.False,
+            "requesting a preview must return control while persistence owns the document lock");
+        cancellation.Cancel();
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await cancelledOpen);
+
+        var successfulOpen = media.OpenStreamAsync().AsTask();
+        Assert.That(successfulOpen.IsCompleted, Is.False);
+        releaseLock.SetResult();
+
+        var streamInfo = await successfulOpen.WaitAsync(TimeSpan.FromSeconds(2))
+            ?? throw new AssertionException("The image stream was unavailable after persistence completed.");
+        await lockHolder.WaitAsync(TimeSpan.FromSeconds(2));
+        await using var stream = streamInfo.Stream;
+        using var copy = new MemoryStream();
+        await stream.CopyToAsync(copy);
+        Assert.That(copy.ToArray(), Is.EqualTo(ImageBytes));
+    }
+
+    [Test]
     public async Task ClosingDocument_CancelsPendingMediaPickerWithoutReportingError()
     {
         var picker = new BlockingFilePicker();
