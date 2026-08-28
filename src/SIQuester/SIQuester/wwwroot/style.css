@@ -20,3 +20,21 @@ body {
 #table {
 	flex: 4 !important;
 }
+
+/*
+ * The retained player renders each screen-content group as a flex child of
+ * .mainContent. WebKit can preserve the text group's automatic minimum height
+ * and collapse a following media group when text and media share one moment.
+ * Let every group shrink to its assigned flex share and give image hosts a
+ * definite grid-cell size.
+ */
+.mainContent > .table-content-group {
+	min-height: 0;
+}
+
+.mainContent .image-host {
+	align-items: center;
+	height: 100%;
+	min-height: 0;
+	width: 100%;
+}

@@ -242,6 +242,13 @@ internal sealed class QuestionPreviewProtocolTests
             Assert.That(service.Sessions, Has.Count.EqualTo(1));
             Assert.That(questionMessages.Select(message => message.GetProperty("type").GetString()),
                 Does.Contain("answerOptionsLayout"));
+            var screenContent = questionMessages.Single(message =>
+                message.GetProperty("type").GetString() == "content"
+                && message.GetProperty("placement").GetString() == "screen")
+                .GetProperty("content");
+            Assert.That(screenContent.EnumerateArray().Select(item => item.GetProperty("type").GetString()),
+                Is.EqualTo(new[] { "text", "image" }));
+            Assert.That(screenContent[1].GetProperty("value").GetString(), Is.EqualTo(service.ResolvedSource));
             Assert.That(questionMessages.Single(message =>
                     message.GetProperty("type").GetString() == "answerOption"
                     && message.GetProperty("label").GetString() == "Б")

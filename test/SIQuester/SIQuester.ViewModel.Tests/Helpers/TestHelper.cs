@@ -146,6 +146,13 @@ internal static class TestHelper
                 {
                     Type = ContentTypes.Text,
                     Value = "Выберите жёлтый квадрат",
+                    WaitForFinish = false,
+                },
+                new ContentItem
+                {
+                    Type = ContentTypes.Image,
+                    Value = imageName,
+                    IsRef = true,
                 },
             ],
         };

@@ -433,6 +433,7 @@ internal sealed class DocumentSavingTests
         await using var artifactStream = File.OpenRead(artifactPath);
         using var reloaded = SIDocument.Load(artifactStream);
         var question = reloaded.Package.Rounds[0].Themes[0].Questions[0];
+        var questionContent = question.Parameters[QuestionParameterNames.Question].ContentValue!;
         var options = question.Parameters[QuestionParameterNames.AnswerOptions].GroupValue!;
         var imageOption = options["Б"].ContentValue!.Single();
         var mediaInfo = reloaded.Images.GetFile(imageName);
@@ -448,6 +449,11 @@ internal sealed class DocumentSavingTests
                 Is.EqualTo(StepParameterValues.SetAnswerTypeType_Select));
             Assert.That(options.Keys, Is.EqualTo(new[] { "А", "Б" }));
             Assert.That(question.Right, Is.EqualTo(new[] { "Б" }));
+            Assert.That(questionContent.Select(item => item.Type),
+                Is.EqualTo(new[] { ContentTypes.Text, ContentTypes.Image }));
+            Assert.That(questionContent[0].WaitForFinish, Is.False);
+            Assert.That(questionContent[1].Value, Is.EqualTo(imageName));
+            Assert.That(questionContent[1].IsRef, Is.True);
             Assert.That(imageOption.Type, Is.EqualTo(ContentTypes.Image));
             Assert.That(imageOption.Value, Is.EqualTo(imageName));
             Assert.That(imageOption.IsRef, Is.True);

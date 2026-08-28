@@ -25,6 +25,7 @@ receipt_directory="$3"
 settings_path="$XDG_CONFIG_HOME/SIQuester/settings.json"
 log_path="$XDG_STATE_HOME/SIQuester/logs/siquester.log"
 screenshot_path="$receipt_directory/question-preview.png"
+mixed_screenshot_path="$receipt_directory/question-preview-mixed-content.png"
 receipt_path="$receipt_directory/question-preview.receipt.txt"
 
 if [[ "$desktop_application" == *.dll ]]; then
@@ -76,9 +77,9 @@ sleep 3
 # The compatibility fixture has one expanded round, one theme, and one question.
 # These viewport-relative actions exercise selection and application commands;
 # semantic UI behavior remains covered independently by headless command tests.
-xdotool mousemove --window "$window_id" 75 316 click 1
+xdotool mousemove --window "$window_id" 75 324 click 1
 sleep 1
-xdotool mousemove --window "$window_id" 125 348 click 1
+xdotool mousemove --window "$window_id" 125 356 click 1
 sleep 1
 xdotool mousemove --window "$window_id" 812 161 click 1
 sleep 4
@@ -86,7 +87,22 @@ sleep 4
 # Advance question, answer request, and right-answer fragments. The terminal
 # fragment must expose Replay immediately, without a fourth sentinel click.
 xdotool mousemove --window "$window_id" 812 660 click 1
-sleep 2
+sleep 4
+
+# The first fragment contains text and a referenced yellow image in one screen
+# moment. Capture it before advancing to the answer flow so a collapsed media
+# group cannot be masked by the later image answer option.
+import -display "$DISPLAY" -window "$window_id" "$mixed_screenshot_path"
+test -s "$mixed_screenshot_path"
+mixed_yellow_fraction="$(convert "$mixed_screenshot_path" \
+  -crop 540x390+257+237 \
+  -colorspace RGB \
+  -fuzz 10% \
+  -fill white -opaque '#f5c542' \
+  -fill black +opaque white \
+  -format '%[fx:mean]' info:)"
+awk -v value="$mixed_yellow_fraction" 'BEGIN { exit !(value >= 0.005) }'
+
 xdotool mousemove --window "$window_id" 812 660 click 1
 sleep 2
 xdotool mousemove --window "$window_id" 812 660 click 1
@@ -144,7 +160,9 @@ test "$media_fetches" -ge 2
   echo "disposed_sessions=$disposed_sessions"
   echo "replay_count=$replay_count"
   echo "media_fetches=$media_fetches"
+  echo "mixed_yellow_fraction=$mixed_yellow_fraction"
   echo "bright_fraction=$bright_fraction"
+  sha256sum "$mixed_screenshot_path"
   sha256sum "$screenshot_path"
 } > "$receipt_path"
 
