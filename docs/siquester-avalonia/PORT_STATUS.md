@@ -2,6 +2,37 @@
 
 Updated: 2026-08-28
 
+## Current unreleased hierarchy drag-and-drop checkpoint
+
+- Commit `b050a046` restores ordinary mouse movement of questions between any
+  themes/rounds and themes between rounds in the Avalonia hierarchy. Explicit
+  localized grips avoid conflicts with selection and inline editing; round,
+  theme, and question rows expose typed drop targets with a visible accent
+  outline.
+- The retained WPF insertion rules are preserved: dropping on a parent inserts
+  first, dropping on a sibling inserts after it. With `ChangePriceOnMove`
+  enabled, a moved theme receives the target round's price grid while every
+  other question field remains unchanged; individual question moves retain the
+  established source/target positional price sequences. Disabling the setting
+  keeps each price with its question.
+- Theme payloads are bounded, versioned JSON containing document identity,
+  canonical indexes, and an XML fingerprint. Cross-parent moves clone before
+  removal so shared media cannot be deleted as an orphan. Selection and owner
+  chains now participate in the same undo/redo operation and cannot remain on
+  a detached clone.
+- Current unreleased Release evidence: 378 passed, 0 failed
+  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 220,
+  `SIQuester.Avalonia.Tests` 62); cross-platform and retained WPF builds pass
+  with 0 errors. `MoveAcrossRounds_PreservesThemeSemanticsAndMediaAndIsUndoableAfterRoundTrip`
+  verifies Unicode/space-path safe save, `SIDocument.Load`, canonical XML, and
+  exact referenced-media bytes. The headless hierarchy test verifies realized
+  grips, accessible names/tooltips, native pointer hit selection, and all typed
+  drop targets.
+- No new release artifact was built. Native same-window Xdnd delivery was not
+  synthesized because XTEST has already proven unreliable for that path and a
+  GUI run would disturb the active desktop; this is an explicit verification
+  boundary, not an unimplemented data or UI path.
+
 ## Current v0.2.1 release checkpoint
 
 - v0.2.1 is a focused responsiveness and persistence hardening update over the
@@ -205,7 +236,7 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Cross-platform Release build: passed with 0 errors. A source rebuild reported 130 pre-existing nullable/obsolete warnings across retained projects; the final full incremental validation reported 0 warnings. Analyzers and warnings remain enabled, and every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 96 passed, 0 skipped, 0 failed. `Clone_PreservesQualityControlSemanticState` and `GetContent_IncludesQuestionAndScriptParameters` cover marker clone/equality/hash semantics and complete modern/legacy content discovery; script save/reload, deep-clone, reader-state, and empty-parameter coverage remains green.
-- `SIQuester.ViewModel.Tests`: 207 passed, 0 failed. Four
+- `SIQuester.ViewModel.Tests`: 220 passed, 0 failed. Four
   `MainLifecycleStabilityTests` cover default-token corrupt-loader cleanup,
   overlapping closes, one-message workspace failure, and host-owned close.
   `SaveDocument_UnwritableDirectory_ShouldLeaveExistingPackageUntouched` is a
@@ -216,7 +247,7 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
   and `PointImageOpenAsync_DoesNotBlockWhileRecoveryOwnsDocumentLock` reproduce
   the profiled lock contention without blocking the caller and verify exact
   original PNG bytes after the lock is released.
-- `SIQuester.Avalonia.Tests`: 61 passed, 0 failed. Main-window settings failure
+- `SIQuester.Avalonia.Tests`: 62 passed, 0 failed. Main-window settings failure
   keeps the window open and reports once; startup version/environment, focused
   Error/Fatal logging, exact benign IBus shutdown filtering, continuous answer
   entry, preview, accessibility, SPARD, text import, hierarchy, parameter,
@@ -296,17 +327,18 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Next independent tasks
 
-None in the completed v0.2.1 scope. Stop after this checkpoint. Retain real
-Wayland-session launch, Xdnd runner permission repair, and Windows safe-save
-verification as separate future work; no broader parity work is implied.
+No code task remains for the hierarchy move slice. A convenient future native
+session may manually confirm same-window theme/question Xdnd delivery; retain
+real Wayland-session launch, Xdnd runner permission repair, and Windows
+safe-save verification as separate work. No broader parity work is implied.
 
 ## Known limitations
 
-- v0.2.1 is a usable ordinary-authoring Linux release with demo-question behavior parity, not full legacy parity. `custom` is intentionally a preserved manual type because the demo defines no canonical library behavior for it. Native same-window internal question Xdnd, macOS/Windows runtime acceptance, complete shortcut/runtime localization receipts, and advanced import/export/transform/optional integrations remain deferred. Explicit known-behavior or parameter conversion replaces incompatible structure only after a deliberate undoable user action; load, display, and save do not normalize unknown values.
+- v0.2.1 is a usable ordinary-authoring Linux release with demo-question behavior parity, not full legacy parity. `custom` is intentionally a preserved manual type because the demo defines no canonical library behavior for it. Native same-window internal theme/question Xdnd delivery is implemented but lacks a reliable synthetic/native receipt; macOS/Windows runtime acceptance, complete shortcut/runtime localization receipts, and advanced import/export/transform/optional integrations remain deferred. Explicit known-behavior or parameter conversion replaces incompatible structure only after a deliberate undoable user action; load, display, and save do not normalize unknown values.
 - Recovery retention is deliberately conservative: only the latest validated generation is kept per document; superseded generations are removed after pointer commit, and a successful canonical save, approved close, or explicit discard removes the recovery identity. Valid stale snapshots and malformed entries are not age-pruned silently because doing so could destroy the only recoverable user data.
 - Language changes intentionally apply after restart and communicate that boundary. System/light/dark selection is live and persisted, but visual theme snapshots and a macOS runtime Command-key receipt remain pending.
 - The retained question player now has verified native Linux text, embedded select-answer image, completion/replay, two-session close/reopen, and a 50-cycle resource receipt plus automated available/unavailable backend gates. The media library additionally has verified native Linux MP3/MP4 decoding through controlled per-selection routes. Native macOS/Windows codec acceptance remains pending. Package HTML is deliberately rendered as an inert localized warning until a separate restrictive HTML policy is implemented.
-- Native external Xdnd target acceptance now passes with visible dirty/Undo state, exact media persistence, safe save, and reopen. XTEST still does not reliably deliver same-window internal question Xdnd `DragOver`/`Drop`, so that narrower acceptance is deferred rather than inferred from source activation.
+- Native external Xdnd target acceptance now passes with visible dirty/Undo state, exact media persistence, safe save, and reopen. The unreleased hierarchy slice adds shared native formats plus theme/question target handling, but XTEST still does not reliably deliver same-window internal `DragOver`/`Drop`, so native delivery acceptance is deferred rather than inferred from source activation.
 - The first deterministic flat-list baseline is 1,045-1,062 ms to create and lay out a generated 2,000-question document at 1100x700 on this Debian host, with 15 question cards realized at either scroll endpoint. It is a headless realization receipt rather than a native rendering profile; no performance improvement is claimed yet.
 - Linux packages are structurally accepted, the prior X11 build has native
   authoring evidence, and the rebuilt launcher's visual preview is user-confirmed;
@@ -318,7 +350,13 @@ verification as separate future work; no broader parity work is implied.
 
 ## Review state
 
-- Latest reviewed implementation commit: `32a62910`; release documentation and
+- Latest reviewed unreleased implementation commit: `b050a046`. The
+  cross-platform Release build, all 378 tests, retained WPF cross-build,
+  `git diff --check`, exact WPF price-rule comparison, clone-before-remove media
+  ownership, save/reload bytes, stale/cancelled/cross-document rejection, and
+  undo/redo selection/owner-chain synchronization pass. The working tree after
+  this documentation update contains only these status/parity edits.
+- Released v0.2.1 implementation commit: `32a62910`; release documentation and
   tag checkpoint: `ebab3645`. This file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
   `RELEASE_NOTES_0.2.1.md` form the v0.2.1 documentation checkpoint. All 370
