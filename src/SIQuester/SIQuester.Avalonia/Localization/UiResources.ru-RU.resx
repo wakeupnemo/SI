@@ -109,6 +109,20 @@
   <data name="Placement" xml:space="preserve"><value>Размещение</value></data>
   <data name="DurationSeconds" xml:space="preserve"><value>Длительность, секунды</value></data>
   <data name="WaitForFinish" xml:space="preserve"><value>Дождаться окончания воспроизведения</value></data>
+  <data name="Moment" xml:space="preserve"><value>Момент</value></data>
+  <data name="ScreenLane" xml:space="preserve"><value>На экране</value></data>
+  <data name="ShowmanLane" xml:space="preserve"><value>Ведущий</value></data>
+  <data name="BackgroundLane" xml:space="preserve"><value>Фон</value></data>
+  <data name="OtherPlacementLane" xml:space="preserve"><value>Другое размещение</value></data>
+  <data name="ShowTogetherWithNext" xml:space="preserve"><value>Показывать вместе</value></data>
+  <data name="ShowNext" xml:space="preserve"><value>Показывать последующее содержимое следующим</value></data>
+  <data name="ShowTogetherWithFollowingItem" xml:space="preserve"><value>Показывать вместе со следующим элементом</value></data>
+  <data name="PresentationSequenceHint" xml:space="preserve"><value>Моменты воспроизводятся слева направо. Содержимое внутри одного момента показывается вместе.</value></data>
+  <data name="AdvancedContentSettings" xml:space="preserve"><value>Дополнительные настройки содержимого</value></data>
+  <data name="AutomaticDuration" xml:space="preserve"><value>Авто</value></data>
+  <data name="SecondsShort" xml:space="preserve"><value>с</value></data>
+  <data name="MoveMomentEarlier" xml:space="preserve"><value>Переместить этот момент раньше</value></data>
+  <data name="MoveMomentLater" xml:space="preserve"><value>Переместить этот момент позже</value></data>
   <data name="PackageMediaReference" xml:space="preserve"><value>Ссылка на медиафайл пакета</value></data>
   <data name="AddScreenText" xml:space="preserve"><value>Добавить текст на экран</value></data>
   <data name="AddReplicText" xml:space="preserve"><value>Добавить реплику</value></data>

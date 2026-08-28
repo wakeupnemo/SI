@@ -7,6 +7,7 @@ using SIQuester.ViewModel.PlatformSpecific;
 using SIQuester.ViewModel.Properties;
 using SIQuester.ViewModel.Services;
 using System.Collections.Specialized;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
 using Utils.Commands;
@@ -36,6 +37,15 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
     /// Joins content item with next one to play them together.
     /// </summary>
     public SimpleCommand JoinWithNext { get; private set; }
+
+    /// <summary>
+    /// Gets a read-only, transient grouping of canonical content items into presentation moments.
+    /// </summary>
+    public ReadOnlyObservableCollection<ContentMomentViewModel> Moments { get; }
+
+    private readonly ObservableCollection<ContentMomentViewModel> _moments = new();
+
+    private bool _suppressMomentRefresh;
 
     public SimpleCommand CollapseMedia { get; private set; }
 
@@ -93,6 +103,7 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         Owner = question;
         Model = contentItems;
         IsTopLevel = isTopLevel;
+        Moments = new ReadOnlyObservableCollection<ContentMomentViewModel>(_moments);
 
         foreach (var item in contentItems)
         {
@@ -118,6 +129,125 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         LinkUri = new SimpleCommand(LinkUri_Executed);
         AddFile = new AsyncCommand(AddFile_ExecutedAsync);
         IsTopLevel = isTopLevel;
+        RefreshMoments();
+    }
+
+    internal void SelectItem(ContentItemViewModel item) => CurrentItem = item;
+
+    internal void SeparateAfter(ContentItemViewModel item)
+    {
+        if (!Contains(item) || item.Model.WaitForFinish)
+        {
+            return;
+        }
+
+        item.Model.WaitForFinish = true;
+        CurrentItem = item;
+    }
+
+    internal void MergeWithNext(ContentMomentViewModel moment)
+    {
+        var momentIndex = _moments.IndexOf(moment);
+
+        if (momentIndex < 0 || momentIndex + 1 >= _moments.Count || moment.Items.Count == 0)
+        {
+            return;
+        }
+
+        var boundaryItem = moment.Items[^1];
+        boundaryItem.Model.WaitForFinish = false;
+        CurrentItem = boundaryItem;
+    }
+
+    internal void MoveMoment(ContentMomentViewModel moment, int offset)
+    {
+        var sourceIndex = _moments.IndexOf(moment);
+        var targetIndex = sourceIndex + offset;
+
+        if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= _moments.Count)
+        {
+            return;
+        }
+
+        var document = OwnerDocument;
+
+        if (document == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var groups = _moments.Select(item => item.Items.ToArray()).ToList();
+            (groups[sourceIndex], groups[targetIndex]) = (groups[targetIndex], groups[sourceIndex]);
+            var reorderedItems = groups.SelectMany(item => item).ToArray();
+            var selectedItem = CurrentItem;
+
+            using var change = document.OperationsManager.BeginComplexChange();
+            _suppressMomentRefresh = true;
+
+            try
+            {
+                for (var i = 0; i < reorderedItems.Length; i++)
+                {
+                    this[i] = reorderedItems[i];
+                }
+
+                for (var i = 0; i + 1 < groups.Count; i++)
+                {
+                    groups[i][^1].Model.WaitForFinish = true;
+                }
+            }
+            finally
+            {
+                _suppressMomentRefresh = false;
+                RefreshMoments();
+            }
+
+            CurrentPosition = selectedItem == null ? -1 : IndexOf(selectedItem);
+            change.Commit();
+        }
+        catch (Exception exc)
+        {
+            document.OnError(exc);
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the transient moment projection after canonical grouping or placement changes.
+    /// </summary>
+    internal void RefreshMoments()
+    {
+        if (_suppressMomentRefresh)
+        {
+            return;
+        }
+
+        _moments.Clear();
+
+        var momentItems = new List<ContentItemViewModel>();
+        var groupedMoments = new List<IReadOnlyList<ContentItemViewModel>>();
+
+        foreach (var item in this)
+        {
+            momentItems.Add(item);
+
+            if (item.Model.WaitForFinish)
+            {
+                groupedMoments.Add(momentItems.ToArray());
+                momentItems.Clear();
+            }
+        }
+
+        if (momentItems.Count > 0)
+        {
+            groupedMoments.Add(momentItems.ToArray());
+        }
+
+        for (var i = 0; i < groupedMoments.Count; i++)
+        {
+            _moments.Add(new ContentMomentViewModel(this, i + 1, groupedMoments[i], i + 1 < groupedMoments.Count));
+        }
     }
 
     internal void AddScreenText_Executed(object? arg)
@@ -185,12 +315,14 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
 
         if (oldValue != null)
         {
+            oldValue.SetCurrent(false);
             oldValue.PropertyChanged -= CurrentAtom_PropertyChanged;
             oldValue.Model.PropertyChanged -= Model_PropertyChanged;
         }
 
         if (newValue != null)
         {
+            newValue.SetCurrent(true);
             newValue.PropertyChanged += CurrentAtom_PropertyChanged;
             newValue.Model.PropertyChanged += Model_PropertyChanged;
         }
@@ -267,6 +399,10 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         }
 
         UpdateCommands();
+        if (!_suppressMomentRefresh)
+        {
+            RefreshMoments();
+        }
     }
 
     protected override void OnRemoveAt(int index)

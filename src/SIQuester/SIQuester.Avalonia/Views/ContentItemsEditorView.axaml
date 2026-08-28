@@ -8,23 +8,109 @@
     xmlns:views="using:SIQuester.Avalonia.Views"
     x:Name="Root"
     x:DataType="views:ContentItemsEditorView">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ContentCardTemplate" x:DataType="vm:ContentItemViewModel">
+      <Button
+          Classes.storyboard-item="True"
+          Classes.selected="{Binding IsCurrent}"
+          Command="{Binding Select}"
+          AutomationProperties.Name="{Binding AutomationName}"
+          HorizontalContentAlignment="Stretch"
+          Margin="0,0,0,4">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{StaticResource Space8}">
+          <TextBlock Text="{Binding Type}" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{Binding Model.Value}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{StaticResource Space4}" VerticalAlignment="Center">
+            <TextBlock Text="{Binding DurationSeconds}" IsVisible="{Binding HasDuration}" />
+            <TextBlock Text="{x:Static loc:UiStrings.SecondsShort}" IsVisible="{Binding HasDuration}" />
+            <TextBlock Text="{x:Static loc:UiStrings.AutomaticDuration}" IsVisible="{Binding !HasDuration}" Opacity="0.65" />
+          </StackPanel>
+        </Grid>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="Button.storyboard-item">
+      <Setter Property="Padding" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+    </Style>
+    <Style Selector="Button.storyboard-item.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+  </UserControl.Styles>
+
   <StackPanel Margin="{StaticResource FieldMargin}">
-    <ListBox
-        x:Name="ContentItemsList"
-        ItemsSource="{Binding Editor, ElementName=Root}"
-        SelectedIndex="{Binding Editor.CurrentPosition, ElementName=Root, Mode=TwoWay}"
-        MinHeight="{StaticResource MetadataListHeight}"
-        MaxHeight="{StaticResource MetadataListMaxHeight}"
-        AutomationProperties.Name="{x:Static loc:UiStrings.ContentItems}">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="vm:ContentItemViewModel">
-          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{StaticResource Space8}">
-            <TextBlock Text="{Binding Model.Type}" FontWeight="SemiBold" />
-            <TextBlock Grid.Column="1" Text="{Binding Model.Value}" TextTrimming="CharacterEllipsis" />
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <TextBlock Text="{x:Static loc:UiStrings.PresentationSequenceHint}" TextWrapping="Wrap" Opacity="0.72" Margin="{StaticResource FieldMargin}" />
+
+    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Editor.Moments, ElementName=Root}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ContentMomentViewModel">
+            <Grid ColumnDefinitions="280,Auto" Margin="0,0,8,0">
+              <Border Classes="card" Padding="{StaticResource Space8Thickness}">
+                <StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space4}" Margin="0,0,0,8">
+                    <TextBlock Text="{x:Static loc:UiStrings.Moment}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Number}" FontWeight="SemiBold" />
+                    <Button
+                        Classes="command"
+                        Content="←"
+                        AutomationProperties.Name="{x:Static loc:UiStrings.MoveMomentEarlier}"
+                        Command="{Binding MoveEarlier}"
+                        Padding="6,0"
+                        MinHeight="28" />
+                    <Button
+                        Classes="command"
+                        Content="→"
+                        AutomationProperties.Name="{x:Static loc:UiStrings.MoveMomentLater}"
+                        Command="{Binding MoveLater}"
+                        Padding="6,0"
+                        MinHeight="28" />
+                  </StackPanel>
+
+                  <StackPanel IsVisible="{Binding HasScreenItems}" Margin="0,0,0,8">
+                    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ScreenLane}" />
+                    <ItemsControl ItemsSource="{Binding ScreenItems}" ItemTemplate="{StaticResource ContentCardTemplate}" />
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding HasReplicItems}" Margin="0,0,0,8">
+                    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.ShowmanLane}" />
+                    <ItemsControl ItemsSource="{Binding ReplicItems}" ItemTemplate="{StaticResource ContentCardTemplate}" />
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding HasBackgroundItems}" Margin="0,0,0,8">
+                    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.BackgroundLane}" />
+                    <ItemsControl ItemsSource="{Binding BackgroundItems}" ItemTemplate="{StaticResource ContentCardTemplate}" />
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding HasOtherItems}" Margin="0,0,0,8">
+                    <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.OtherPlacementLane}" />
+                    <ItemsControl ItemsSource="{Binding OtherItems}" ItemTemplate="{StaticResource ContentCardTemplate}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <Button
+                  Grid.Column="1"
+                  Classes="command"
+                  Content="{x:Static loc:UiStrings.ShowTogetherWithNext}"
+                  AutomationProperties.Name="{x:Static loc:UiStrings.ShowTogetherWithNext}"
+                  Command="{Binding MergeWithNext}"
+                  IsVisible="{Binding CanMergeWithNext}"
+                  VerticalAlignment="Center"
+                  MaxWidth="112"
+                  TextBlock.TextWrapping="Wrap" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
 
     <ContentControl Content="{Binding Editor.CurrentItem, ElementName=Root}">
       <ContentControl.DataTemplates>
@@ -37,40 +123,54 @@
                 AcceptsReturn="True"
                 MinHeight="64"
                 AutomationProperties.Name="{x:Static loc:UiStrings.ContentValue}" />
-            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Placement}" />
-            <ComboBox
-                ItemsSource="{x:Static vm:ContentItemViewModel.AvailablePlacements}"
-                SelectedItem="{Binding Model.Placement, Mode=TwoWay}"
+            <Button
+                Classes="command"
+                Content="{x:Static loc:UiStrings.ShowNext}"
+                AutomationProperties.Name="{x:Static loc:UiStrings.ShowNext}"
+                Command="{Binding SeparateFromNext}"
+                IsVisible="{Binding IsJoinedWithNext}"
+                HorizontalAlignment="Left"
                 Margin="{StaticResource FieldMargin}" />
-            <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.DurationSeconds}" />
-            <NumericUpDown
-                Value="{Binding DurationSeconds, Mode=TwoWay}"
-                Minimum="0"
-                Increment="0.5"
-                Margin="{StaticResource FieldMargin}" />
-            <CheckBox
-                Content="{x:Static loc:UiStrings.WaitForFinish}"
-                IsChecked="{Binding Model.WaitForFinish, Mode=TwoWay}"
-                Margin="{StaticResource FieldMargin}" />
-            <CheckBox
-                Content="{x:Static loc:UiStrings.PackageMediaReference}"
-                IsChecked="{Binding Model.IsRef, Mode=TwoWay}"
-                Margin="{StaticResource FieldMargin}" />
+            <Expander Header="{x:Static loc:UiStrings.AdvancedContentSettings}" Margin="{StaticResource FieldMargin}">
+              <StackPanel Margin="{StaticResource Space8Thickness}">
+                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.Placement}" />
+                <ComboBox
+                    ItemsSource="{x:Static vm:ContentItemViewModel.AvailablePlacements}"
+                    SelectedItem="{Binding Model.Placement, Mode=TwoWay}"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.Placement}"
+                    Margin="{StaticResource FieldMargin}" />
+                <TextBlock Classes="field-label" Text="{x:Static loc:UiStrings.DurationSeconds}" />
+                <NumericUpDown
+                    Value="{Binding DurationSeconds, Mode=TwoWay}"
+                    Minimum="0"
+                    Increment="0.5"
+                    AutomationProperties.Name="{x:Static loc:UiStrings.DurationSeconds}"
+                    Margin="{StaticResource FieldMargin}" />
+                <CheckBox
+                    Content="{x:Static loc:UiStrings.ShowTogetherWithFollowingItem}"
+                    IsChecked="{Binding IsJoinedWithNext, Mode=TwoWay}"
+                    Margin="{StaticResource FieldMargin}" />
+                <CheckBox
+                    Content="{x:Static loc:UiStrings.PackageMediaReference}"
+                    IsChecked="{Binding Model.IsRef, Mode=TwoWay}"
+                    Margin="{StaticResource FieldMargin}" />
+              </StackPanel>
+            </Expander>
           </StackPanel>
         </DataTemplate>
       </ContentControl.DataTemplates>
     </ContentControl>
 
     <WrapPanel Orientation="Horizontal">
-      <Button Classes="command" Content="{x:Static loc:UiStrings.AddScreenText}" Command="{Binding Editor.AddText, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.AddReplicText}" Command="{Binding Editor.AddVoice, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.Images}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Image}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.Audio}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Audio}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.Video}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Video}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.Html}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Html}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" Command="{Binding Editor.MoveLeft, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" Command="{Binding Editor.MoveRight, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
-      <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" Command="{Binding Editor.RemoveItem, ElementName=Root}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddScreenText}" AutomationProperties.Name="{x:Static loc:UiStrings.AddScreenText}" Command="{Binding Editor.AddText, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.AddReplicText}" AutomationProperties.Name="{x:Static loc:UiStrings.AddReplicText}" Command="{Binding Editor.AddVoice, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Images}" AutomationProperties.Name="{x:Static loc:UiStrings.Images}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Image}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Audio}" AutomationProperties.Name="{x:Static loc:UiStrings.Audio}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Audio}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Video}" AutomationProperties.Name="{x:Static loc:UiStrings.Video}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Video}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Html}" AutomationProperties.Name="{x:Static loc:UiStrings.Html}" Command="{Binding Editor.AddFile, ElementName=Root}" CommandParameter="{x:Static core:ContentTypes.Html}" IsEnabled="{Binding Editor.CanAddMediaFiles, ElementName=Root}" IsVisible="{Binding Editor.IsTopLevel, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.MoveUp}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveUp}" Command="{Binding Editor.MoveLeft, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.MoveDown}" AutomationProperties.Name="{x:Static loc:UiStrings.MoveDown}" Command="{Binding Editor.MoveRight, ElementName=Root}" Margin="{StaticResource MetadataCommandMargin}" />
+      <Button Classes="command" Content="{x:Static loc:UiStrings.Delete}" AutomationProperties.Name="{x:Static loc:UiStrings.Delete}" Command="{Binding Editor.RemoveItem, ElementName=Root}" />
     </WrapPanel>
     <StackPanel IsVisible="{Binding Editor.IsAddingMediaFiles, ElementName=Root}" Margin="{StaticResource FieldMargin}">
       <TextBlock Text="{x:Static loc:UiStrings.Loading}" />

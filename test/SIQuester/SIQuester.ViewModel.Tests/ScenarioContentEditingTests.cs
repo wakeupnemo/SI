@@ -50,6 +50,131 @@ internal sealed class ScenarioContentEditingTests
     }
 
     [Test]
+    public void ContentMoments_GroupCanonicalItemsByWaitBoundaryAndPlacement()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        using var document = CreateStoryboardPackage();
+        using var qDocument = factory.CreateViewModelFor(document, "Storyboard moments");
+        var content = qDocument.Package.Rounds[0].Themes[0].Questions[0].LegacyContent!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Moments, Has.Count.EqualTo(3));
+            Assert.That(content.Moments[0].ScreenItems.Select(item => item.Model.Value),
+                Is.EqualTo(new[] { "Question text", "question.png" }));
+            Assert.That(content.Moments[1].BackgroundItems.Single().Model.Value, Is.EqualTo("music.ogg"));
+            Assert.That(content.Moments[1].ReplicItems.Single().Model.Value, Is.EqualTo("Showman line"));
+            Assert.That(content.Moments[2].OtherItems.Single().Model.Placement, Is.EqualTo("future-placement"));
+            Assert.That(content.Moments[0].CanMergeWithNext, Is.True);
+            Assert.That(content.Moments[2].CanMergeWithNext, Is.False);
+        });
+
+        content.Moments[0].MergeWithNext.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content[1].Model.WaitForFinish, Is.False);
+            Assert.That(content.Moments, Has.Count.EqualTo(2));
+            Assert.That(content.Moments[0].Items, Has.Count.EqualTo(4));
+            Assert.That(qDocument.OperationsManager.Undo.CanExecute(null), Is.True);
+        });
+
+        content[1].SeparateFromNext.Execute(null);
+        Assert.That(content.Moments, Has.Count.EqualTo(3));
+
+        qDocument.OperationsManager.Undo.Execute(null);
+        Assert.That(content.Moments, Has.Count.EqualTo(2));
+        qDocument.OperationsManager.Undo.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content[1].Model.WaitForFinish, Is.True);
+            Assert.That(content.Moments, Has.Count.EqualTo(3));
+        });
+
+        content.CurrentItem = content[0];
+        content.Moments[0].MoveLater.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Select(item => item.Model.Value), Is.EqualTo(new[]
+            {
+                "music.ogg", "Showman line", "Question text", "question.png", "opaque",
+            }));
+            Assert.That(content.Moments, Has.Count.EqualTo(3));
+            Assert.That(content.CurrentItem!.Model.Value, Is.EqualTo("Question text"));
+            Assert.That(content.CurrentPosition, Is.EqualTo(2));
+        });
+
+        qDocument.OperationsManager.Undo.Execute(null);
+        Assert.That(content.Select(item => item.Model.Value), Is.EqualTo(new[]
+        {
+            "Question text", "question.png", "music.ogg", "Showman line", "opaque",
+        }));
+
+        content[^1].Model.WaitForFinish = false;
+        content.Moments[^1].MoveEarlier.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Moments, Has.Count.EqualTo(3),
+                "Moving a trailing implicit moment must create the boundary needed at its new position.");
+            Assert.That(content[2].Model.Value, Is.EqualTo("opaque"));
+            Assert.That(content[2].Model.WaitForFinish, Is.True);
+        });
+
+        qDocument.OperationsManager.Undo.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(content[^1].Model.Value, Is.EqualTo("opaque"));
+            Assert.That(content[^1].Model.WaitForFinish, Is.False);
+        });
+    }
+
+    [Test]
+    public async Task StoryboardCommands_QuestionAndPostAnswerContent_SaveCanonicalRoundTrip()
+    {
+        using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
+        var factory = serviceProvider.GetRequiredService<IDocumentViewModelFactory>();
+        using var document = CreateStoryboardPackage();
+        using var qDocument = factory.CreateViewModelFor(document, "Лента 例");
+        var filePath = Path.Combine(Path.GetTempPath(), $"SIQuester storyboard {Guid.NewGuid():N} 例.siq");
+        qDocument.Path = filePath;
+
+        try
+        {
+            var question = qDocument.Package.Rounds[0].Themes[0].Questions[0];
+            question.LegacyContent!.Moments[0].MergeWithNext.Execute(null);
+            question.PostAnswerContent!.Moments[0].MergeWithNext.Execute(null);
+
+            await qDocument.Save.ExecuteAsync(null);
+
+            await using var stream = File.OpenRead(filePath);
+            using var reloaded = SIDocument.Load(stream);
+            var reloadedQuestion = reloaded.Package.Rounds[0].Themes[0].Questions[0];
+            var questionContent = reloadedQuestion.Parameters[QuestionParameterNames.Question].ContentValue!;
+            var answerContent = reloadedQuestion.Parameters[QuestionParameterNames.Answer].ContentValue!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(questionContent.Select(item => item.WaitForFinish),
+                    Is.EqualTo(new[] { false, false, false, true, true }));
+                Assert.That(questionContent[2].Placement, Is.EqualTo(ContentPlacements.Background));
+                Assert.That(questionContent[4].Placement, Is.EqualTo("future-placement"));
+                Assert.That(questionContent[4].Type, Is.EqualTo("future-content"));
+                Assert.That(answerContent.Select(item => item.WaitForFinish), Is.EqualTo(new[] { false, true, true }));
+                Assert.That(answerContent.Select(item => item.Value),
+                    Is.EqualTo(new[] { "Answer caption", "answer.png", "explanation.mp4" }));
+            });
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Test]
     public async Task ScriptSteps_AllParameterKindsAndContentAttributes_SaveAndReload()
     {
         using var serviceProvider = (ServiceProvider)TestHelper.CreateServiceProvider();
@@ -202,6 +327,48 @@ internal sealed class ScenarioContentEditingTests
             },
         });
 
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        document.Package.Rounds.Add(round);
+        return document;
+    }
+
+    private static SIDocument CreateStoryboardPackage()
+    {
+        var document = SIDocument.Create("Storyboard package", "Author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 300 };
+        question.Parameters[QuestionParameterNames.Question] = new StepParameter
+        {
+            Type = StepParameterTypes.Content,
+            ContentValue =
+            [
+                new ContentItem { Type = ContentTypes.Text, Value = "Question text", WaitForFinish = false },
+                new ContentItem { Type = ContentTypes.Image, Value = "question.png", IsRef = true },
+                new ContentItem
+                {
+                    Type = ContentTypes.Audio,
+                    Value = "music.ogg",
+                    IsRef = true,
+                    Placement = ContentPlacements.Background,
+                    WaitForFinish = false,
+                },
+                new ContentItem { Type = ContentTypes.Text, Value = "Showman line", Placement = ContentPlacements.Replic },
+                new ContentItem { Type = "future-content", Value = "opaque", Placement = "future-placement" },
+            ],
+        };
+        question.Parameters[QuestionParameterNames.Answer] = new StepParameter
+        {
+            Type = StepParameterTypes.Content,
+            ContentValue =
+            [
+                new ContentItem { Type = ContentTypes.Text, Value = "Answer caption" },
+                new ContentItem { Type = ContentTypes.Image, Value = "answer.png", IsRef = true },
+                new ContentItem { Type = ContentTypes.Video, Value = "explanation.mp4", IsRef = true },
+            ],
+        };
+        question.Right.Add("Answer");
         theme.Questions.Add(question);
         round.Themes.Add(theme);
         document.Package.Rounds.Add(round);

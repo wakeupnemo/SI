@@ -109,6 +109,20 @@
   <data name="Placement" xml:space="preserve"><value>Placement</value></data>
   <data name="DurationSeconds" xml:space="preserve"><value>Duration, seconds</value></data>
   <data name="WaitForFinish" xml:space="preserve"><value>Wait for this content to finish</value></data>
+  <data name="Moment" xml:space="preserve"><value>Moment</value></data>
+  <data name="ScreenLane" xml:space="preserve"><value>On screen</value></data>
+  <data name="ShowmanLane" xml:space="preserve"><value>Showman</value></data>
+  <data name="BackgroundLane" xml:space="preserve"><value>Background</value></data>
+  <data name="OtherPlacementLane" xml:space="preserve"><value>Other placement</value></data>
+  <data name="ShowTogetherWithNext" xml:space="preserve"><value>Show together</value></data>
+  <data name="ShowNext" xml:space="preserve"><value>Show following content next</value></data>
+  <data name="ShowTogetherWithFollowingItem" xml:space="preserve"><value>Show together with the following item</value></data>
+  <data name="PresentationSequenceHint" xml:space="preserve"><value>Moments play from left to right. Content inside one moment is shown together.</value></data>
+  <data name="AdvancedContentSettings" xml:space="preserve"><value>Advanced content settings</value></data>
+  <data name="AutomaticDuration" xml:space="preserve"><value>Auto</value></data>
+  <data name="SecondsShort" xml:space="preserve"><value>s</value></data>
+  <data name="MoveMomentEarlier" xml:space="preserve"><value>Move this moment earlier</value></data>
+  <data name="MoveMomentLater" xml:space="preserve"><value>Move this moment later</value></data>
   <data name="PackageMediaReference" xml:space="preserve"><value>Package media reference</value></data>
   <data name="AddScreenText" xml:space="preserve"><value>Add screen text</value></data>
   <data name="AddReplicText" xml:space="preserve"><value>Add spoken text</value></data>

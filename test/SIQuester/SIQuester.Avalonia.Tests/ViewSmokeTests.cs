@@ -1283,6 +1283,94 @@ internal sealed class ViewSmokeTests
     }
 
     [AvaloniaTest]
+    public void ContentStoryboard_JoinsAndSplitsCanonicalMomentsInCompactLayout()
+    {
+        using var serviceProvider = CreateServiceProvider();
+        using var package = SIDocument.Create("Storyboard inspector", "Test author");
+        var round = new Round { Name = "Round" };
+        var theme = new Theme { Name = "Theme" };
+        var question = new Question { Price = 100 };
+        question.Parameters[QuestionParameterNames.Question] = new StepParameter
+        {
+            Type = StepParameterTypes.Content,
+            ContentValue =
+            [
+                new ContentItem { Type = ContentTypes.Text, Value = "Очень длинный текст вопроса для проверки узкой панели" },
+                new ContentItem { Type = ContentTypes.Image, Value = "изображение 例.png", IsRef = true },
+                new ContentItem
+                {
+                    Type = ContentTypes.Audio,
+                    Value = "фон.ogg",
+                    IsRef = true,
+                    Placement = ContentPlacements.Background,
+                },
+            ],
+        };
+        question.Right.Add("Answer");
+        theme.Questions.Add(question);
+        round.Themes.Add(theme);
+        package.Package.Rounds.Add(round);
+        var document = serviceProvider.GetRequiredService<IDocumentViewModelFactory>()
+            .CreateViewModelFor(package, "Storyboard inspector");
+        var content = document.Package.Rounds[0].Themes[0].Questions[0].LegacyContent!;
+        var editor = new ContentItemsEditorView { Editor = content };
+        var window = new Window { Width = 420, Height = 760, Content = editor };
+
+        try
+        {
+            window.Show();
+            window.UpdateLayout();
+
+            var sequenceScroller = editor.GetVisualDescendants().OfType<ScrollViewer>()
+                .First(scroller => scroller.HorizontalScrollBarVisibility.ToString() == "Auto"
+                    && scroller.VerticalScrollBarVisibility.ToString() == "Disabled");
+            var mergeButtons = editor.GetVisualDescendants().OfType<Button>()
+                .Where(button => Equals(button.Content, UiStrings.ShowTogetherWithNext) && button.IsEffectivelyVisible)
+                .ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(content.Moments, Has.Count.EqualTo(3));
+                Assert.That(mergeButtons, Has.Length.EqualTo(2));
+                Assert.That(sequenceScroller.Viewport.Width, Is.GreaterThan(0));
+                Assert.That(editor.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text),
+                    Does.Contain(UiStrings.ScreenLane));
+                Assert.That(editor.GetVisualDescendants().OfType<TextBlock>().Select(block => block.Text),
+                    Does.Contain(UiStrings.BackgroundLane));
+            });
+
+            mergeButtons[0].Command!.Execute(null);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(question.Parameters[QuestionParameterNames.Question].ContentValue![0].WaitForFinish,
+                    Is.False);
+                Assert.That(content.Moments, Has.Count.EqualTo(2));
+            });
+
+            content[0].Select.Execute(null);
+            window.UpdateLayout();
+            var splitButton = editor.GetVisualDescendants().OfType<Button>()
+                .Single(button => Equals(button.Content, UiStrings.ShowNext) && button.IsEffectivelyVisible);
+            splitButton.Command!.Execute(null);
+            window.UpdateLayout();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(content.CurrentItem, Is.SameAs(content[0]));
+                Assert.That(content[0].Model.WaitForFinish, Is.True);
+                Assert.That(content.Moments, Has.Count.EqualTo(3));
+            });
+        }
+        finally
+        {
+            window.Close();
+            document.Dispose();
+        }
+    }
+
+    [AvaloniaTest]
     public async Task ContentItemsEditor_ShowsProgressAndDisablesDirectPickerUntilDocumentCloseCancelsIt()
     {
         var filePicker = new BlockingOpenFilePicker();
@@ -2475,6 +2563,10 @@ internal sealed class ViewSmokeTests
             Assert.That(UiStrings.SecretBehavior, Is.EqualTo("Вопрос с секретом"));
             Assert.That(UiStrings.PostAnswerContent, Is.EqualTo("Контент после ответа"));
             Assert.That(UiStrings.AnswerTime, Is.EqualTo("Время на ответ (секунды)"));
+            Assert.That(UiStrings.Moment, Is.EqualTo("Момент"));
+            Assert.That(UiStrings.ShowTogetherWithNext, Is.EqualTo("Показывать вместе"));
+            Assert.That(UiStrings.PresentationSequenceHint,
+                Is.EqualTo("Моменты воспроизводятся слева направо. Содержимое внутри одного момента показывается вместе."));
             Assert.That(
                 new DesktopThemeLabelConverter().Convert(
                     DesktopThemePreference.System,
