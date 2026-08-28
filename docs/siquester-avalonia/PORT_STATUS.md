@@ -4,7 +4,8 @@ Updated: 2026-08-28
 
 ## Current unreleased hierarchy drag-and-drop checkpoint
 
-- Commit `b050a046` restores ordinary mouse movement of questions between any
+- Commit `b050a046`, corrected by reviewed commit `cf03ef6d`, restores ordinary
+  mouse movement of questions between any
   themes/rounds and themes between rounds in the Avalonia hierarchy. Explicit
   localized grips avoid conflicts with selection and inline editing; round,
   theme, and question rows expose typed drop targets with a visible accent
@@ -13,21 +14,26 @@ Updated: 2026-08-28
   first, dropping on a sibling inserts after it. With `ChangePriceOnMove`
   enabled, a moved theme receives the target round's price grid while every
   other question field remains unchanged; individual question moves retain the
-  established source/target positional price sequences. Disabling the setting
-  keeps each price with its question.
+  established source/target positional price sequences. Final-round
+  recalculation canonicalizes both moved themes and individual questions to
+  zero prices. Disabling the setting keeps each price with its question.
 - Theme payloads are bounded, versioned JSON containing document identity,
   canonical indexes, and an XML fingerprint. Cross-parent moves clone before
   removal so shared media cannot be deleted as an orphan. Selection and owner
   chains now participate in the same undo/redo operation and cannot remain on
-  a detached clone.
-- Current unreleased Release evidence: 378 passed, 0 failed
-  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 220,
+  a detached clone. QDocument recursively attaches and detaches the complete
+  inserted/removed hierarchy, so edits to moved questions and nested metadata
+  remain dirty/undo/recovery tracked after move, undo, and redo without keeping
+  detached source listeners alive.
+- Current unreleased Release evidence: 382 passed, 0 failed
+  (`SIPackages.Tests` 96, `SIQuester.ViewModel.Tests` 224,
   `SIQuester.Avalonia.Tests` 62); cross-platform and retained WPF builds pass
   with 0 errors. `MoveAcrossRounds_PreservesThemeSemanticsAndMediaAndIsUndoableAfterRoundTrip`
   verifies Unicode/space-path safe save, `SIDocument.Load`, canonical XML, and
-  exact referenced-media bytes. The headless hierarchy test verifies realized
-  grips, accessible names/tooltips, native pointer hit selection, and all typed
-  drop targets.
+  exact referenced-media bytes. Three listener-lifecycle/final-theme regressions
+  and `MoveQuestionIntoEmptyFinalTheme_UsesCanonicalZeroPriceAndIsUndoable`
+  cover the review findings. The headless hierarchy test verifies realized grips,
+  accessible names/tooltips, native pointer hit selection, and all typed drop targets.
 - No new release artifact was built. Native same-window Xdnd delivery was not
   synthesized because XTEST has already proven unreliable for that path and a
   GUI run would disturb the active desktop; this is an explicit verification
@@ -236,7 +242,7 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 - Cross-platform Release build: passed with 0 errors. A source rebuild reported 130 pre-existing nullable/obsolete warnings across retained projects; the final full incremental validation reported 0 warnings. Analyzers and warnings remain enabled, and every portable project emitted to `bin/AnyCPU.Release`.
 - `SIPackages.Tests`: 96 passed, 0 skipped, 0 failed. `Clone_PreservesQualityControlSemanticState` and `GetContent_IncludesQuestionAndScriptParameters` cover marker clone/equality/hash semantics and complete modern/legacy content discovery; script save/reload, deep-clone, reader-state, and empty-parameter coverage remains green.
-- `SIQuester.ViewModel.Tests`: 220 passed, 0 failed. Four
+- `SIQuester.ViewModel.Tests`: 224 passed, 0 failed. Four
   `MainLifecycleStabilityTests` cover default-token corrupt-loader cleanup,
   overlapping closes, one-message workspace failure, and host-owned close.
   `SaveDocument_UnwritableDirectory_ShouldLeaveExistingPackageUntouched` is a
@@ -350,12 +356,15 @@ safe-save verification as separate work. No broader parity work is implied.
 
 ## Review state
 
-- Latest reviewed unreleased implementation commit: `b050a046`. The
-  cross-platform Release build, all 378 tests, retained WPF cross-build,
+- Latest reviewed unreleased implementation commit: `cf03ef6d`. The
+  cross-platform Release build, all 382 tests, retained WPF cross-build,
   `git diff --check`, exact WPF price-rule comparison, clone-before-remove media
   ownership, save/reload bytes, stale/cancelled/cross-document rejection, and
-  undo/redo selection/owner-chain synchronization pass. The working tree after
-  this documentation update contains only these status/parity edits.
+  undo/redo selection/owner-chain synchronization pass. Review findings for
+  cloned-descendant dirty/undo tracking and Final-round theme prices are fixed;
+  a second adversarial pass additionally found and fixed the equivalent empty
+  Final-theme individual-question price fallback. The working tree after this
+  documentation update contains only these status/parity edits.
 - Released v0.2.1 implementation commit: `32a62910`; release documentation and
   tag checkpoint: `ebab3645`. This file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
