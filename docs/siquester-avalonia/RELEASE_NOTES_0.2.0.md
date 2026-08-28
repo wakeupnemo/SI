@@ -66,12 +66,17 @@ No parallel model or alternate serializer was introduced.
   closed, reopened, and closed cleanly. Both saves were validated and committed;
   no error, fatal, or unhandled-exception entry was logged. The receipt is under
   `artifacts/siquester-cross-platform-v0.2.0/native-smoke/`.
-- The final tar built from hardening commit `ebf5e604` completed 50 native
+- The earlier tar built from hardening commit `ebf5e604` completed 50 native
   question-preview open/close cycles plus a 10-second settle. All 51 sessions
   were disposed, process counts remained stable, settings/document close
   completed, and the persistent log contained no warning, error, fatal, or
   unhandled entry. Raw evidence is under
   `artifacts/siquester-cross-platform-v0.2.0/stability/`.
+- Those lifecycle cycles did not verify rendered pixels. A later affected-host
+  run exposed a blank WebKitGTK surface with NVIDIA GBM/KMS errors, which is why
+  the rebuilt artifacts apply the compatibility value in the pre-apphost
+  launcher. Visual confirmation of this rebuilt launcher remains required
+  before declaring the release READY.
 
 ## Linux artifacts
 
@@ -82,8 +87,8 @@ No parallel model or alternate serializer was introduced.
 Final SHA-256:
 
 ```text
-8cf3b750e6a0fc96551d62bb920dfd0fea14c621f4fdb1798fb0fb845ff3185d  SIQuester-0.2.0-linux-x64.tar.gz
-1040fab643fde13f3f56985356923c2b241e52d968fde2100a901ed26e2d2dcf  siquester_0.2.0_amd64.deb
+797c15b43dce784853c9242ffee8e74d19b6b926ed78895efd7ec9970b16ba70  SIQuester-0.2.0-linux-x64.tar.gz
+794d6942b13a70d1c8b4b18dbfb1205849e7c195ca313b351c71598734eb524d  siquester_0.2.0_amd64.deb
 ```
 
 The Debian package includes the desktop entry, icon, `.siq` MIME registration,

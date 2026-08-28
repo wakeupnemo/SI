@@ -4,8 +4,9 @@ Updated: 2026-08-28
 
 ## Current v0.2.0 release checkpoint
 
-- Question-authoring implementation commit: `fcfbfb51`; final stability
-  implementation commit: `ebf5e604` on `feat/siquester-avalonia`.
+- Question-authoring implementation commit: `fcfbfb51`; stability
+  implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
+  implementation commit: `ff5b9e3a` on `feat/siquester-avalonia`.
 - All three suspected hardening defects were confirmed and fixed. Desktop close
   now serializes overlapping requests, persists settings before document close,
   catches and logs failures, keeps the window/data open on failure, and reports
@@ -28,16 +29,28 @@ Updated: 2026-08-28
   `PostAnswerSmoke`, safely saved, closed, reopened, and closed cleanly. The
   canonical XML and exact package were retained in the release receipt; the log
   records validated commits and no error/fatal/unhandled exception.
-- The final self-contained tar completed 50 native preview open/close cycles plus
+- The earlier `ebf5e604` self-contained tar completed 50 native preview
+  lifecycle open/close cycles plus
   a 10-second settle: 51/51 sessions disposed, three stable processes, two
   WebKit children, 79 settled threads, 339 settled file descriptors, and no
   warning/error/fatal/unhandled log entry. RSS was non-monotonic and settled at
   908,800 KiB versus 887,080 KiB before repeated cycles; no leak or speedup is
   claimed from this bounded run.
-- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass. The executable and
-  changed managed payload are byte-identical between tar and DEB.
-- No v0.2.0 blocker remains. Advanced legacy parity and environment-specific
-  native macOS/Windows/ARM64/installed-DEB/hosted-CI receipts remain deferred.
+- A real installed-DEB run on Debian 13/NVIDIA exposed blank preview rendering
+  with GBM/KMS allocation failures even though preview sessions, controlled
+  media routes, and disposal succeeded. The managed environment default was too
+  late for this native initialization path. `ff5b9e3a` replaces the Debian
+  symlink with a launcher that sets the default before apphost execution and
+  adds the same launcher to the portable tar. Explicit values (`0` and empty
+  included) remain untouched.
+- Official Avalonia Wayland 12.1.1 support is registered with automatic X11
+  fallback. The Release build and package topology pass; a native Wayland
+  receipt is pending because this host is an X11 session without a test
+  compositor.
+- Fresh v0.2.0 linux-x64 tar and amd64 DEB checksums pass and contain the regular
+  launcher plus `Avalonia.Wayland.dll`/`NWayland.dll`. Release readiness is
+  withheld only pending a visual preview check through the rebuilt launcher on
+  the reported host.
 
 ## Verified baseline
 
@@ -95,7 +108,12 @@ Updated: 2026-08-28
 - Completed the representative stock-SNS text-import receipt. `WorkspaceCommands_ConvertSaveAndReloadRepresentativeTextPackage` drives the neutral stream picker, approval, cancellable split, SNS template selection, conversion, production safe save to a Unicode/space path, and `SIDocument.Load` reload. It verifies package/round/theme/question names, prices, right answers, theme author, question comment/source combinations, and no unintended backup. The SNS-only normalization fixes legacy greedy matching without changing custom templates. Split, auto-detection, and conversion now own and observe their tasks, publish worker state through `IUiDispatcher`, use neutral dialogs, and dispose cancellation state; two legacy platform-global calls and one `async void` were removed. Text import is `VERIFIED`.
 - Completed structural SPARD editor parity without copying the WPF rich-text control or adding a dependency. The real importer now presents controller-owned plain-text, alias, line, optional-boundary, and opaque tokens with localized automation names/tooltips, explicit nesting, semantic borders, existing alias color metadata, bounded values, and a 256-token safety cap. Six `SpardEditorControlTests`, ten controller tests, two session tests, the real-importer headless receipt, and the representative text-conversion safe-save receipt cover structural edits, malformed recovery, synchronization, background dispatch, duplicate alias metadata, bounded rendering, detach cleanup, and semantic `SIDocument.Load` reload.
 - Integrated the official MIT-licensed `Avalonia.Controls.WebView` 12.1.0 behind the retained question-player protocol. Native engines are probed lazily; application assets are served from an ephemeral randomized loopback route with restrictive headers, exact navigation, denied popups, bounded JSON, an explicit readiness signal, and deterministic view detach. Missing Linux/Windows/unsupported backends remain localized non-fatal capability states. Six platform-neutral and six focused Avalonia tests pass both required missing-WebKit and staged-WebKit capability branches. A real WebKitGTK 2.52.6/Xvfb smoke opened `avalonia-core-roundtrip.siq`, advanced one fragment, rendered the exact Russian question text, and exited without preview-host/fatal errors. Broader runtime parity remains pending.
-- Added the Debian 13 WebKitGTK compositing compatibility default at the earliest desktop-host boundary. Linux sets `WEBKIT_DISABLE_COMPOSITING_MODE=1` before Avalonia initialization only when the variable is absent; explicit user values are preserved. `ProgramEnvironmentTests` cover both branches. The reported native failure rendered blank without the value and correctly with it; the rebuilt package contains the tested host DLL in both tar and DEB.
+- Added the Debian 13 WebKitGTK compositing compatibility default. Follow-up
+  native evidence showed that managed startup was not early enough on the
+  reported NVIDIA/GBM path, so packaged Linux builds now apply the same default
+  in a POSIX launcher before apphost execution. The launcher and managed
+  fallback both preserve explicit values; shell probes cover unset, `0`, and
+  explicitly empty states.
 - Added owned per-dialog question-preview media sessions. Embedded package image/audio/video references now resolve through opaque random loopback URLs without `PlatformManager.Instance`, package names, or frontend types entering the protocol; the server enforces an extension/MIME allowlist, 512 MiB item and 256-item session bounds, single-byte-range responses for media seeking, strict Host/path checks, bounded request lines/headers, request concurrency/timeouts, and cancellation-aware stream/session/server teardown. SVG and package HTML are excluded; WPF retains a compatible session-owned temporary-file adapter. Six platform-neutral preview tests and six focused Avalonia server/bridge tests cover byte ownership, ranges, unsafe types, bounds, malformed HTTP, deterministic removal, and dialog replacement/close/dispose. A fresh-state WebKitGTK 2.52.6 smoke fetched a referenced 97-byte PNG from the compatibility SIQ and rendered the mixed Russian text/image player surface.
 - Completed the deterministic select-answer/replay preview slice. The terminal engine fragment now exposes Replay without an extra sentinel click; localized controls have explicit automation names, and a semantic fixture preserves ordered options, the right option, a Unicode embedded-image name, and exact media bytes through production safe save plus `SIDocument.Load`. The document editor owns one persistent native WebView and reuses it across dialog sessions while each dialog still owns and disposes its isolated media routes. This document-scoped pool fixed a reproduced WebKitGTK exit-time abort after two native-control lifetimes. Protocol/headless tests and a real two-session Linux receipt prove answer-option rendering, replay, two media fetches, two route create/dispose pairs, and clean process exit.
 - Completed media-library audio/video preview behind the neutral `IMediaPreviewService`. A separate application-owned HTML5 page uses the existing randomized loopback origin, opaque extension-preserving URLs, byte ranges, MIME/size/session bounds, exact navigation and popup denial, and lazy backend probing. One native control is retained across selections while each selection owns an isolated route; view/document/app teardown stops the control and removes its route. Original media bytes and package persistence remain untouched. Focused VM, server, and headless tests cover stream ownership, unsupported backend presentation, range serving, and deterministic disposal. A native WebKitGTK 2.52.6 receipt decoded the repository MP3 through 0:03 and rendered changing MP4 frames; Audio was disposed before Video and Video on close.
@@ -150,12 +168,12 @@ dotnet test test/SIQuester/SIQuester.Avalonia.Tests/SIQuester.Avalonia.Tests.csp
 
 ## Release artifacts
 
-The requested local v0.2.0 artifacts were built from hardening commit
-`ebf5e604` with its timestamp (`1787867570`) as `SOURCE_DATE_EPOCH`. They are
+The requested local v0.2.0 artifacts were built from Linux launcher/Wayland
+commit `ff5b9e3a` with its timestamp (`1787874382`) as `SOURCE_DATE_EPOCH`. They are
 not pushed, tagged, published, installed, or merged.
 
-- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 58,717,512 bytes, SHA-256 `8cf3b750e6a0fc96551d62bb920dfd0fea14c621f4fdb1798fb0fb845ff3185d`.
-- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,617,628 bytes, SHA-256 `1040fab643fde13f3f56985356923c2b241e52d968fde2100a901ed26e2d2dcf`.
+- Linux x64 tar: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.tar.gz`, 59,008,208 bytes, SHA-256 `797c15b43dce784853c9242ffee8e74d19b6b926ed78895efd7ec9970b16ba70`.
+- Debian amd64: `artifacts/siquester-cross-platform-v0.2.0/siquester_0.2.0_amd64.deb`, 41,844,048 bytes, SHA-256 `794d6942b13a70d1c8b4b18dbfb1205849e7c195ca313b351c71598734eb524d`.
 - Checksum receipt: `artifacts/siquester-cross-platform-v0.2.0/SIQuester-0.2.0-linux-x64.SHA256SUMS`; both entries pass.
 - Native authoring receipt and exact saved SIQ: `artifacts/siquester-cross-platform-v0.2.0/native-smoke/`.
 - Final native and managed stability receipt: `artifacts/siquester-cross-platform-v0.2.0/stability/`.
@@ -179,13 +197,18 @@ intentionally not rebuilt for this focused release.
 
 ## Current blockers
 
-- No external blocker affects the v0.2.0 Linux release.
+- The rebuilt pre-apphost launcher has structural and environment-probe
+  evidence but not yet the user's visual preview receipt on the affected
+  Debian 13/NVIDIA desktop. Do not call v0.2.0 READY until that check passes.
 - Native Windows WPF/Avalonia execution, hosted package publication, and macOS signing/runtime receipts require those operating-system runners.
 - The host has no system .NET SDK; the session-local SDK is not a repository requirement.
 
 ## Next independent tasks
 
-The focused v0.2.0 Goal is complete and intentionally stops after its final report. If a later Goal resumes work, the highest-value independent verification is native installed-DEB MIME/file-association acceptance or a hosted Linux/macOS/Windows CI run. Advanced imports/exports/transforms, Steam, GPT, updater, package HTML execution, and unrelated full-parity cleanup remain future scope.
+Run the extracted tar through `./siquester` on the affected desktop and confirm
+that question preview renders without GBM/KMS errors. If it passes, install the
+fresh DEB and repeat through `/usr/bin/siquester`. A real Wayland-session launch
+is the next environment-specific verification; no feature work is implied.
 
 ## Known limitations
 
@@ -195,16 +218,22 @@ The focused v0.2.0 Goal is complete and intentionally stops after its final repo
 - The retained question player now has verified native Linux text, embedded select-answer image, completion/replay, two-session close/reopen, and a 50-cycle resource receipt plus automated available/unavailable backend gates. The media library additionally has verified native Linux MP3/MP4 decoding through controlled per-selection routes. Native macOS/Windows codec acceptance remains pending. Package HTML is deliberately rendered as an inert localized warning until a separate restrictive HTML policy is implemented.
 - Native external Xdnd target acceptance now passes with visible dirty/Undo state, exact media persistence, safe save, and reopen. XTEST still does not reliably deliver same-window internal question Xdnd `DragOver`/`Drop`, so that narrower acceptance is deferred rather than inferred from source activation.
 - The first deterministic flat-list baseline is 1,045-1,062 ms to create and lay out a generated 2,000-question document at 1100x700 on this Debian host, with 15 question cards realized at either scroll endpoint. It is a headless realization receipt rather than a native rendering profile; no performance improvement is claimed yet.
-- Linux packages are locally executable and structurally accepted, but actual desktop/MIME cache registration after system install and native ARM64 launch remain pending. macOS bundles are cross-built only; ICNS/codesign and native launch are hosted-runner boundaries.
+- Linux packages are structurally accepted and the prior X11 build has native
+  authoring evidence, but the rebuilt launcher's visual preview and the new
+  Wayland backend still need native receipts. Actual desktop/MIME cache
+  registration after system install and native ARM64 launch remain pending.
+  macOS bundles are cross-built only; ICNS/codesign and native launch are
+  hosted-runner boundaries.
 - CI workflow YAML and commands are locally validated, but hosted Linux/macOS/Windows acceptance awaits an actual GitHub Actions run.
 
 ## Review state
 
-- Latest reviewed implementation commit: `ebf5e604`; this file,
+- Latest reviewed implementation commit: `ff5b9e3a`; this file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
   `RELEASE_NOTES_0.2.0.md` form the final documentation checkpoint. All 359
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
-  frontend cross-build passes 0/0. Fresh tar/DEB checksums, metadata/topology,
-  managed-payload identity, native 50-cycle preview/clean close, safe-save,
-  loader cleanup, failure retention, settings failure, and close serialization
-  checks pass. Review remained strictly scoped to v0.2.0 release hardening.
+  frontend cross-build passes 0/0. Fresh tar/DEB checksums and
+  launcher/Wayland metadata/topology pass; the earlier native 50-cycle result
+  remains lifecycle evidence only. Safe-save, loader cleanup, failure
+  retention, settings failure, and close serialization checks pass. Review
+  remained strictly scoped to v0.2.0 release hardening and Linux startup.
