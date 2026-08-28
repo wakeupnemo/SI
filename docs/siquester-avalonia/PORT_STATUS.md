@@ -2,7 +2,7 @@
 
 Updated: 2026-08-28
 
-## Current v0.2.1 release candidate
+## Current v0.2.1 release checkpoint
 
 - v0.2.1 is a focused responsiveness and persistence hardening update over the
   existing v0.2.0 authoring feature set. It adds no SIQ semantics or advanced
@@ -33,6 +33,13 @@ Updated: 2026-08-28
   automation while the desktop is in use. The final version-only rebuilt
   packages pass checksum, metadata, launcher, payload, and tar/DEB identity
   checks without an additional GUI launch.
+- GitHub release `v0.2.1` is published from
+  `feat/siquester-avalonia` at release checkpoint `ebab3645`:
+  <https://github.com/wakeupnemo/SI/releases/tag/v0.2.1>. Release id
+  `378488721` contains exactly three uploaded assets. GitHub reports SHA-256
+  digests identical to the local tar and DEB; the 191-byte checksum asset digest
+  is `e5994d99cf7ccd051db121ce1b46082505b6af18fce65394b3b7c220628549dd`.
+  Remote `master` remains unchanged at `8c2bee9c`.
 
 - Question-authoring implementation commit: `fcfbfb51`; stability
   implementation commit: `ebf5e604`; Linux preview-launcher and Wayland
@@ -278,9 +285,8 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Current blockers
 
-- No source or local artifact blocker is known for the Linux v0.2.1 release.
-  Publishing the feature branch and GitHub release is the remaining release
-  step; no merge to `master` is authorized.
+- No source, artifact, or publication blocker is known for the focused Linux
+  v0.2.1 release. No merge to `master` was performed.
 - Hosted run `33164408794` is not aggregate-green: the Xdnd smoke script failed
   to execute because its repository executable bit was absent, and 37 Windows
   view-model tests exposed a Windows-only safe-save verification gap. These are
@@ -290,10 +296,9 @@ only the Linux x64 artifacts have release-level runtime acceptance.
 
 ## Next independent tasks
 
-Publish only `feat/siquester-avalonia` and the v0.2.1 GitHub release from the
-reviewed implementation commit. Retain real Wayland-session launch, Xdnd runner permission
-repair, and Windows safe-save verification as separate work; no broader parity
-work is implied.
+None in the completed v0.2.1 scope. Stop after this checkpoint. Retain real
+Wayland-session launch, Xdnd runner permission repair, and Windows safe-save
+verification as separate future work; no broader parity work is implied.
 
 ## Known limitations
 
@@ -313,7 +318,8 @@ work is implied.
 
 ## Review state
 
-- Latest reviewed implementation commit: `32a62910`; this file,
+- Latest reviewed implementation commit: `32a62910`; release documentation and
+  tag checkpoint: `ebab3645`. This file,
   `FEATURE_PARITY.md`, `V0.2_QUESTION_AUTHORING.md`, and
   `RELEASE_NOTES_0.2.1.md` form the v0.2.1 documentation checkpoint. All 370
   ordinary Release tests and the explicit 70-cycle managed soak pass. The WPF
@@ -333,4 +339,7 @@ work is implied.
   `git diff --check`, the cross-platform Release build, and the retained WPF
   cross-build. The local v0.2.1 tar/DEB identify `32a62910`, pass adjacent
   checksums and structural acceptance, and retain the user-accepted current-code
-  native review without claiming a second packaged GUI run.
+  native review without claiming a second packaged GUI run. Hosted asset
+  sizes/digests and remote refs were independently queried after publication;
+  tag `v0.2.1` resolves to `ebab3645`, the feature branch contained that commit,
+  and `master` remained at `8c2bee9c`.
