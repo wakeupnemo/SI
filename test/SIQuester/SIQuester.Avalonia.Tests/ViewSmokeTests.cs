@@ -1327,9 +1327,16 @@ internal sealed class ViewSmokeTests
             var mergeButtons = editor.GetVisualDescendants().OfType<Button>()
                 .Where(button => Equals(button.Content, UiStrings.ShowTogetherWithNext) && button.IsEffectivelyVisible)
                 .ToArray();
+            var selectedCards = editor.GetVisualDescendants().OfType<Button>()
+                .Where(button => button.Classes.Contains("selected") && button.DataContext is ContentItemViewModel)
+                .ToArray();
 
             Assert.Multiple(() =>
             {
+                Assert.That(content.CurrentItem, Is.SameAs(content[0]));
+                Assert.That(content[0].IsCurrent, Is.True);
+                Assert.That(selectedCards, Has.Length.EqualTo(1));
+                Assert.That(selectedCards[0].DataContext, Is.SameAs(content[0]));
                 Assert.That(content.Moments, Has.Count.EqualTo(3));
                 Assert.That(mergeButtons, Has.Length.EqualTo(2));
                 Assert.That(sequenceScroller.Viewport.Width, Is.GreaterThan(0));

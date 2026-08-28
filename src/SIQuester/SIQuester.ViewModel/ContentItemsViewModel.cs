@@ -47,6 +47,8 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
 
     private bool _suppressMomentRefresh;
 
+    private ContentItemViewModel? _observedCurrentItem;
+
     public SimpleCommand CollapseMedia { get; private set; }
 
     public SimpleCommand ExpandMedia { get; private set; }
@@ -129,6 +131,7 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
         LinkUri = new SimpleCommand(LinkUri_Executed);
         AddFile = new AsyncCommand(AddFile_ExecutedAsync);
         IsTopLevel = isTopLevel;
+        ObserveCurrentItem(CurrentItem);
         RefreshMoments();
     }
 
@@ -313,21 +316,54 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
     {
         base.OnCurrentItemChanged(oldValue, newValue);
 
-        if (oldValue != null)
+        ObserveCurrentItem(newValue);
+    }
+
+    private void ObserveCurrentItem(ContentItemViewModel? item)
+    {
+        if (ReferenceEquals(_observedCurrentItem, item))
         {
-            oldValue.SetCurrent(false);
-            oldValue.PropertyChanged -= CurrentAtom_PropertyChanged;
-            oldValue.Model.PropertyChanged -= Model_PropertyChanged;
+            item?.SetCurrent(true);
+            UpdateContentItemCommands();
+            return;
         }
 
-        if (newValue != null)
+        if (_observedCurrentItem != null)
         {
-            newValue.SetCurrent(true);
-            newValue.PropertyChanged += CurrentAtom_PropertyChanged;
-            newValue.Model.PropertyChanged += Model_PropertyChanged;
+            _observedCurrentItem.SetCurrent(false);
+            _observedCurrentItem.PropertyChanged -= CurrentAtom_PropertyChanged;
+            _observedCurrentItem.Model.PropertyChanged -= Model_PropertyChanged;
+        }
+
+        _observedCurrentItem = item;
+
+        if (_observedCurrentItem != null)
+        {
+            _observedCurrentItem.SetCurrent(true);
+            _observedCurrentItem.PropertyChanged += CurrentAtom_PropertyChanged;
+            _observedCurrentItem.Model.PropertyChanged += Model_PropertyChanged;
         }
 
         UpdateContentItemCommands();
+    }
+
+    private void SynchronizeCurrentSelection()
+    {
+        var currentItem = CurrentItem;
+
+        if (currentItem != null)
+        {
+            var actualPosition = IndexOf(currentItem);
+
+            // A moment move is recorded as a series of replacements. During undo/redo the selected item can be
+            // temporarily absent, so retain its identity until the replacement series puts it back.
+            if (actualPosition >= 0 && actualPosition != CurrentPosition)
+            {
+                CurrentPosition = actualPosition;
+            }
+        }
+
+        ObserveCurrentItem(CurrentItem);
     }
 
     protected override bool CanRemove() => Count > 1 || 
@@ -398,6 +434,7 @@ public sealed class ContentItemsViewModel : ItemsViewModel<ContentItemViewModel>
                 break;
         }
 
+        SynchronizeCurrentSelection();
         UpdateCommands();
         if (!_suppressMomentRefresh)
         {

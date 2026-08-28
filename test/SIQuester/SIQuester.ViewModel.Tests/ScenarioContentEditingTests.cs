@@ -60,6 +60,9 @@ internal sealed class ScenarioContentEditingTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(content.CurrentItem, Is.SameAs(content[0]));
+            Assert.That(content.CurrentPosition, Is.Zero);
+            Assert.That(content[0].IsCurrent, Is.True);
             Assert.That(content.Moments, Has.Count.EqualTo(3));
             Assert.That(content.Moments[0].ScreenItems.Select(item => item.Model.Value),
                 Is.EqualTo(new[] { "Question text", "question.png" }));
@@ -108,10 +111,36 @@ internal sealed class ScenarioContentEditingTests
         });
 
         qDocument.OperationsManager.Undo.Execute(null);
-        Assert.That(content.Select(item => item.Model.Value), Is.EqualTo(new[]
+        Assert.Multiple(() =>
         {
-            "Question text", "question.png", "music.ogg", "Showman line", "opaque",
-        }));
+            Assert.That(content.Select(item => item.Model.Value), Is.EqualTo(new[]
+            {
+                "Question text", "question.png", "music.ogg", "Showman line", "opaque",
+            }));
+            Assert.That(content.CurrentItem, Is.SameAs(content[0]));
+            Assert.That(content.CurrentPosition, Is.Zero);
+            Assert.That(content[0].IsCurrent, Is.True);
+        });
+
+        qDocument.OperationsManager.Redo.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.CurrentItem!.Model.Value, Is.EqualTo("Question text"));
+            Assert.That(content.CurrentPosition, Is.EqualTo(2));
+            Assert.That(content[2].IsCurrent, Is.True);
+        });
+        qDocument.OperationsManager.Undo.Execute(null);
+
+        content.MoveRight.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Select(item => item.Model.Value).Take(2),
+                Is.EqualTo(new[] { "question.png", "Question text" }),
+                "The first index-based command after undo must act on the visibly selected card.");
+            Assert.That(content.CurrentItem!.Model.Value, Is.EqualTo("Question text"));
+            Assert.That(content.CurrentPosition, Is.EqualTo(1));
+        });
+        qDocument.OperationsManager.Undo.Execute(null);
 
         content[^1].Model.WaitForFinish = false;
         content.Moments[^1].MoveEarlier.Execute(null);
