@@ -98,7 +98,7 @@ public partial class QuestionPreviewView : UserControl
         }
     }
 
-    private void WebView_NavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
+    private async void WebView_NavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
     {
         var webView = _webView;
         var viewModel = _viewModel;
@@ -115,6 +115,25 @@ public partial class QuestionPreviewView : UserControl
         {
             viewModel.ReportPreviewHostFailure(
                 new InvalidOperationException("Question preview navigation did not complete."));
+            return;
+        }
+
+        // On macOS the adapter installs its messaging function only after page load.
+        // Retry the handshake now that it is available; other backends are idempotent.
+        var lifetime = _sendLifetime;
+        try
+        {
+            await webView.InvokeScript("window.siquesterNotifyHostReady && window.siquesterNotifyHostReady();");
+        }
+        catch (Exception exception)
+        {
+            if (ReferenceEquals(_webView, webView)
+                && ReferenceEquals(_viewModel, viewModel)
+                && ReferenceEquals(_sendLifetime, lifetime)
+                && lifetime is { IsCancellationRequested: false })
+            {
+                viewModel.ReportPreviewHostFailure(exception);
+            }
         }
     }
 

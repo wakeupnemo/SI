@@ -136,7 +136,7 @@
   <data name="NumberAnswer" xml:space="preserve"><value>Number</value></data>
   <data name="PointAnswer" xml:space="preserve"><value>Point</value></data>
   <data name="SelectAnswer" xml:space="preserve"><value>Select options</value></data>
-  <data name="ClientManagedAnswer" xml:space="preserve"><value>Checked by client</value></data>
+  <data name="ClientManagedAnswer" xml:space="preserve"><value>Checked by player application</value></data>
   <data name="ClientManagedDescription" xml:space="preserve"><value>The player application checks this answer. This mode does not use editable right or wrong answer lists.</value></data>
   <data name="NumericAnswer" xml:space="preserve"><value>Numeric answer</value></data>
   <data name="AnswerDeviation" xml:space="preserve"><value>Allowed deviation</value></data>

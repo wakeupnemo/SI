@@ -72,6 +72,9 @@ jobs:
       - name: Test SIPackages
         run: dotnet test test/Common/SIPackages.Tests/SIPackages.Tests.csproj --configuration Release --no-build --no-restore -m:1 --logger "console;verbosity=normal"
 
+      - name: Test question-preview JavaScript bridge
+        run: node tools/test-siquester-preview-bridge.cjs
+
       - name: Test platform-neutral SIQuester view models
         run: dotnet test test/SIQuester/SIQuester.ViewModel.Tests/SIQuester.ViewModel.Tests.csproj --configuration Release --no-build --no-restore -m:1 --logger "console;verbosity=normal"
 

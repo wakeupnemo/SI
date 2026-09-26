@@ -35,7 +35,7 @@
         postMessage: function (data) {
             if (nativePostMessage) {
                 nativePostMessage(data);
-            } else if (hasAvaloniaBridge) {
+            } else if (typeof window.invokeCSharpAction === "function") {
                 window.invokeCSharpAction(data);
             }
         }
@@ -134,6 +134,15 @@
         });
     }
 
-    window.siquesterBridgeReady = true;
-    window.invokeCSharpAction({ type: "siquesterBridgeReady" });
+    // WKWebView installs invokeCSharpAction after page scripts have run.
+    // The native host retries this handshake on NavigationCompleted.
+    window.siquesterNotifyHostReady = function () {
+        if (!window.siquesterBridgeReady
+            && (nativePostMessage || typeof window.invokeCSharpAction === "function")) {
+            webView.postMessage({ type: "siquesterBridgeReady" });
+            window.siquesterBridgeReady = true;
+        }
+    };
+
+    window.siquesterNotifyHostReady();
 })();

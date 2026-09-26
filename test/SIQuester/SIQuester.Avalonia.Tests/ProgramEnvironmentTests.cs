@@ -11,7 +11,7 @@ internal sealed class ProgramEnvironmentTests
     [Test]
     public void ApplicationVersionMatchesCrossPlatformRelease()
     {
-        Assert.That(App.GetApplicationVersion(), Does.StartWith("0.3.2"));
+        Assert.That(App.GetApplicationVersion(), Does.StartWith("0.3.3"));
     }
 
     [Test]
